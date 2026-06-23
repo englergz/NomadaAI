@@ -34,6 +34,34 @@ export interface PredictResponse {
   candidates: PredictionCandidate[];
 }
 
+// --- Demostración con viajes reales (división 75/25) ---
+export interface TripSummary {
+  id: string;
+  type: string;
+  n_points: number;
+  start: Coordinate;
+}
+
+export interface TripsResponse {
+  trips: TripSummary[];
+}
+
+export interface DemoResponse {
+  id: string;
+  type: string;
+  prefix: Coordinate[];
+  truth: Coordinate[];
+  candidates: {
+    rank: number;
+    neighbor_id: string;
+    coordinates: Coordinate[];
+    length_m: number;
+    confidence: number;
+  }[];
+  fde_m: number | null;
+  horizon_m: number | null;
+}
+
 // --- Corredores TRACLUS (OE1) ---
 export interface FeatureCollection {
   type: "FeatureCollection";

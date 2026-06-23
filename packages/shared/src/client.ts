@@ -9,6 +9,8 @@ import type {
   RiskZonesResponse,
   IncidentReport,
   IncidentResponse,
+  TripsResponse,
+  DemoResponse,
 } from "./types";
 
 export class NomadaApi {
@@ -36,6 +38,16 @@ export class NomadaApi {
       method: "POST",
       body: JSON.stringify(body),
     });
+  }
+
+  tripsSample(n = 24) {
+    return this.req<TripsResponse>(`/trajectories/sample?n=${n}`);
+  }
+
+  tripDemo(id: string, topk = 3) {
+    return this.req<DemoResponse>(
+      `/trajectories/${encodeURIComponent(id)}/demo?topk=${topk}`
+    );
   }
 
   corridors(bbox?: [number, number, number, number], limit?: number) {

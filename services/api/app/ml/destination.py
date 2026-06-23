@@ -43,6 +43,32 @@ def infer_type(tid: str) -> str:
     return norm.get(pref, pref)
 
 
+def _haversine_m(a: list[float], b: list[float]) -> float:
+    R = 6371000.0
+    lon1, lat1 = a
+    lon2, lat2 = b
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlmb = math.radians(lon2 - lon1)
+    h = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlmb / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(h))
+
+
+def _point_at_distance(coords: list[list[float]], dist_m: float) -> list[float] | None:
+    """Punto a `dist_m` metros recorridos a lo largo de una polilínea lon/lat."""
+    if not coords:
+        return None
+    if dist_m <= 0:
+        return coords[0]
+    acc = 0.0
+    for i in range(1, len(coords)):
+        step = _haversine_m(coords[i - 1], coords[i])
+        if acc + step >= dist_m:
+            return coords[i]
+        acc += step
+    return coords[-1]
+
+
 @dataclass
 class Candidate:
     rank: int
@@ -102,6 +128,8 @@ class DestinationPredictor:
         points_lonlat: list[tuple[float, float, float]],  # (lon, lat, t)
         veh_type: str | None = None,
         topk: int | None = None,
+        exclude_id: str | None = None,
+        n_pred: int | None = None,
     ) -> list[Candidate]:
         if self._tree is None:
             return []
@@ -113,14 +141,16 @@ class DestinationPredictor:
             return []
 
         want_type = (veh_type or infer_type("vehicle")).lower()
-        n_pred = max(1, int(round(L * self.frac_miss / (1 - self.frac_miss))))
+        if n_pred is None:
+            n_pred = max(1, int(round(L * self.frac_miss / (1 - self.frac_miss))))
 
         found: list[tuple[str, int, list, float, float]] = []
         for (radius, w_ang, restrict) in R_TIERS:
             if len(found) >= topk:
                 break
             found += self._collect(
-                prefix, want_type, radius, w_ang, restrict, n_pred, topk - len(found)
+                prefix, want_type, radius, w_ang, restrict, n_pred,
+                topk - len(found), exclude_id,
             )
 
         candidates: list[Candidate] = []
@@ -141,8 +171,85 @@ class DestinationPredictor:
             )
         return candidates
 
+    # --- demostración con viajes reales (división 75/25) ---
+    def list_ids(self, n: int = 24, seed: int = 7) -> list[dict]:
+        """Muestra variada de viajes reales para elegir en el frontend."""
+        import random
+
+        ids = [t for t, pts in self.true_dict.items() if len(pts) >= 12]
+        random.Random(seed).shuffle(ids)
+        out = []
+        for tid in ids:
+            pts = self.true_dict[tid]
+            lon, lat = to_wgs84(pts[0][0], pts[0][1])
+            out.append({
+                "id": tid,
+                "type": infer_type(tid),
+                "n_points": len(pts),
+                "start": [float(lon), float(lat)],
+            })
+            if len(out) >= n:
+                break
+        return out
+
+    def get_demo(self, tid: str, topk: int = 3, frac: float = 0.75) -> dict | None:
+        """Para un viaje real: prefijo observado (75%), predicción y recorrido real."""
+        pts = self.true_dict.get(tid)
+        if not pts or len(pts) < 4:
+            return None
+        cut = max(2, int(len(pts) * frac))
+        prefix_m, suffix_m = pts[:cut], pts[cut:]
+
+        def ll(seq):
+            res = []
+            for (x, y, _t) in seq:
+                lon, lat = to_wgs84(x, y)
+                res.append([float(lon), float(lat)])
+            return res
+
+        prefix_ll = ll(prefix_m)
+        truth_ll = ll(suffix_m)
+
+        prefix_for_pred = [(c[0], c[1], i) for i, c in enumerate(prefix_ll)]
+        # horizonte = nº de puntos del recorrido real oculto (para comparar de igual a igual)
+        n_pred = max(1, len(suffix_m))
+        cands = self.predict(
+            prefix_for_pred, veh_type=infer_type(tid), topk=topk,
+            exclude_id=tid, n_pred=n_pred,
+        )
+
+        # error final (FDE) del candidato #1 vs el recorrido real, a su mismo horizonte
+        fde_m = None
+        horizon_m = None
+        if cands and truth_ll:
+            pred_coords = cands[0].coordinates
+            horizon_m = cands[0].length_m
+            ref = _point_at_distance(truth_ll, horizon_m)
+            if ref and pred_coords:
+                fde_m = round(_haversine_m(pred_coords[-1], ref), 1)
+
+        return {
+            "id": tid,
+            "type": infer_type(tid),
+            "prefix": prefix_ll,
+            "truth": truth_ll,
+            "candidates": [
+                {
+                    "rank": c.rank,
+                    "neighbor_id": c.neighbor_id,
+                    "coordinates": c.coordinates,
+                    "length_m": c.length_m,
+                    "confidence": c.confidence,
+                }
+                for c in cands
+            ],
+            "fde_m": fde_m,
+            "horizon_m": horizon_m,
+        }
+
     # --- interno ---
-    def _collect(self, prefix, want_type, radius, w_ang, restrict, n_pred, topk):
+    def _collect(self, prefix, want_type, radius, w_ang, restrict, n_pred, topk,
+                 exclude_id=None):
         xL, yL, _ = prefix[-1]
         hL = heading(prefix[-2][:2], prefix[-1][:2])
 
@@ -155,6 +262,8 @@ class DestinationPredictor:
             if d > radius:
                 continue
             cid, j, ctype = self._meta[idx]
+            if exclude_id and cid == exclude_id:
+                continue  # nunca predecir copiándose a sí misma (criterio de la tesis)
             if restrict and ctype != want_type:
                 continue
             cand = self.true_dict[cid]
