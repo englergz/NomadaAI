@@ -6,8 +6,7 @@
 > Calderón Romero. **Citación: IEEE.** La numeración de referencias `[n]` coincide con la del
 > anteproyecto aprobado para facilitar el mapeo en el documento final.
 
-Este documento describe **qué método, modelo y técnica** se emplea en cada componente, de forma
-coherente con el paradigma, los objetivos, la metodología y los resultados esperados del
+Este documento describe **qué método, modelo y técnica** se emplea en cada componente, con el paradigma, los objetivos, la metodología y los resultados esperados del
 anteproyecto, y precisa qué está implementado en el repositorio/aplicación.
 
 ## 1. Paradigma y enfoque
