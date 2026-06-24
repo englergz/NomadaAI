@@ -18,9 +18,8 @@ Trabajo de Grado, **Maestría en Gestión de Tecnologías de la Información y d
 
 **Autores**: 
 - Engler González. 
-- PhD. Andrés Calderón. (**Director**) *Research — Scripts/SUMO* (software/repositorio base de simulación de movilidad). GitHub. [En línea]. Disponible: https://github.com/aocalderon/Research/tree/master/Scripts/SUMO
-
-**Ejemplo de uso** / *ver [docs/DEPLOY.md](docs/DEPLOY.md) | Despliegue*
+- PhD. Andrés Calderón. (**Director**)
+**Ejemplo de uso** / *ver [docs/METODOLOGIA.md](docs/METODOLOGIA.md) | Método, modelos y técnicas; inyección por terminal*
 ```bash
 BASE="https://englergz-nomadaai.hf.space"
 curl -s -X POST "$BASE/predict/online" -H 'content-type: application/json' -d '{
@@ -47,8 +46,7 @@ Este árbol `app/` es la **aplicación** (backend + frontend) construida sobre l
 
 | Documento | Contenido |
 |-----------|-----------|
-| [docs/PARA_COWORK.md](docs/PARA_COWORK.md) | **Insumo para la tesis**: estado, resultados medibles, límites/supuestos, atribución |
-| [docs/METODOLOGIA.md](docs/METODOLOGIA.md) | Método, modelos y técnicas por OE, coherente con el anteproyecto; inyección por terminal |
+| [docs/METODOLOGIA.md](docs/METODOLOGIA.md) | Método, modelos y técnicas por OE, inyección por terminal |
 | [docs/MODELO_RIESGO.md](docs/MODELO_RIESGO.md) | Fundamentación y **variables** del riesgo (OE2), socioeconómicas + criminología ambiental |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arquitectura, stack, contrato de API, modelo de datos |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Despliegue (Hugging Face Space + Supabase) |

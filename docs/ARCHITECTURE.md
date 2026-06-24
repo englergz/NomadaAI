@@ -2,12 +2,12 @@
 
 > Aplicación inteligente para la gestión segura de rutas urbanas mediante análisis de
 > datos en tiempo real en el Distrito de San Andrés de Tumaco, Nariño.
-> Tesis MGTIC · Universidad de Nariño · Engler González Prado.
+> Tesis MGTIC · Universidad de Nariño · Engler González.
 
 Este documento describe los cimientos técnicos de la aplicación que materializa la
 investigación de `Research/`. Define el stack, la arquitectura, el contrato de API y el
 modelo de datos. La fundamentación de métodos y del riesgo está en
-[METODOLOGIA.md](METODOLOGIA.md) y [MODELO_RIESGO.md](MODELO_RIESGO.md) (citación IEEE).
+[METODOLOGIA.md](METODOLOGIA.md) y [MODELO_RIESGO.md](MODELO_RIESGO.md).
 
 ## 1. Objetivos y estado (4 objetivos específicos)
 
