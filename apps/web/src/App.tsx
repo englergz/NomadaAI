@@ -79,7 +79,10 @@ export default function App() {
   const [log, setLog] = useState<string[]>([]);
   const [finished, setFinished] = useState(false);
   const [drawMsg, setDrawMsg] = useState("Haz clic en el mapa: 1) dónde estás, 2) a dónde vas.");
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">(() =>
+    typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches
+      ? "light" : "dark"
+  );
   const [sat, setSat] = useState(false);
   const [riskOn, setRiskOn] = useState(true);
   const [follow, setFollow] = useState(true);
