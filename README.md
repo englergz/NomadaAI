@@ -19,7 +19,7 @@ Nariño. Autor: Engler González Prado. Director: PhD. Andrés Oswaldo Calderón
 Este árbol `app/` es la **aplicación** (backend + frontend) construida sobre la investigación de
 `../Research/`. Demo en vivo: **https://englergz-nomadaai.hf.space**
 
-## Objetivos específicos (anteproyecto aprobado)
+## Objetivos específicos
 
 - **OE1** — Caracterizar el desplazamiento y **predecir el destino** (modelo de IA).
 - **OE2** — **Modelo de riesgo delictivo por zonas** (espacio-temporal, multivariable).
@@ -30,8 +30,8 @@ Este árbol `app/` es la **aplicación** (backend + frontend) construida sobre l
 
 | Documento | Contenido |
 |-----------|-----------|
-| [docs/METODOLOGIA.md](docs/METODOLOGIA.md) | Método, modelos y técnicas por OE (IEEE), coherente con el anteproyecto; inyección por terminal |
-| [docs/MODELO_RIESGO.md](docs/MODELO_RIESGO.md) | Fundamentación y **variables** del riesgo (OE2), socioeconómicas + criminología ambiental (IEEE) |
+| [docs/METODOLOGIA.md](docs/METODOLOGIA.md) | Método, modelos y técnicas por OE, coherente con el anteproyecto; inyección por terminal |
+| [docs/MODELO_RIESGO.md](docs/MODELO_RIESGO.md) | Fundamentación y **variables** del riesgo (OE2), socioeconómicas + criminología ambiental |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arquitectura, stack, contrato de API, modelo de datos |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Despliegue (Hugging Face Space + Supabase) |
 
