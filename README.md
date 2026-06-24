@@ -14,16 +14,19 @@ license: mit
 **Aplicación inteligente para la gestión segura de rutas urbanas mediante análisis de datos en
 tiempo real en el Distrito de Tumaco, Nariño.** 
 
-- Trabajo de Grado, 
-- **Maestría en Gestión de Tecnologías de la Información y del Conocimiento (MGTIC)**.
-- Facultad de Ingeniería, 
-- Universidad de Nariño. 
+Trabajo de Grado, **Maestría en Gestión de Tecnologías de la Información y del Conocimiento (MGTIC)**, Facultad de Ingeniería, Universidad de Nariño. 
 
-- **Autores**: 
-- Engler González Prado. 
-- **Director**: 
-- PhD. Andrés Calderón.
-
+**Autores**: 
+- Engler González. 
+- PhD. Andrés Calderón. (**Director**)
+```bash
+BASE="https://englergz-nomadaai.hf.space"
+curl -s -X POST "$BASE/predict/online" -H 'content-type: application/json' -d '{
+  "points":[{"lon":-78.7855,"lat":1.7840,"t":0},{"lon":-78.7854,"lat":1.7841,"t":1},
+            {"lon":-78.7852,"lat":1.7843,"t":2},{"lon":-78.7850,"lat":1.7846,"t":3}],
+  "type":"car","t_seconds":70200,"speed_mps":8.3,"threshold":0.7
+}'
+```
 Este árbol `app/` es la **aplicación** (backend + frontend) construida sobre la investigación de
 `../Research/`. Demo en vivo: **https://englergz-nomadaai.hf.space**
 
