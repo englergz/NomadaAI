@@ -1,4 +1,4 @@
-# Metodología, modelos y técnicas (coherente con el anteproyecto)
+# Metodología, modelos y técnicas
 
 > Trabajo de Grado *NómadaAI: aplicación inteligente para la gestión segura de rutas urbanas
 > mediante análisis de datos en tiempo real en el Distrito de Tumaco, Nariño*. MGTIC, Facultad de
@@ -10,7 +10,7 @@ Este documento describe **qué método, modelo y técnica** se emplea en cada co
 coherente con el paradigma, los objetivos, la metodología y los resultados esperados del
 anteproyecto, y precisa qué está implementado en el repositorio/aplicación.
 
-## 1. Paradigma y enfoque (según el anteproyecto)
+## 1. Paradigma y enfoque
 
 La investigación se desarrolla bajo el **paradigma positivista**, con **enfoque cuantitativo** y
 **método empírico-analítico**, de carácter **descriptivo y correlacional**: por un lado caracteriza
