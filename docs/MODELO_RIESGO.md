@@ -9,7 +9,9 @@ Específico 2). El riesgo de una zona no depende únicamente del **historial de 
 reportados**: la criminología ambiental sostiene que está condicionado por la **estructura
 socioeconómica y física del territorio** (densidad, dotación de servicios e infraestructura,
 cohesión social) y por el **momento del día**. El modelo, por tanto, es **multivariable** y se
-soporta en literatura verificada.
+soporta en literatura verificada. Operativamente se implementa siguiendo el marco **Risk Terrain
+Modeling (RTM)** [56], que combina capas de riesgo georreferenciadas para estimar el riesgo de cada
+lugar; el resultado es la capa `tumaco_riesgo_horario.csv` que consume la aplicación.
 
 ## 1. Fundamentación teórica
 
@@ -39,9 +41,13 @@ la **selección y la dirección** de cada factor, no un coeficiente numérico es
 |----------|----------|----------------|------|
 | Historial de incidentes por zona | Hot spots [13]; minería ET [52] | Policía Nacional / datos.gov.co (Tumaco 52835) | + |
 | Densidad poblacional | Actividades rutinarias [6], [7] | DANE — Marco Geoestadístico Nacional, Censo | + |
-| Déficit de servicios / infraestructura | Desorganización social [2], [22], [23] | DNP — TerriData (cobertura de servicios, NBI) | + |
-| Privación socioeconómica (pobreza/NBI) | Desorganización social [23]; sociodemografía [21] | DNP — TerriData; DANE | + |
+| Déficit de servicios / infraestructura | Desorganización social [2], [22], [23] | **DNP — TerriData (real):** acueducto 100% urbano vs ~30% rural; alcantarillado ~7% vs ~12% | + |
+| Privación socioeconómica | Desorganización social [23]; sociodemografía [21] | **DNP — TerriData (real):** IPM 53,7% | + |
 | Hora del día | Convergencia temporal [6], [7] | Curva horaria (§4) | modula |
+
+Con la variable socioeconómica espacial integrada, el riesgo **deja de seguir solo el tránsito**:
+zonas periféricas vulnerables (mayor déficit de servicios, IPM alto) **suben de riesgo aunque tengan
+poco flujo**, en línea con la teoría de desorganización social [2], [22], [23].
 
 **Índice (transparente y calibrable):**
 
@@ -55,13 +61,15 @@ La estructura es **interpretable y defendible**: cada término rastrea a una teo
 
 ## 3. Zonificación
 
-La unidad de análisis es la **zona** (malla regular sobre la red de Tumaco). Para mayor detalle se
-reduce el tamaño de celda (más zonas), conservando un soporte mínimo de datos por zona para que el
-índice sea estable. La capa se publica como **polígonos** (GeoJSON, EPSG:4326).
+La unidad de análisis es la **zona** (malla regular sobre la red de Tumaco). La malla actual es de
+**~150 m (425 zonas)** y cubre el **área urbana simulada** (las dos islas + el corredor continental).
+La capa se publica como **polígonos** (GeoJSON, EPSG:4326) y la aplicación la sirve por hora.
 
-> **Pendiente (línea de modelo):** ampliar la malla para cubrir **todo el territorio del Distrito**
-> (no solo donde existen trayectorias) y unificar el identificador de zona entre capas, de modo que
-> el mapa de calor por polígonos cubra la totalidad del área de estudio.
+> **Pendiente (línea de modelo), con dos límites de dato declarados:**
+> (a) extender la malla a **todo el casco** requiere **reproyectar la red SUMO** (UTM zona 17) a
+> EPSG:3857 para gridear también calles sin tráfico simulado; (b) llevar el factor socioeconómico de
+> **urbano/periferia a barrio/manzana exacta** requiere el **censo DANE por manzana** (Geoportal DANE
+> / MGN-CNPV 2018). Ambos son los siguientes datos a incorporar.
 
 ## 4. Dimensión temporal y honestidad metodológica
 
@@ -102,3 +110,4 @@ metodológica** (un marco replicable de seguridad urbana basado en datos [1], [1
 - [50] S. R. Timarán-Pereira, G. J. Hernández-Garzón y N. E. Quemá-Taimbud, "Identificación de lesiones no fatales en la cartografía del municipio de Pasto con la técnica de agrupamiento," *Rev. Investig. Desarro. Innov.*, vol. 8, no. 1, pp. 147–159, dic. 2017, doi: 10.19053/20278306.v8.n1.2017.5793.
 - [51] J. A. Albaladejo-García y M. Campos-Cotanda, "Descripción del fenómeno delictivo en la ciudad de Murcia a partir de herramientas SIG," *Investig. Geogr.*, no. 67, p. 215, jun. 2017, doi: 10.14198/INGEO2017.67.12.
 - [52] S. Shekhar et al., "Spatiotemporal Data Mining: A Computational Perspective," *ISPRS Int. J. Geoinf.*, vol. 4, no. 4, pp. 2306–2338, oct. 2015, doi: 10.3390/ijgi4042306.
+- [56] J. M. Caplan, L. W. Kennedy y J. Miller, "Risk Terrain Modeling: Brokering Criminological Theory and GIS Methods for Crime Forecasting," *Justice Q.*, vol. 28, no. 2, pp. 279–306, 2011, doi: 10.1080/07418825.2010.486037. *(referencia metodológica adicional al anteproyecto; verificar inclusión con el director).*
