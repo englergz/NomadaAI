@@ -195,3 +195,12 @@ body.light .phone-status, body.light .phone-sub { color: #475569; }
 /* Popup de zona: texto oscuro legible sobre fondo claro (corrige bajo contraste) */
 .maplibregl-popup-content { color: #1a2129; font-size: 12px; line-height: 1.5; border-radius: 8px; }
 .maplibregl-popup-content b { color: #0b1220; }
+
+/* Sprite cenital del vehículo (Uber/Rappi) */
+.veh-sprite { line-height: 0; cursor: default; }
+
+/* Tema claro: texto de notificaciones y pill legibles dentro de la pantalla clara */
+body.light .push-title { color: #b91c1c; }
+body.light .push-body { color: #991b1b; }
+body.light .risk-pill { color: #0f766e; }
+body.light .risk-pill.hi { color: #b91c1c; }
