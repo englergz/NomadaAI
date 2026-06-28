@@ -36,13 +36,30 @@ function labelForType(t?: string): string {
 }
 const base = () => import.meta.env.VITE_API_URL ?? "";
 
+// Ícono cenital del vehículo (estilo Uber/Rappi). Apunta hacia ARRIBA (norte) en rotación 0;
+// el marcador se rota al rumbo. El parabrisas claro marca el frente.
+function vehicleSVG(t?: string): string {
+  const ty = (t ?? "car").toLowerCase();
+  const sh = `<defs><filter id="vs" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="1" stdDeviation="1.3" flood-color="#000" flood-opacity="0.5"/></filter></defs>`;
+  if (ty === "mot" || ty === "moto" || ty === "bike") {
+    return `<svg width="26" height="26" viewBox="0 0 40 40">${sh}<g filter="url(#vs)"><rect x="16.5" y="10" width="7" height="20" rx="3.5" fill="#f97316" stroke="#fff" stroke-width="1.4"/><circle cx="20" cy="13.5" r="2.8" fill="#111827"/></g></svg>`;
+  }
+  if (ty === "bus") {
+    return `<svg width="32" height="32" viewBox="0 0 40 40">${sh}<g filter="url(#vs)"><rect x="12.5" y="5" width="15" height="30" rx="3.5" fill="#2563eb" stroke="#fff" stroke-width="1.4"/><rect x="15" y="7" width="10" height="5" rx="1.5" fill="#cfe5ff"/><rect x="15" y="15" width="10" height="3.5" rx="1" fill="#93c5fd"/><rect x="15" y="21" width="10" height="3.5" rx="1" fill="#93c5fd"/></g></svg>`;
+  }
+  if (ty === "truck") {
+    return `<svg width="32" height="32" viewBox="0 0 40 40">${sh}<g filter="url(#vs)"><rect x="13.5" y="4.5" width="13" height="10" rx="2.5" fill="#374151" stroke="#fff" stroke-width="1.4"/><rect x="15.5" y="6.5" width="9" height="5" rx="1.5" fill="#cbd5e1"/><rect x="13" y="14.5" width="14" height="21" rx="2" fill="#9ca3af" stroke="#fff" stroke-width="1.4"/></g></svg>`;
+  }
+  // carro (estilo Uber): cuerpo oscuro, parabrisas claro al frente
+  return `<svg width="30" height="30" viewBox="0 0 40 40">${sh}<g filter="url(#vs)"><rect x="12.5" y="6" width="15" height="28" rx="6.5" fill="#1f2937" stroke="#fff" stroke-width="1.5"/><path d="M15 13 Q20 9.5 25 13 L25 17 L15 17 Z" fill="#9cd2ff"/><rect x="15" y="25.5" width="10" height="5.5" rx="2.5" fill="#4b5563"/></g></svg>`;
+}
+
 interface Notif { id: number; title: string; body: string; }
 
 export default function App() {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const vehMarkerRef = useRef<maplibregl.Marker | null>(null);
-  const vehArrowRef = useRef<HTMLDivElement | null>(null);
   const lastPosRef = useRef<[number, number] | null>(null);
   const coordsRef = useRef<[number, number][]>([]);
   const cumRef = useRef<number[]>([]);
@@ -206,6 +223,22 @@ export default function App() {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
   }
 
+  function clearAll() {
+    stopSim();
+    const map = mapRef.current;
+    if (map) {
+      try {
+        setLine(map, "observed", []); setLine(map, "pred", []);
+        setPoint(map, "danger", null); setPoints(map, "endpoints", []);
+      } catch (e) { console.error(e); }
+    }
+    if (vehMarkerRef.current) { vehMarkerRef.current.remove(); vehMarkerRef.current = null; }
+    drawRef.current = {};
+    setFinished(false); setNotifs([]); setLog([]); setLiveRisk(null);
+    setProgress(0); setPredInfo("—"); lastCellRef.current = ""; distRef.current = 0;
+    setDrawMsg("Haz clic en el mapa: 1) dónde estás, 2) a dónde vas.");
+  }
+
   async function startTest() {
     if (!tripId) return;
     let coords: [number, number][] = [];
@@ -257,12 +290,12 @@ export default function App() {
     lastPosRef.current = null;
     map.flyTo({ center: coords[0], zoom: 15, duration: 700 });
 
-    // marcador "puck": flecha que apunta a la dirección + ícono del vehículo (recto)
+    // marcador cenital (estilo Uber/Rappi): el sprite apunta al rumbo
     if (vehMarkerRef.current) { vehMarkerRef.current.remove(); vehMarkerRef.current = null; }
-    const el = document.createElement("div"); el.className = "veh-puck";
-    el.innerHTML = `<div class="veh-arrow"></div><div class="veh-emoji">${iconForType(typeRef.current)}</div>`;
-    vehArrowRef.current = el.querySelector(".veh-arrow");
-    vehMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat(coords[0]).addTo(map);
+    const el = document.createElement("div"); el.className = "veh-sprite";
+    el.innerHTML = vehicleSVG(typeRef.current);
+    vehMarkerRef.current = new maplibregl.Marker({ element: el, rotationAlignment: "map" })
+      .setLngLat(coords[0]).addTo(map);
 
     runningRef.current = true; setRunning(true);
     pushLog(`🟢 Movimiento detectado (${labelForType(typeRef.current)}, ${(speedRef.current * 3.6).toFixed(0)} km/h)`);
@@ -289,8 +322,7 @@ export default function App() {
     // orientar el vehículo hacia su dirección de avance (coherente con la calle)
     const prevPos = lastPosRef.current;
     if (prevPos && (prevPos[0] !== pos[0] || prevPos[1] !== pos[1])) {
-      const brg = bearing(prevPos, pos);
-      if (vehArrowRef.current) vehArrowRef.current.style.transform = `rotate(${brg}deg)`;
+      vehMarkerRef.current?.setRotation(bearing(prevPos, pos));
     }
     lastPosRef.current = pos;
     setLine(map, "observed", acc);
@@ -422,9 +454,12 @@ export default function App() {
         <input className="range" type="range" min={0} max={100} step={5} value={threshold} onChange={(e) => setThreshold(Number(e.target.value))} />
 
         {!running ? (
-          mode === "test"
-            ? <button onClick={startTest} disabled={!tripId}>▶ Iniciar simulación</button>
-            : <button onClick={startDraw}>▶ Generar ruta y simular</button>
+          <div className="row">
+            {mode === "test"
+              ? <button onClick={startTest} disabled={!tripId}>▶ Iniciar simulación</button>
+              : <button onClick={startDraw}>▶ Generar ruta y simular</button>}
+            <button className="secondary" onClick={clearAll}>Limpiar</button>
+          </div>
         ) : (
           <button className="secondary" onClick={stopSim}>■ Detener</button>
         )}
