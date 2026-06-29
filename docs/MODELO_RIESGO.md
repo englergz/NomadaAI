@@ -2,8 +2,7 @@
 
 > **NómadaAI** · Trabajo de Grado, MGTIC, Facultad de Ingeniería, Universidad de Nariño. Autor:
 > Engler González Prado. Director: PhD. Andrés Oswaldo Calderón Romero. **Citación: IEEE.**
-> Documento **canónico** del modelo de riesgo (fusiona la fundamentación científica y la metodología
-> del índice). La aplicación consume su salida (`tumaco_riesgo_horario.csv`) en `services/api`.
+> La aplicación consume su salida (`tumaco_riesgo_horario.csv`) en `services/api`.
 
 El **Índice de Riesgo Urbano (IRU)** es la contribución central de OE2: un índice **compuesto,
 multivariable, espacio-temporal, configurable y auditable**, construido como una adaptación de

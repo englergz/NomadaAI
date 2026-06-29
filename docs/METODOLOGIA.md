@@ -37,8 +37,8 @@ Una **trayectoria** = secuencia ordenada por `t` de puntos `(x, y)` de un `id` d
 > *Caracterizar datos de desplazamiento … para desarrollar un modelo de IA que prediga su destino.*
 
 Caracterización (TrajCL/TSMini → embeddings + coseno; TRACLUS/DBSCAN → corredores; Fréchet →
-similares) y **predicción por recuperación/analogía (KNN + rumbo)**. **Documento canónico, con
-método, ablation, métrica y resultados:** [`MODELO_PREDICCION.md`](MODELO_PREDICCION.md).
+similares) y **predicción por recuperación/analogía (KNN + rumbo)**. Método, ablation, métrica y
+resultados en [`MODELO_PREDICCION.md`](MODELO_PREDICCION.md).
 
 ## 4. Fase 2 — OE2: Modelo de riesgo delictivo por zonas
 
@@ -46,7 +46,7 @@ método, ablation, métrica y resultados:** [`MODELO_PREDICCION.md`](MODELO_PRED
 > análisis de datos históricos.*
 
 **Índice de Riesgo Urbano (IRU)** espacio-temporal y multivariable, construido con **Risk Terrain
-Modeling (RTM)**. **Documento canónico, con factores, fórmula, pesos, sensibilidad y referencias:**
+Modeling (RTM)**. Factores, fórmula, pesos, sensibilidad y referencias en
 [`MODELO_RIESGO.md`](MODELO_RIESGO.md).
 
 ## 5. Fase 3 — OE3: Recomendación de rutas seguras y alerta

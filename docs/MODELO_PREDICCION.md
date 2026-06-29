@@ -2,8 +2,8 @@
 
 > **NómadaAI** · Trabajo de Grado, MGTIC, Facultad de Ingeniería, Universidad de Nariño. Autor:
 > Engler González Prado. Director: PhD. Andrés Oswaldo Calderón Romero. **Citación: IEEE.**
-> Documento **canónico** del modelo de predicción de movilidad (OE1). La aplicación lo expone en
-> `services/api` (`/predict/online`, `/predict/destination`, `/trajectories/evaluate`).
+> La aplicación lo expone en `services/api` (`/predict/online`, `/predict/destination`,
+> `/trajectories/evaluate`).
 
 Responde la pregunta central del primer objetivo: **dado el inicio del recorrido de una persona,
 ¿hacia dónde se dirige?** El componente tiene dos partes complementarias: **caracterizar** la
