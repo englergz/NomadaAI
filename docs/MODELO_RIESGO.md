@@ -118,6 +118,10 @@ de `w_i` y de los parámetros del motor de alerta), identificando si los resulta
 *Figura 4. Barrido de sensibilidad (hora × umbral × horizonte): caracteriza el motor de alerta y la
 robustez del índice.*
 
+![Evaluación de la alerta anticipada](img/eval_alerta_anticipada.png)
+*Figura 5. Evaluación de la alerta anticipada (OE3/OE4): cobertura y anticipación de los avisos
+antes de ingresar a una zona de alto riesgo.*
+
 ---
 
 ## 6. Dimensión temporal (F6/F7)
@@ -129,7 +133,7 @@ responde a la hora (mínimo nocturno, máximo en la franja de mayor convergencia
 alerta anticipada de OE3.
 
 ![Curva horaria del riesgo](img/risk_hour_curve.png)
-*Figura 5. Modulador horario `TEMP(h)`: el riesgo de cada zona varía con la hora de llegada.*
+*Figura 6. Modulador horario `TEMP(h)`: el riesgo de cada zona varía con la hora de llegada.*
 
 ---
 
@@ -161,7 +165,7 @@ F8(z,t) = Σ_r  c_r · decay(t − t_r) · verif_r
   con la granularidad del dato.
 
 ![Riesgo base de Tumaco](img/tumaco_riesgo.png)
-*Figura 6. Capa de riesgo (versión base) para comparación visual con el modelo RTM (Figura 1).*
+*Figura 7. Capa de riesgo (versión base) para comparación visual con el modelo RTM (Figura 1).*
 
 ---
 
