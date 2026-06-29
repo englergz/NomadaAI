@@ -43,26 +43,16 @@ Este árbol `app/` es la **aplicación** (backend + frontend) construida sobre l
 - **OE3** — **Recomendación de rutas seguras** y **alerta anticipada** (integra OE1+OE2).
 - **OE4** — **Evaluar la efectividad** mediante simulaciones (train/test, ajuste de parámetros).
 
-## Documentación (centralizada y canónica)
+## Documentación
 
-Toda la documentación vive aquí, en `app/docs/` (citación **IEEE**). Es el origen único; los
-documentos de `Research/analysis_v2/` apuntan a estos.
+Toda la documentación está en `app/docs/` (citación IEEE).
 
-**Mapa y método**
 | Documento | Contenido |
 |-----------|-----------|
-| [docs/METODOLOGIA.md](docs/METODOLOGIA.md) | Mapa metodológico: paradigma, 4 OE, fases, datos/variables, evaluación, inyección por terminal |
-| [docs/PARA_COWORK.md](docs/PARA_COWORK.md) | Insumo para redactar la tesis: estado, resultados medibles, límites/supuestos, atribución |
-
-**Modelos (documentos canónicos, con figuras)**
-| Documento | Contenido |
-|-----------|-----------|
-| [docs/MODELO_PREDICCION.md](docs/MODELO_PREDICCION.md) | **OE1** — predicción de destino: caracterización (TrajCL/TRACLUS/Fréchet), método KNN+rumbo, ablation, métrica FDE, resultados |
-| [docs/MODELO_RIESGO.md](docs/MODELO_RIESGO.md) | **OE2** — Índice de Riesgo Urbano (RTM): factores F1–F8, fórmula, pesos (vías A/B/C), sensibilidad, ética, reporte ciudadano |
-
-**Ingeniería**
-| Documento | Contenido |
-|-----------|-----------|
+| [docs/METODOLOGIA.md](docs/METODOLOGIA.md) | Paradigma, 4 objetivos específicos, fases, datos y variables, evaluación, uso por terminal |
+| [docs/MODELO_PREDICCION.md](docs/MODELO_PREDICCION.md) | OE1 — predicción de destino: caracterización, método KNN+rumbo, ablation, métrica FDE, resultados |
+| [docs/MODELO_RIESGO.md](docs/MODELO_RIESGO.md) | OE2 — Índice de Riesgo Urbano (RTM): factores F1–F8, fórmula, pesos, sensibilidad, ética |
+| [docs/PARA_COWORK.md](docs/PARA_COWORK.md) | Estado, resultados, límites y supuestos para la redacción de la tesis |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arquitectura, stack, contrato de API, modelo de datos |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Despliegue (Hugging Face Space + Supabase) |
 
