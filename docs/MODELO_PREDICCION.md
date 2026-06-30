@@ -1,7 +1,7 @@
 # Modelo de Predicción de Destino (OE1)
 
 > **NómadaAI** · Trabajo de Grado, MGTIC, Facultad de Ingeniería, Universidad de Nariño. Autor:
-> Engler González Prado. Director: PhD. Andrés Oswaldo Calderón Romero. **Citación: IEEE.**
+> Engler González Prado. Director: PhD. Andrés Oswaldo Calderón Romero.
 > La aplicación lo expone en `services/api` (`/predict/online`, `/predict/destination`,
 > `/trajectories/evaluate`).
 
@@ -108,7 +108,7 @@ de alto riesgo. Ver [MODELO_RIESGO.md](MODELO_RIESGO.md) y [METODOLOGIA.md](METO
 
 ---
 
-## Referencias (IEEE)
+## Referencias
 
 - [T0] A. O. Calderón Romero, *Base de simulación de movilidad (red vial de Tumaco + trayectorias SUMO)*, Universidad de Nariño. https://github.com/aocalderon/Research/tree/master/Scripts/SUMO
 - [T1] X. Chang, E. Tanin, J. Qi et al., "Contrastive Trajectory Similarity Learning with Dual-Feature Attention (TrajCL)," en *Proc. IEEE ICDE*, 2023.

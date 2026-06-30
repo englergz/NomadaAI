@@ -228,3 +228,15 @@ body.light .push-time { color: #b91c1c; }
 .evalcard { position: relative; }
 .eval-close { position: absolute; top: 6px; right: 6px; width: auto; background: transparent; border: none; color: var(--muted); font-size: 14px; padding: 2px 6px; box-shadow: none; }
 .reset-link { color: var(--accent); cursor: pointer; text-decoration: underline; }
+
+/* Botón y panel de ayuda */
+.help-btn { font-weight: 600; }
+.help-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.help-modal { position: relative; width: min(560px, 92vw); max-height: 86vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.help-modal h2 { font-size: 18px; margin: 0 0 8px; text-transform: none; letter-spacing: 0; color: var(--text); }
+.help-modal h3 { font-size: 13px; margin: 16px 0 6px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.03em; }
+.help-modal p, .help-modal li { font-size: 13px; line-height: 1.55; color: var(--text); }
+.help-modal ul { margin: 4px 0; padding-left: 18px; }
+.help-modal li { margin-bottom: 5px; }
+.help-lead { color: var(--muted); }
+.help-x { position: absolute; top: 12px; right: 12px; width: auto; background: transparent; border: none; color: var(--muted); font-size: 16px; box-shadow: none; }

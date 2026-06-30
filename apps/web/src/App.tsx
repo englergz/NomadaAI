@@ -101,6 +101,9 @@ export default function App() {
   const [notifs, setNotifs] = useState<Notif[]>([]);
   const [liveStats, setLiveStats] = useState<LiveBuckets | null>(null);
   const liveRef = useRef<LiveBuckets>(emptyBuckets());
+  const [liveMeta, setLiveMeta] = useState<{ since: number | null; updated: number | null }>({ since: null, updated: null });
+  const liveMetaRef = useRef<{ since: number | null; updated: number | null }>({ since: null, updated: null });
+  const [showHelp, setShowHelp] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const [finished, setFinished] = useState(false);
   const [drawMsg, setDrawMsg] = useState("Haz clic en el mapa: 1) dónde estás, 2) a dónde vas.");
@@ -129,13 +132,42 @@ export default function App() {
   useEffect(() => {
     try {
       const s = localStorage.getItem("nomadaai_live");
-      if (s) { const p = JSON.parse(s); liveRef.current = p; setLiveStats(p); }
+      if (s) {
+        const p = JSON.parse(s);
+        if (p && p.test && p.draw) {
+          liveRef.current = { test: p.test, draw: p.draw };
+          liveMetaRef.current = { since: p.since ?? null, updated: p.updated ?? null };
+          setLiveStats({ test: p.test, draw: p.draw });
+          setLiveMeta({ ...liveMetaRef.current });
+        }
+      }
     } catch { /* ignore */ }
   }, []);
 
+  // Precalentar la medición de efectividad: el backend cachea el cálculo pesado y dejamos el
+  // resultado listo en este navegador, así "Medir efectividad" responde al instante.
+  useEffect(() => {
+    const t = setTimeout(() => { fetchEval().catch(() => { /* silencioso */ }); }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Guarda el histórico con continuidad: conserva la fecha de inicio y registra la última actualización.
+  function persistLive() {
+    const now = Date.now();
+    if (!liveMetaRef.current.since) liveMetaRef.current.since = now;
+    liveMetaRef.current.updated = now;
+    const snap = { test: { ...liveRef.current.test }, draw: { ...liveRef.current.draw } };
+    setLiveStats(snap);
+    setLiveMeta({ ...liveMetaRef.current });
+    try { localStorage.setItem("nomadaai_live", JSON.stringify({ ...snap, ...liveMetaRef.current })); } catch { /* ignore */ }
+  }
+
   function resetLive() {
     liveRef.current = emptyBuckets();
+    liveMetaRef.current = { since: null, updated: null };
     setLiveStats(null);
+    setLiveMeta({ since: null, updated: null });
     try { localStorage.removeItem("nomadaai_live"); } catch { /* ignore */ }
   }
 
@@ -233,18 +265,35 @@ export default function App() {
     } catch (e) { console.error("risk:", e); }
   }
 
+  async function fetchEval() {
+    const [pred, alerts, scn] = await Promise.all([
+      fetch(`${base()}/trajectories/evaluate`).then((x) => x.json()),
+      fetch(`${base()}/evaluate/alerts`).then((x) => x.json()),
+      fetch(`${base()}/evaluate/scenarios`).then((x) => x.json()),
+    ]);
+    const alertsV = alerts?.available ? alerts : null;
+    const scnV = (scn?.scenarios || []).filter((s: any) => s.lookahead_m === 300);
+    const bundle = { pred, alerts: alertsV, scn: scnV, at: Date.now() };
+    try { localStorage.setItem("nomadaai_eval", JSON.stringify(bundle)); } catch { /* ignore */ }
+    return bundle;
+  }
+
+  function showEvalBundle(b: any) {
+    setEvalRes(b.pred); setEvalAlerts(b.alerts); setEvalScn(b.scn);
+  }
+
   async function runEval() {
-    setEvalLoading(true);
+    // 1) muestra al instante lo último medido (si existe) para que el botón responda ya
+    let hadCache = false;
     try {
-      const [pred, alerts, scn] = await Promise.all([
-        fetch(`${base()}/trajectories/evaluate`).then((x) => x.json()),
-        fetch(`${base()}/evaluate/alerts`).then((x) => x.json()),
-        fetch(`${base()}/evaluate/scenarios`).then((x) => x.json()),
-      ]);
-      setEvalRes(pred);
-      setEvalAlerts(alerts?.available ? alerts : null);
-      setEvalScn((scn?.scenarios || []).filter((s: any) => s.lookahead_m === 300));
-    } catch (e) { alert("Error: " + (e as Error).message); }
+      const s = localStorage.getItem("nomadaai_eval");
+      if (s) { showEvalBundle(JSON.parse(s)); hadCache = true; }
+    } catch { /* ignore */ }
+    // 2) refresca en segundo plano (el backend cachea, así que es rápido tras el 1er cálculo)
+    setEvalLoading(!hadCache);
+    try {
+      showEvalBundle(await fetchEval());
+    } catch (e) { if (!hadCache) alert("Error: " + (e as Error).message); }
     finally { setEvalLoading(false); }
   }
 
@@ -383,9 +432,7 @@ export default function App() {
           const fde = haversine(predEnd, realAhead);
           const L = excludeRef.current ? liveRef.current.test : liveRef.current.draw;
           L.n += 1; L.fde += fde; if (fde <= 50) L.h50 += 1; if (fde <= 100) L.h100 += 1;
-          const snap = { test: { ...liveRef.current.test }, draw: { ...liveRef.current.draw } };
-          setLiveStats(snap);
-          try { localStorage.setItem("nomadaai_live", JSON.stringify(snap)); } catch { /* ignore */ }
+          persistLive();
           pushLog(`   efectividad: error ${fde.toFixed(0)} m (${excludeRef.current ? "no visto" : "ruta nueva"}, acum ${L.n})`);
         }
         const a = res.alert;
@@ -398,6 +445,7 @@ export default function App() {
             if (a.cell_id && a.cell_id !== lastCellRef.current) {
               lastCellRef.current = a.cell_id;
               (excludeRef.current ? liveRef.current.test : liveRef.current.draw).alerts += 1;
+              persistLive();
               const id = ++notifIdRef.current;
               setNotifs((prev) => [{
                 id,
@@ -437,7 +485,10 @@ export default function App() {
         <button onClick={() => toggleSat(!sat)}>{sat ? "🗺️ Plano" : "🛰️ Satelital"}</button>
         <button className={riskOn ? "on" : ""} onClick={() => toggleRisk(!riskOn)}>{riskOn ? "🟥 Riesgo: ON" : "⬜ Riesgo: OFF"}</button>
         <button className={follow ? "on" : ""} onClick={() => setFollow(!follow)}>{follow ? "🎯 Seguir: ON" : "🧭 Seguir: OFF"}</button>
+        <button className="help-btn" onClick={() => setShowHelp(true)} title="¿Cómo funciona?">? Ayuda</button>
       </div>
+
+      {showHelp && <HelpPanel onClose={() => setShowHelp(false)} />}
 
       <div className="panel">
         <h1>NómadaAI</h1>
@@ -566,6 +617,11 @@ export default function App() {
                   <td>{liveStats.test.alerts || "—"}</td><td>{liveStats.draw.alerts || "—"}</td></tr>
               </tbody>
             </table>
+            {liveMeta.since && (
+              <div className="livecard-row" style={{ marginTop: 6, color: "var(--muted)" }}>
+                Desde {fmtDate(liveMeta.since)} · última {fmtDate(liveMeta.updated)}
+              </div>
+            )}
             <div className="livecard-row" style={{ marginTop: 4 }}>Acumula entre sesiones (se guarda en este navegador). <a className="reset-link" onClick={resetLive}>Reiniciar histórico</a></div>
           </div>
         )}
@@ -612,6 +668,78 @@ export default function App() {
   );
 }
 
+// ---------- panel de ayuda ----------
+function HelpPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="help-overlay" onClick={onClose}>
+      <div className="help-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="help-x" onClick={onClose} title="Cerrar">✕</button>
+        <h2>¿Cómo funciona NómadaAI?</h2>
+        <p className="help-lead">
+          NómadaAI predice <b>a dónde vas</b> mientras te mueves y te <b>avisa de las zonas de riesgo
+          antes de llegar</b>, proponiendo la ruta que menos te expone. Aquí lo simulamos sobre Tumaco.
+        </p>
+
+        <h3>Lo primero que ves</h3>
+        <ul>
+          <li><b>Total / Entrenamiento / No vistas:</b> cuántos viajes hay. El modelo solo “estudia” los
+            de entrenamiento; los <b>no vistos</b> son su examen (nunca los vio).</li>
+          <li><b>Mapa de colores:</b> el riesgo por zona y hora. Verde = bajo, amarillo/naranja = medio,
+            rojo = alto. Cambia según la <b>hora de salida</b>.</li>
+        </ul>
+
+        <h3>Para probarlo</h3>
+        <ul>
+          <li><b>Viaje no visto:</b> reproduce un viaje real que el modelo no conoce. Sirve para ver si
+            <i>de verdad</i> acierta.</li>
+          <li><b>Ruta nueva:</b> haz clic en el mapa (1 = dónde estás, 2 = a dónde vas) y el sistema
+            arma la ruta y la simula.</li>
+          <li><b>Iniciar simulación:</b> el carrito navega; arriba a la derecha el “teléfono” muestra las
+            <b>notificaciones</b> como las vería un usuario real.</li>
+        </ul>
+
+        <h3>Los controles</h3>
+        <ul>
+          <li><b>Hora de salida:</b> el riesgo es dinámico; no es lo mismo ir a las 06:00 que a las 20:00.</li>
+          <li><b>Velocidad del reloj:</b> qué tan rápido corre la simulación (×1 = tiempo real).</li>
+          <li><b>Umbral de alerta:</b> a partir de qué nivel de riesgo te avisa.</li>
+          <li><b>Prioridad de seguridad:</b> 0% = ruta más corta; 100% = rodea el riesgo aunque sea más largo.</li>
+          <li><b>Botones de arriba:</b> tema claro/oscuro, mapa satelital, capa de riesgo on/off, y seguir al vehículo.</li>
+        </ul>
+
+        <h3>Medir efectividad</h3>
+        <ul>
+          <li><b>Predicción de destino:</b> % de acierto del modelo sobre viajes no vistos, y cuánto
+            <b>mejora frente a “seguir en línea recta”</b> (la prueba de que no es trivial).</li>
+          <li><b>Protección:</b> qué porcentaje de las veces la alerta llega <b>antes</b> de la zona, y con
+            cuántos metros de anticipación.</li>
+          <li><b>Escenarios:</b> el mismo experimento repetido por hora y umbral.</li>
+        </ul>
+
+        <h3>Histórico de efectividad</h3>
+        <p>
+          Cada predicción durante una simulación se guarda y <b>se acumula entre sesiones</b> en este
+          navegador (con fecha de inicio y última actualización). Compara “No visto” vs “Ruta nueva”.
+          No se borra al limpiar el mapa; solo con <i>“Reiniciar histórico”</i>.
+        </p>
+
+        <h3>La consola “Actividad del sistema”</h3>
+        <p>Son las <b>entradas y salidas del modelo en vivo</b> (lo que envía el teléfono, lo que predice
+          y la zona de riesgo que detecta). Es la “caja transparente” del sistema.</p>
+
+        <h3>Dudas frecuentes</h3>
+        <ul>
+          <li><b>¿El modelo “aprende” mientras lo uso?</b> No: predice por <b>analogía</b> con viajes
+            pasados parecidos. Es estable y auditable a propósito; lo que crece con el uso es el histórico.</li>
+          <li><b>¿Sirve para otra ciudad?</b> Sí. La lógica es la misma; basta cambiar los datos
+            (trayectorias y riesgo) de la nueva ciudad. Está pensado para ser <b>replicable</b>.</li>
+          <li><b>¿Esto es la app final?</b> Es el prototipo de la tesis; la base para un producto posterior.</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 // ---------- geometría ----------
 function haversine(a: [number, number], b: [number, number]): number {
   const R = 6371000, toRad = (d: number) => (d * Math.PI) / 180;
@@ -640,6 +768,14 @@ function fmtClock(sec: number): string {
   const s = ((sec % 86400) + 86400) % 86400;
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = Math.floor(s % 60);
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+}
+function fmtDate(ms: number | null): string {
+  if (!ms) return "—";
+  try {
+    return new Date(ms).toLocaleString("es-CO", {
+      day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+    });
+  } catch { return "—"; }
 }
 
 // ---------- helpers de mapa ----------
