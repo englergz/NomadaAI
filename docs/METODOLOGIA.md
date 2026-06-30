@@ -3,7 +3,7 @@
 > Trabajo de Grado *NómadaAI: aplicación inteligente para la gestión segura de rutas urbanas
 > mediante análisis de datos en tiempo real en el Distrito de Tumaco, Nariño*. MGTIC, Facultad de
 > Ingeniería, Universidad de Nariño. Autor: Engler González Prado. Director: PhD. Andrés Oswaldo
-> Calderón Romero. **Citación: IEEE.** La numeración de referencias `[n]` coincide con la del
+> Calderón Romero. La numeración de referencias `[n]` coincide con la del
 > anteproyecto aprobado para facilitar el mapeo en el documento final.
 
 Este documento describe **qué método, modelo y técnica** se emplea en cada componente, con el paradigma, los objetivos, la metodología y los resultados esperados del
@@ -101,7 +101,7 @@ curl -s -X POST "$BASE/predict/online" -H 'content-type: application/json' -d '{
 Respuesta: `candidates` (ruta probable) + `alert` (zona, distancia, hora de llegada). Documentación
 interactiva en `"$BASE/docs"`.
 
-## Referencias (IEEE; numeración del anteproyecto)
+## Referencias
 
 - [1] A. Ristea y M. Leitner, "Urban Crime Mapping and Analysis Using GIS," *ISPRS Int. J. Geoinf.*, vol. 9, p. 511, ago. 2020, doi: 10.3390/ijgi9090511.
 - [2] C. R. Shaw y H. D. McKay, *Juvenile Delinquency and Urban Areas*. 1942.

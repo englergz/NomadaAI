@@ -22,11 +22,11 @@
 
 - **OE1 supera la meta** (90% > 85%) y de forma **sin sesgo** (train/test, conjunto no visto).
 - **Marco de riesgo replicable y auditable** (RTM multivariable, trazable por factor) con base
-  criminológica citada (IEEE) y datos oficiales colombianos.
+  criminológica citada y datos oficiales colombianos.
 - **Alerta anticipada caracterizada** (88.7% avisos antes de la zona, ~280 m / 25 s de anticipación).
 - **Producto real desplegado** (web + API en la nube), con simulación en vivo y evaluación
   comparativa (no visto vs. rutas nuevas).
-- **Documentación IEEE** coherente con el anteproyecto y atribución a la base del director.
+- **Documentación** coherente con el anteproyecto y atribución a la base del director.
 
 ## Vacíos críticos (lo que falta, por prioridad)
 

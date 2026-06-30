@@ -1,7 +1,7 @@
 # Modelo de Riesgo Urbano (OE2) — Índice de Riesgo Urbano (IRU)
 
 > **NómadaAI** · Trabajo de Grado, MGTIC, Facultad de Ingeniería, Universidad de Nariño. Autor:
-> Engler González Prado. Director: PhD. Andrés Oswaldo Calderón Romero. **Citación: IEEE.**
+> Engler González Prado. Director: PhD. Andrés Oswaldo Calderón Romero.
 > La aplicación consume su salida (`tumaco_riesgo_horario.csv`) en `services/api`.
 
 El **Índice de Riesgo Urbano (IRU)** es la contribución central de OE2: un índice **compuesto,
@@ -191,7 +191,7 @@ la **trazabilidad** de cada decisión de riesgo.
 
 ---
 
-## Referencias (IEEE)
+## Referencias
 
 - [R1] J. M. Caplan y L. W. Kennedy, *Risk Terrain Modeling Compendium*. Newark, NJ: Rutgers Center on Public Security, 2011.
 - [R2] J. M. Caplan, L. W. Kennedy y J. Miller, "Risk terrain modeling: Brokering criminological theory and GIS methods for crime forecasting," *Justice Quarterly*, vol. 28, no. 2, pp. 360–381, 2011.
