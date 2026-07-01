@@ -72,6 +72,19 @@ const emptyHist = (): HistLocal => ({
   prot: { n: 0, redSum: 0 },
 });
 
+// Identidad anónima del usuario (persistente en este navegador). Habilita histórico por usuario,
+// personalización y BI. Más adelante se puede enlazar a un login real sin cambiar el esquema.
+function getUid(): string {
+  try {
+    let u = localStorage.getItem("nomadaai_uid");
+    if (!u) {
+      u = (crypto?.randomUUID?.() ?? `u_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+      localStorage.setItem("nomadaai_uid", u);
+    }
+    return u;
+  } catch { return "anon"; }
+}
+
 export default function App() {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -114,9 +127,12 @@ export default function App() {
   const tripAggRef = useRef<TripAgg>(emptyTripAgg());
   const protectionRef = useRef<Protection | null>(null);
   const tripMetaRef = useRef<{ mode: string; vehicle: string; hour: number }>({ mode: "test", vehicle: "car", hour: 20 });
+  const uidRef = useRef<string>(getUid());
+  const sessionRef = useRef<string>(`s_${Date.now()}`);
   const histLocalRef = useRef<HistLocal>(emptyHist());
   const [histLocal, setHistLocal] = useState<HistLocal | null>(null);   // respaldo (navegador)
-  const [histSummary, setHistSummary] = useState<any>(null);            // agregados desde la DB
+  const [histSummary, setHistSummary] = useState<any>(null);            // agregados del usuario (DB)
+  const [histGlobal, setHistGlobal] = useState<any>(null);              // contexto global (BI)
   const [showHelp, setShowHelp] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const [finished, setFinished] = useState(false);
@@ -162,9 +178,13 @@ export default function App() {
 
   async function refreshSummary() {
     try {
-      const s = await fetch(`${base()}/history/summary`).then((r) => r.json());
-      setHistSummary(s?.available ? s : null);
-    } catch { setHistSummary(null); }
+      const [mine, global] = await Promise.all([
+        fetch(`${base()}/history/summary?user_id=${encodeURIComponent(uidRef.current)}`).then((r) => r.json()),
+        fetch(`${base()}/history/summary`).then((r) => r.json()),
+      ]);
+      setHistSummary(mine?.available ? mine : null);
+      setHistGlobal(global?.available ? global : null);
+    } catch { setHistSummary(null); setHistGlobal(null); }
   }
 
   // Al terminar un viaje: consolida sus dos comparaciones (predicción y protección), las guarda
@@ -189,6 +209,7 @@ export default function App() {
       await fetch(`${base()}/history/trip`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          user_id: uidRef.current, session_id: sessionRef.current,
           mode: m.mode, vehicle: m.vehicle, hour: m.hour,
           n_pred: a.n, model_err_sum: a.modelErr, base_err_sum: a.baseErr,
           model_hit50: a.modelHit50, base_hit50: a.baseHit50,
@@ -205,7 +226,7 @@ export default function App() {
     histLocalRef.current = emptyHist();
     setHistLocal(null);
     try { localStorage.removeItem("nomadaai_hist"); } catch { /* ignore */ }
-    try { await fetch(`${base()}/history`, { method: "DELETE" }); } catch { /* ignore */ }
+    try { await fetch(`${base()}/history?user_id=${encodeURIComponent(uidRef.current)}`, { method: "DELETE" }); } catch { /* ignore */ }
     refreshSummary();
   }
 
@@ -682,12 +703,16 @@ export default function App() {
 
         {(() => {
           const hv = histView();
-          if (!hv) return null;
+          if (!hv && !histGlobal) return null;
           return (
             <div className="livecard">
-              <div className="livecard-h">Histórico comparativo · {hv.trips} {hv.trips === 1 ? "viaje" : "viajes"}</div>
+              <div className="livecard-h">Tu histórico{hv ? ` · ${hv.trips} ${hv.trips === 1 ? "viaje" : "viajes"}` : ""}</div>
 
-              {hv.pred && (
+              {!hv && (
+                <div className="evalrow" style={{ color: "var(--muted)" }}>Aún no tienes viajes. Corre una simulación para empezar a medir tu efectividad.</div>
+              )}
+
+              {hv?.pred && (
                 <>
                   <div className="evalsub">Predicción — ¿aporta el modelo?</div>
                   <table className="scn">
@@ -701,22 +726,33 @@ export default function App() {
                 </>
               )}
 
-              {hv.prot ? (
+              {hv?.prot ? (
                 <>
                   <div className="evalsub">Protección — ruta segura vs directa</div>
                   <div className="evalbig">−{hv.prot.red}% <span>de exposición al riesgo</span></div>
                   <div className="evalrow">promedio sobre {hv.prot.n} {hv.prot.n === 1 ? "ruta" : "rutas"} generadas</div>
                 </>
-              ) : (
+              ) : hv ? (
                 <div className="evalrow" style={{ color: "var(--muted)" }}>Genera una «Ruta nueva» para medir la protección (segura vs directa).</div>
+              ) : null}
+
+              {histGlobal && (
+                <div className="livecard-row" style={{ marginTop: 8 }}>
+                  <b>Global (BI):</b> {histGlobal.trips} {histGlobal.trips === 1 ? "viaje" : "viajes"} de {histGlobal.users} {histGlobal.users === 1 ? "usuario" : "usuarios"}
+                  {histGlobal.proteccion ? ` · −${histGlobal.proteccion.exposure_reduction_avg_pct}% exposición media` : ""}
+                </div>
               )}
 
-              <div className="livecard-row" style={{ marginTop: 6, color: "var(--muted)" }}>
-                Desde {hv.since} · última {hv.updated} · {hv.source === "db" ? "base de datos" : "solo este navegador"}
-              </div>
-              <div className="livecard-row" style={{ marginTop: 2 }}>
-                <a className="reset-link" onClick={resetHist}>Reiniciar histórico</a>
-              </div>
+              {hv && (
+                <div className="livecard-row" style={{ marginTop: 6, color: "var(--muted)" }}>
+                  Desde {hv.since} · última {hv.updated} · {hv.source === "db" ? "base de datos" : "solo este navegador"}
+                </div>
+              )}
+              {hv && (
+                <div className="livecard-row" style={{ marginTop: 2 }}>
+                  <a className="reset-link" onClick={resetHist}>Reiniciar mi histórico</a>
+                </div>
+              )}
             </div>
           );
         })()}

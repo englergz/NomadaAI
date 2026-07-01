@@ -1,7 +1,8 @@
-"""Histórico de efectividad (persistido en Postgres/Supabase).
+"""Histórico de efectividad **por usuario** (persistido en Postgres/Supabase).
 
-Un registro por viaje simulado con dos comparaciones: predicción (modelo vs línea recta) y
-protección (ruta segura vs directa). Degrada con elegancia si no hay base de datos configurada.
+Un registro por viaje simulado, atado a `user_id`, con dos comparaciones: predicción (modelo vs
+línea recta) y protección (ruta segura vs directa). Expone agregados por usuario, globales y un
+panel BI. Degrada con elegancia si no hay base de datos configurada.
 """
 from __future__ import annotations
 
@@ -16,6 +17,8 @@ router = APIRouter(prefix="/history", tags=["history"])
 
 
 class TripRecord(BaseModel):
+    user_id: str = "anon"
+    session_id: Optional[str] = None
     mode: Optional[str] = None
     vehicle: Optional[str] = None
     hour: Optional[int] = None
@@ -41,16 +44,24 @@ def log_trip(rec: TripRecord) -> dict:
 
 
 @router.get("/summary")
-def get_summary(city: str = "tumaco") -> dict:
+def get_summary(city: str = "tumaco", user_id: Optional[str] = None) -> dict:
     try:
-        return history.summary(city)
+        return history.summary(city, user_id)
+    except Exception as e:  # noqa: BLE001
+        return {"available": False, "error": str(e)}
+
+
+@router.get("/stats")
+def get_stats(city: str = "tumaco") -> dict:
+    try:
+        return history.stats(city)
     except Exception as e:  # noqa: BLE001
         return {"available": False, "error": str(e)}
 
 
 @router.delete("")
-def reset(city: str = "tumaco") -> dict:
+def reset(city: str = "tumaco", user_id: Optional[str] = None) -> dict:
     try:
-        return history.reset(city)
+        return history.reset(city, user_id)
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
