@@ -1,13 +1,15 @@
-"""Histórico de efectividad persistido en Postgres (Supabase).
+"""Histórico de efectividad **por usuario** persistido en Postgres (Supabase).
 
-Guarda **un registro por viaje simulado** con las dos comparaciones que importan:
+Guarda **un registro por viaje simulado**, atado a un `user_id`, con las dos comparaciones que
+importan:
 
 - **Predicción:** el modelo (k-vecinos + rumbo) frente a un baseline ingenuo (línea recta).
 - **Protección:** la ruta segura frente a la ruta directa (reducción de exposición al riesgo).
 
-Diseñado para ser **replicable a cualquier ciudad** (la tabla no asume Tumaco) y para degradar
-con elegancia: si no hay `DATABASE_URL`, el módulo reporta `available=False` y el frontend cae a
-almacenamiento local. En cuanto se configura la credencial, pasa a ser un histórico real de producto.
+La dimensión de usuario habilita (a) **personalización** —que el sistema conozca a cada usuario— y
+(b) **BI/estadísticas** agregadas. Diseñado para ser **replicable a cualquier ciudad** (columna
+`city`) y para degradar con elegancia: si no hay `DATABASE_URL`, reporta `available=False` y el
+frontend cae a almacenamiento local. En cuanto se configura la credencial, es un histórico real.
 """
 from __future__ import annotations
 
@@ -20,6 +22,8 @@ create table if not exists sim_effectiveness (
   id            bigserial primary key,
   created_at    timestamptz not null default now(),
   city          text not null default 'tumaco',
+  user_id       text not null default 'anon',
+  session_id    text,
   mode          text,
   vehicle       text,
   hour          int,
@@ -36,6 +40,8 @@ create table if not exists sim_effectiveness (
   safe_dist_m    double precision,
   direct_dist_m  double precision
 );
+create index if not exists sim_eff_city_user_idx on sim_effectiveness (city, user_id);
+create index if not exists sim_eff_created_idx    on sim_effectiveness (created_at);
 """
 
 _ready = False
@@ -76,17 +82,19 @@ def log_trip(rec: dict[str, Any]) -> dict[str, Any]:
             cur.execute(
                 """
                 insert into sim_effectiveness
-                  (city, mode, vehicle, hour, n_pred, model_err_sum, base_err_sum,
-                   model_hit50, base_hit50, exposure_reduction_pct, safe_exposure,
+                  (city, user_id, session_id, mode, vehicle, hour, n_pred, model_err_sum,
+                   base_err_sum, model_hit50, base_hit50, exposure_reduction_pct, safe_exposure,
                    direct_exposure, safe_dist_m, direct_dist_m)
-                values (%(city)s, %(mode)s, %(vehicle)s, %(hour)s, %(n_pred)s,
-                        %(model_err_sum)s, %(base_err_sum)s, %(model_hit50)s, %(base_hit50)s,
-                        %(exposure_reduction_pct)s, %(safe_exposure)s, %(direct_exposure)s,
-                        %(safe_dist_m)s, %(direct_dist_m)s)
+                values (%(city)s, %(user_id)s, %(session_id)s, %(mode)s, %(vehicle)s, %(hour)s,
+                        %(n_pred)s, %(model_err_sum)s, %(base_err_sum)s, %(model_hit50)s,
+                        %(base_hit50)s, %(exposure_reduction_pct)s, %(safe_exposure)s,
+                        %(direct_exposure)s, %(safe_dist_m)s, %(direct_dist_m)s)
                 returning id
                 """,
                 {
                     "city": rec.get("city", "tumaco"),
+                    "user_id": (rec.get("user_id") or "anon")[:64],
+                    "session_id": rec.get("session_id"),
                     "mode": rec.get("mode"),
                     "vehicle": rec.get("vehicle"),
                     "hour": rec.get("hour"),
@@ -107,34 +115,43 @@ def log_trip(rec: dict[str, Any]) -> dict[str, Any]:
     return {"ok": True, "id": new_id}
 
 
-def summary(city: str = "tumaco") -> dict[str, Any]:
-    """Agregados comparativos sobre todos los viajes registrados."""
+def summary(city: str = "tumaco", user_id: Optional[str] = None) -> dict[str, Any]:
+    """Agregados comparativos. Si `user_id`, se filtra a ese usuario; si no, es global.
+
+    Siempre incluye `users` (usuarios distintos) para dar contexto de BI.
+    """
     if not available():
         return {"available": False}
     _ensure()
+    where = "where city = %(city)s"
+    params: dict[str, Any] = {"city": city}
+    if user_id:
+        where += " and user_id = %(uid)s"
+        params["uid"] = user_id
     with _connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 select
-                  count(*)                                              as trips,
-                  coalesce(sum(n_pred), 0)                              as n_pred,
-                  coalesce(sum(model_err_sum), 0)                       as model_err_sum,
-                  coalesce(sum(base_err_sum), 0)                        as base_err_sum,
-                  coalesce(sum(model_hit50), 0)                         as model_hit50,
-                  coalesce(sum(base_hit50), 0)                          as base_hit50,
-                  count(exposure_reduction_pct)                         as n_routes,
-                  avg(exposure_reduction_pct)                           as exp_red_avg,
-                  min(created_at)                                       as since,
-                  max(created_at)                                       as updated
+                  count(*)                        as trips,
+                  count(distinct user_id)         as users,
+                  coalesce(sum(n_pred), 0)        as n_pred,
+                  coalesce(sum(model_err_sum), 0) as model_err_sum,
+                  coalesce(sum(base_err_sum), 0)  as base_err_sum,
+                  coalesce(sum(model_hit50), 0)   as model_hit50,
+                  coalesce(sum(base_hit50), 0)    as base_hit50,
+                  count(exposure_reduction_pct)   as n_routes,
+                  avg(exposure_reduction_pct)     as exp_red_avg,
+                  min(created_at)                 as since,
+                  max(created_at)                 as updated
                 from sim_effectiveness
-                where city = %s
+                {where}
                 """,
-                (city,),
+                params,
             )
             r = cur.fetchone()
 
-    trips, n_pred, m_sum, b_sum, m_hit, b_hit, n_routes, exp_avg, since, updated = r
+    trips, users, n_pred, m_sum, b_sum, m_hit, b_hit, n_routes, exp_avg, since, updated = r
     pred = None
     if n_pred:
         pred = {
@@ -147,13 +164,13 @@ def summary(city: str = "tumaco") -> dict[str, Any]:
         }
     prot = None
     if n_routes:
-        prot = {
-            "n": int(n_routes),
-            "exposure_reduction_avg_pct": round(float(exp_avg), 1),
-        }
+        prot = {"n": int(n_routes), "exposure_reduction_avg_pct": round(float(exp_avg), 1)}
     return {
         "available": True,
+        "scope": "user" if user_id else "global",
+        "user_id": user_id,
         "trips": int(trips),
+        "users": int(users),
         "prediccion": pred,
         "proteccion": prot,
         "since": since.isoformat() if since else None,
@@ -161,12 +178,78 @@ def summary(city: str = "tumaco") -> dict[str, Any]:
     }
 
 
-def reset(city: str = "tumaco") -> dict[str, Any]:
+def stats(city: str = "tumaco") -> dict[str, Any]:
+    """Panel BI: totales, usuarios, y desgloses por hora, vehículo y día."""
+    if not available():
+        return {"available": False}
+    _ensure()
+
+    def rows(q: str) -> list[dict[str, Any]]:
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(q, {"city": city})
+                cols = [c.name for c in cur.description]
+                return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+    def _num(v: Any) -> Any:
+        return round(float(v), 1) if v is not None else None
+
+    totals = rows(
+        """
+        select count(*) trips, count(distinct user_id) users,
+               coalesce(sum(n_pred),0) predicciones,
+               avg(exposure_reduction_pct) exp_red_avg
+        from sim_effectiveness where city = %(city)s
+        """
+    )[0]
+    by_hour = rows(
+        """
+        select hour, count(*) trips, avg(exposure_reduction_pct) exp_red_avg
+        from sim_effectiveness where city = %(city)s and hour is not null
+        group by hour order by hour
+        """
+    )
+    by_vehicle = rows(
+        """
+        select coalesce(vehicle,'?') vehicle, count(*) trips,
+               avg(exposure_reduction_pct) exp_red_avg
+        from sim_effectiveness where city = %(city)s
+        group by vehicle order by trips desc
+        """
+    )
+    by_day = rows(
+        """
+        select to_char(date_trunc('day', created_at), 'YYYY-MM-DD') day,
+               count(*) trips, count(distinct user_id) users
+        from sim_effectiveness where city = %(city)s
+        group by 1 order by 1 desc limit 30
+        """
+    )
+    for row in (*by_hour, *by_vehicle):
+        row["exp_red_avg"] = _num(row.get("exp_red_avg"))
+    totals["exp_red_avg"] = _num(totals.get("exp_red_avg"))
+    return {
+        "available": True,
+        "city": city,
+        "totals": totals,
+        "by_hour": by_hour,
+        "by_vehicle": by_vehicle,
+        "by_day": by_day,
+    }
+
+
+def reset(city: str = "tumaco", user_id: Optional[str] = None) -> dict[str, Any]:
+    """Borra el histórico. Si `user_id`, solo el de ese usuario; si no, toda la ciudad."""
     if not available():
         return {"ok": False, "available": False}
     _ensure()
+    where = "where city = %(city)s"
+    params: dict[str, Any] = {"city": city}
+    if user_id:
+        where += " and user_id = %(uid)s"
+        params["uid"] = user_id
     with _connect() as conn:
         with conn.cursor() as cur:
-            cur.execute("delete from sim_effectiveness where city = %s", (city,))
+            cur.execute(f"delete from sim_effectiveness {where}", params)
         conn.commit()
     return {"ok": True}
