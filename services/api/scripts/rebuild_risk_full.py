@@ -31,6 +31,13 @@ R = 20037508.34
 CELL = 150.0
 MARGIN = 6  # celdas de margen alrededor del área con trayectorias (evita traer zona rural lejana)
 
+# Pesos del índice (editables por CLI). Reflejan una hipótesis criminológica para Tumaco:
+# densidad (exposición/actividades rutinarias) + periferia/aislamiento (baja vigilancia, corredores).
+W_DENS = 0.40    # densidad poblacional (DANE)
+W_EXPO = 0.25    # actividad/tráfico
+W_PERIPH = 0.35  # periferia/aislamiento
+NIGHT_FLOOR = 0.5  # piso de la curva temporal (la violencia no se anula de madrugada)
+
 
 def to3857(lon, lat):
     x = lon * R / 180.0
@@ -123,8 +130,18 @@ def main():
 
     P = [pob.get(c, 0.0) for c in cells]
     A = [act.get(c, 0.0) for c in cells]
-    nd, na = minmax(P), minmax(A)
-    idx = [round(100 * (0.65 * nd[i] + 0.35 * na[i]), 2) for i in range(len(cells))]
+
+    # Factor de PERIFERIA/AISLAMIENTO: distancia (en celdas) al centroide poblacional. Las zonas
+    # periféricas y de baja vigilancia tienden a mayor violencia dirigida (Jacobs 1961 'ojos en la
+    # calle'; Newman 1972 espacio defendible; CEDRE 2024: corredores/débil presencia estatal en la
+    # periferia). Contrapesa el sesgo de "solo el centro concurrido es riesgoso".
+    tot_p = sum(P) or 1.0
+    cx = sum(cells[i][0] * P[i] for i in range(len(cells))) / tot_p
+    cy = sum(cells[i][1] * P[i] for i in range(len(cells))) / tot_p
+    periph = [((cells[i][0] - cx) ** 2 + (cells[i][1] - cy) ** 2) ** 0.5 for i in range(len(cells))]
+
+    nd, na, npf = minmax(P), minmax(A), minmax(periph)
+    idx = [round(100 * (W_DENS * nd[i] + W_EXPO * na[i] + W_PERIPH * npf[i]), 2) for i in range(len(cells))]
 
     order = sorted(range(len(idx)), key=lambda i: idx[i])
     lvl = [""] * len(idx)
@@ -133,7 +150,8 @@ def main():
         lvl[i] = "alto" if q >= 0.85 else ("medio" if q >= 0.50 else "bajo")
 
     from collections import Counter
-    print(f"corr(índice, población): {pearson(idx, P):.3f} · corr(índice, tráfico): {pearson(idx, A):.3f}")
+    print(f"pesos: densidad={W_DENS} actividad={W_EXPO} periferia={W_PERIPH}")
+    print(f"corr(índice, población)={pearson(idx, P):.3f} · tráfico={pearson(idx, A):.3f} · periferia={pearson(idx, periph):.3f}")
     print(f"niveles: {dict(Counter(lvl))}")
 
     # centroides lon/lat de cada celda
@@ -147,7 +165,9 @@ def main():
         h = int(r["hora"]); hsum[h] += float(r["riesgo_dyn"]); hcnt[h] += 1
     hmean = {h: (hsum[h] / hcnt[h] if hcnt[h] else 0.0) for h in range(24)}
     peak = max(hmean.values()) or 1.0
-    tfac = {h: hmean[h] / peak for h in range(24)}
+    # Piso nocturno: la violencia (sobre todo dirigida) no se anula de madrugada → el riesgo no baja
+    # a ~0 a las 3am. Es un supuesto documentado (la curva horaria no está calibrada con dato real).
+    tfac = {h: NIGHT_FLOOR + (1 - NIGHT_FLOOR) * (hmean[h] / peak) for h in range(24)}
     print(f"curva temporal (relativa): pico h={max(tfac, key=tfac.get)} valle h={min(tfac, key=tfac.get)}")
 
     shutil.copyfile(HOURLY, HOURLY.with_suffix(".csv.bak"))
@@ -168,4 +188,14 @@ def main():
 
 
 if __name__ == "__main__":
+    import argparse
+    ap = argparse.ArgumentParser(description="Reconstruye el índice de riesgo (pesos editables).")
+    ap.add_argument("--w-dens", type=float, default=W_DENS, help="peso densidad poblacional")
+    ap.add_argument("--w-expo", type=float, default=W_EXPO, help="peso actividad/tráfico")
+    ap.add_argument("--w-periph", type=float, default=W_PERIPH, help="peso periferia/aislamiento")
+    ap.add_argument("--night-floor", type=float, default=NIGHT_FLOOR, help="piso de la curva temporal (0-1)")
+    a = ap.parse_args()
+    s = (a.w_dens + a.w_expo + a.w_periph) or 1.0
+    W_DENS, W_EXPO, W_PERIPH = a.w_dens / s, a.w_expo / s, a.w_periph / s  # normalizados
+    NIGHT_FLOOR = a.night_floor
     main()

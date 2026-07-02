@@ -187,7 +187,7 @@ export default function App() {
   useEffect(() => { hourRef.current = hour; }, [hour]);
   useEffect(() => { scaleRef.current = timeScale; }, [timeScale]);
   useEffect(() => { modeRef.current = mode; }, [mode]);
-  useEffect(() => { document.body.className = theme === "light" ? "light" : ""; }, [theme]);
+  useEffect(() => { document.body.className = theme === "light" ? "light" : ""; applyBase(sat, theme); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [theme]);
   useEffect(() => { followRef.current = follow; }, [follow]);
   // Histórico: cargar respaldo local y traer agregados de la DB (si está configurada).
   useEffect(() => {
@@ -359,6 +359,7 @@ export default function App() {
       addPoint(map, "endpoints", { "circle-radius": 6, "circle-color": "#a855f7", "circle-stroke-color": "#fff", "circle-stroke-width": 2 });
       addPoint(map, "danger", { "circle-radius": 16, "circle-color": "#ef4444", "circle-opacity": 0.3, "circle-stroke-color": "#ef4444", "circle-stroke-width": 2.5 });
       loadRisk(map, hour);
+      applyBase(sat, theme);  // base inicial según el tema (claro/oscuro)
 
       // Capa de POIs (OE3): lugares de interés de OSM, coloreados por categoría. Oculta por defecto.
       try {
@@ -428,10 +429,15 @@ export default function App() {
 
   function toggleSat(next: boolean) {
     setSat(next);
-    const map = mapRef.current; if (!map) return;
+    applyBase(next, theme);
+  }
+  // Aplica la base del mapa según satélite y tema (claro=Positron, oscuro=Dark Matter).
+  function applyBase(satOn: boolean, th: "dark" | "light") {
+    const map = mapRef.current; if (!map || !map.getLayer("light")) return;
     try {
-      map.setLayoutProperty("satellite", "visibility", next ? "visible" : "none");
-      map.setLayoutProperty("osm", "visibility", next ? "none" : "visible");
+      map.setLayoutProperty("satellite", "visibility", satOn ? "visible" : "none");
+      map.setLayoutProperty("light", "visibility", !satOn && th === "light" ? "visible" : "none");
+      map.setLayoutProperty("dark", "visibility", !satOn && th === "dark" ? "visible" : "none");
     } catch (e) { console.error(e); }
   }
 

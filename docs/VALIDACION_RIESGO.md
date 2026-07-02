@@ -35,9 +35,19 @@ la criminología urbana.
 - Clasificación inservible: **1 sola zona "alto"** de 425.
 
 **Reconstrucción con datos DANE reales.** Se descargó la **población por manzana** (censo DANE 2018,
-servicio Esri Colombia; 813 manzanas urbanas, 65 568 hab.) y se reconstruyó el índice como mezcla de
-**densidad poblacional real (0,65)** + exposición de actividad (0,35), **descartando** el factor
-socioeconómico por homogéneo. Resultado antes/después:
+servicio Esri Colombia; 65 568 hab.) y se reconstruyó el índice como combinación **tri-factorial**
+(pesos editables por CLI, `rebuild_risk_full.py`), descartando el factor socioeconómico por homogéneo:
+
+- **Densidad poblacional (0,40)** — exposición / actividades rutinarias (Cohen & Felson, 1979; Brender, 2012).
+- **Actividad/tráfico (0,25)** — concurrencia.
+- **Periferia / aislamiento (0,35)** — las zonas periféricas, aisladas y de baja vigilancia tienden a
+  mayor violencia **dirigida** (Jacobs, 1961, "ojos en la calle"; Newman, 1972, espacio defendible;
+  CEDRE, 2024: corredores y débil presencia estatal en la periferia). Contrapesa el sesgo de "solo el
+  centro concurrido es riesgoso" — coherente con el perfil de sicariato de Tumaco.
+
+La **cobertura** se extendió a todas las manzanas pobladas (malla 425→**475 celdas**). La curva
+temporal tiene un **piso nocturno** (la violencia dirigida no se anula de madrugada); su forma exacta
+es un **supuesto no calibrado** (pendiente de dato/cita). Resultado antes/después del primer arreglo:
 
 | Métrica | Antes | Después |
 |---------|-------|---------|
@@ -88,6 +98,8 @@ ofrece técnicas diseñadas justamente para eso.
 ## Referencias
 
 - Caplan, J. M., & Kennedy, L. W. (2011). *Risk Terrain Modeling.* Justice Quarterly.
+- Jacobs, J. (1961). *The Death and Life of Great American Cities* ("eyes on the street").
+- Newman, O. (1972). *Defensible Space.*
 - Cohen, L., & Felson, M. (1979). *Social Change and Crime Rate Trends: A Routine Activity Approach.*
 - Shaw, C., & McKay, H. (1942). *Juvenile Delinquency and Urban Areas.*
 - DANE (2018). *Censo Nacional de Población y Vivienda* — población por manzana (servicio Esri Colombia).
