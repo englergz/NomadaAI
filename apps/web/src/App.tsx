@@ -169,6 +169,7 @@ export default function App() {
   const [showConsole, setShowConsole] = useState(true);
   const [finished, setFinished] = useState(false);
   const [drawMsg, setDrawMsg] = useState("Haz clic en el mapa: 1) dónde estás, 2) a dónde vas.");
+  const [themePref, setThemePref] = useState<"system" | "light" | "dark">("system");
   const [theme, setTheme] = useState<"dark" | "light">(() =>
     typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches
       ? "light" : "dark"
@@ -176,7 +177,9 @@ export default function App() {
   const [sat, setSat] = useState(false);
   const [riskOn, setRiskOn] = useState(true);
   const [poisOn, setPoisOn] = useState(false);
+  const [corridorsOn, setCorridorsOn] = useState(true);
   const [follow, setFollow] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [evalRes, setEvalRes] = useState<any>(null);
   const [evalAlerts, setEvalAlerts] = useState<any>(null);
   const [evalScn, setEvalScn] = useState<any[] | null>(null);
@@ -193,6 +196,16 @@ export default function App() {
   useEffect(() => { scaleRef.current = timeScale; }, [timeScale]);
   useEffect(() => { modeRef.current = mode; }, [mode]);
   useEffect(() => { document.body.className = theme === "light" ? "light" : ""; applyBase(sat, theme); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [theme]);
+  // Resuelve el tema: 'system' sigue al SO (y escucha cambios); 'light'/'dark' fijos.
+  useEffect(() => {
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const resolve = () => setTheme(themePref === "system" ? (mq?.matches ? "dark" : "light") : themePref);
+    resolve();
+    if (themePref === "system" && mq) {
+      mq.addEventListener("change", resolve);
+      return () => mq.removeEventListener("change", resolve);
+    }
+  }, [themePref]);
   useEffect(() => { followRef.current = follow; }, [follow]);
   // Histórico: cargar respaldo local y traer agregados de la DB (si está configurada).
   useEffect(() => {
@@ -322,6 +335,11 @@ export default function App() {
     setPoisOn(next);
     const map = mapRef.current; if (!map || !map.getLayer("pois")) return;
     try { map.setLayoutProperty("pois", "visibility", next ? "visible" : "none"); } catch (e) { console.error(e); }
+  }
+  function toggleCorridors(next: boolean) {
+    setCorridorsOn(next);
+    const map = mapRef.current; if (!map || !map.getLayer("corridors")) return;
+    try { map.setLayoutProperty("corridors", "visibility", next ? "visible" : "none"); } catch (e) { console.error(e); }
   }
 
   // init map
@@ -700,13 +718,30 @@ export default function App() {
         </div>
       )}
 
-      {/* Barra superior: tema + mapa */}
+      {/* Barra superior: menú de capas/vista agrupado + ayuda + sesión */}
       <div className="topbar">
-        <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>{theme === "dark" ? "☀️ Claro" : "🌙 Oscuro"}</button>
-        <button onClick={() => toggleSat(!sat)}>{sat ? "🗺️ Plano" : "🛰️ Satelital"}</button>
-        <button className={riskOn ? "on" : ""} onClick={() => toggleRisk(!riskOn)}>{riskOn ? "🟥 Riesgo: ON" : "⬜ Riesgo: OFF"}</button>
-        <button className={poisOn ? "on" : ""} onClick={() => togglePois(!poisOn)}>{poisOn ? "📍 Lugares: ON" : "📍 Lugares: OFF"}</button>
-        <button className={follow ? "on" : ""} onClick={() => setFollow(!follow)}>{follow ? "🎯 Seguir: ON" : "🧭 Seguir: OFF"}</button>
+        <div className="menu-wrap">
+          <button className={menuOpen ? "on" : ""} onClick={() => setMenuOpen((v) => !v)}>☰ Capas y vista</button>
+          {menuOpen && (
+            <div className="menu" onMouseLeave={() => setMenuOpen(false)}>
+              <div className="menu-sec">Tema</div>
+              <div className="menu-seg">
+                {(["system", "light", "dark"] as const).map((t) => (
+                  <button key={t} className={themePref === t ? "on" : ""} onClick={() => setThemePref(t)}>
+                    {t === "system" ? "Sistema" : t === "light" ? "Claro" : "Oscuro"}
+                  </button>
+                ))}
+              </div>
+              <div className="menu-sec">Mapa</div>
+              <button className={`menu-row ${sat ? "on" : ""}`} onClick={() => toggleSat(!sat)}>🛰️ Satelital<span>{sat ? "ON" : "OFF"}</span></button>
+              <button className={`menu-row ${follow ? "on" : ""}`} onClick={() => setFollow(!follow)}>🎯 Seguir vehículo<span>{follow ? "ON" : "OFF"}</span></button>
+              <div className="menu-sec">Capas</div>
+              <button className={`menu-row ${riskOn ? "on" : ""}`} onClick={() => toggleRisk(!riskOn)}>🟥 Riesgo<span>{riskOn ? "ON" : "OFF"}</span></button>
+              <button className={`menu-row ${poisOn ? "on" : ""}`} onClick={() => togglePois(!poisOn)}>📍 Lugares<span>{poisOn ? "ON" : "OFF"}</span></button>
+              <button className={`menu-row ${corridorsOn ? "on" : ""}`} onClick={() => toggleCorridors(!corridorsOn)}>🛣️ Trayectorias<span>{corridorsOn ? "ON" : "OFF"}</span></button>
+            </div>
+          )}
+        </div>
         <button className="help-btn" onClick={() => setShowHelp(true)} title="¿Cómo funciona?" aria-label="Ayuda">?</button>
         {CLERK_ENABLED && !(window as unknown as { __CLERK_OFF__?: boolean }).__CLERK_OFF__ && <AuthBar onUser={setAuthUid} setGetToken={(fn) => { authGetTokenRef.current = fn; }} />}
       </div>
@@ -852,6 +887,9 @@ export default function App() {
             <div className="evalsub">Predicción de destino (viajes no vistos)</div>
             <div className="evalbig">{evalRes.overall.acc_50m_pct}% <span>acierto ≤50 m</span></div>
             <div className="evalrow">≤100 m: <b>{evalRes.overall.acc_100m_pct}%</b> · error mediano: <b>{evalRes.overall.fde_median_m} m</b> · {evalRes.evaluated} viajes</div>
+            {evalRes.ci95?.acc_50m_pct && (
+              <div className="evalrow" style={{ color: "var(--muted)" }}>IC 95%: acierto {evalRes.ci95.acc_50m_pct[0]}–{evalRes.ci95.acc_50m_pct[1]}% · error mediano {evalRes.ci95.fde_median_m?.[0]}–{evalRes.ci95.fde_median_m?.[1]} m</div>
+            )}
             {evalRes.baseline?.acc_50m_pct != null && (
               <div className="evalrow" style={{ color: "#86efac" }}>
                 vs. línea recta: {evalRes.baseline.acc_50m_pct}% (<b>+{evalRes.mejora_vs_baseline_pp} pp</b>; error {evalRes.baseline.fde_median_m} m)
