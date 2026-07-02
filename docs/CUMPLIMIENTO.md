@@ -32,10 +32,10 @@
 
 ## Vacíos críticos (lo que falta, por prioridad)
 
-1. **Validación del modelo de riesgo (OE2).** *No depende de DIJIN* (el anteproyecto no lo compromete).
-   *Acción concreta:* validar el mapa RTM contra los **homicidios georreferenciados abiertos** ya
-   disponibles (precisión/recall/F1 de "zona de alto riesgo" vs. hechos reales). DIJIN (petición ya
-   radicada) sería granularidad extra, no un bloqueante.
+1. **Validación del modelo de riesgo (OE2).** Los homicidios abiertos **no traen coordenadas ni hora**
+   → no hay precisión/recall espacial punto a punto sin microdato **DIJIN** (petición radicada). Con lo
+   disponible ya está validado como **índice fundamentado + robusto** (caracterización real + análisis
+   de sensibilidad ρ≈0,99) y con **temporal citado** (CEJ/INMLCF). Ver `VALIDACION_RIESGO.md`.
 2. ~~Ruteo ponderado por riesgo (OE3).~~ ✅ **HECHO:** `/route/build` calcula la ruta segura con
    `peso = distancia·(1+λ·riesgo)` sobre el grafo dirigido y la compara con la directa
    (reducción de exposición). Pendiente menor: correr el proxy de OE4 sobre un set de O-D y reportarlo.
@@ -56,20 +56,20 @@
 
 > Lo que falta para poder marcar cada indicador como ✅ y pasar a **documentar**. Ordenado por impacto.
 
-- [ ] **OE2 — validación del riesgo (SIN depender de DIJIN).** Validar el mapa RTM contra los
-      **homicidios georreferenciados abiertos** (datos.gov.co) que ya se tienen: ¿coinciden las zonas
-      de alto riesgo con los hechos reales? → reportar **precisión/recall/F1** del mapa de riesgo.
-      El anteproyecto lo permite (habla de "análisis de datos históricos" y "eventos simulados", no de
-      DIJIN). El microdato DIJIN (petición radicada) sería un refuerzo de mayor granularidad, no un
-      requisito para cerrar OE2.
-- [ ] **OE4 — barrido O-D del proxy.** Correr la ruta segura vs. directa sobre un conjunto fijo de
-      ~30–50 pares origen-destino y reportar la **reducción media de exposición** (el motor ya la
-      calcula; falta el script batch y la tabla). Cierra el indicador de "≥30%".
-- [ ] **OE3 — capa de POIs.** Añadir una capa de puntos de interés al mapa para cumplir "≥3 capas
-      con POIs" de forma literal.
-- [ ] **OE1 — informe de caracterización.** Redactar en la tesis (TrajCL/TRACLUS/Fréchet ya hechos).
-- [ ] **OE4 — informe de QA.** Cobertura de pruebas + tasa de errores para el "95% de funcionalidad".
-- [ ] **Componente cualitativo de OE4.** Declararlo como trabajo futuro o mini-encuesta de usabilidad.
+**Hecho:**
+- [x] **OE3 — capa de POIs** (`/pois`, toggle) → "≥3 capas" literal.
+- [x] **OE2 — validación posible** (índice fundamentado + sensibilidad ρ≈0,99 + temporal citado CEJ/INMLCF; `VALIDACION_RIESGO.md`).
+- [x] **OE4 — barrido O-D** con **IC 95%** (7,0% [6,4–7,6]; 95% de rutas mejoran).
+- [x] **Rigor estadístico** — intervalos de confianza (bootstrap) en OE1 (90% [85–94]) y OE4.
+- [x] **Citación reforzada** — 2-4 fuentes IEEE por afirmación (`REFERENCIAS.md`).
+- [x] **Autocrítica** documentada (`CRITICA_Y_MEJORAS.md`).
+
+**Falta (mayormente redacción):**
+- [ ] **OE1 — informe de caracterización** redactado en la tesis (análisis ya hecho: TrajCL/TRACLUS/Fréchet).
+- [ ] **OE2/OE4 — informes** de datos y de QA (cobertura de pruebas + tasa de errores) formalizados.
+- [ ] **Precisión ≥85% del riesgo (OE2):** requiere microdato **DIJIN** (petición radicada) — declarado.
+- [ ] **Percepción ≥30% (OE4):** encuesta con usuarios = trabajo futuro (no aplica con datos simulados).
+- [ ] **Replicabilidad:** correr el pipeline de riesgo en una 2ª ciudad (peso de resultados).
 
 ### Sobre "¿el modelo aprende con el uso?" (aclaración honesta)
 
