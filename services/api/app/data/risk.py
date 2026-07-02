@@ -62,6 +62,25 @@ class RiskStore:
         self.max_risk = max_risk or 1.0
         self.n_zones = len({c for rows in self._by_hour.values() for (c, *_3) in rows})
 
+        # --- Normalización por PERCENTIL espacial + modulación temporal ---
+        # Dividir por el máximo comprime una distribución sesgada (casi todo se ve verde y las
+        # alertas no disparan). Usamos el percentil espacial del riesgo base (reparte 0-1 de forma
+        # uniforme → el mapa muestra proporciones reales) y lo modulamos por la hora.
+        base: dict[str, float] = {}
+        for rows in self._by_hour.values():
+            for (cid, _lo, _la, r) in rows:
+                if r > base.get(cid, -1.0):
+                    base[cid] = r
+        ordered = sorted(base, key=lambda c: base[c])
+        n = len(ordered) or 1
+        self._sp: dict[str, float] = {cid: (i + 1) / n for i, cid in enumerate(ordered)}  # percentil 0-1
+        # Factor temporal (forma relativa 0-1): media de riesgo por hora / pico.
+        hmean = {}
+        for h, rows in self._by_hour.items():
+            hmean[h] = (sum(r for (*_c, r) in rows) / len(rows)) if rows else 0.0
+        peak = max(hmean.values()) or 1.0
+        self._tf: dict[int, float] = {h: hmean[h] / peak for h in range(24)}
+
         # Metadatos por zona (población DANE real, actividad) para enriquecer el popup.
         self._meta: dict[str, dict] = {}
         meta_path = csv_path.parent / "tumaco_zonas_riesgo_v2.csv"
@@ -81,13 +100,19 @@ class RiskStore:
         self.dlon = _min_step(lons)
         self.dlat = _min_step(lats)
 
+    def _risk_norm(self, cid: str, hour: int) -> float:
+        """Riesgo normalizado 0-1: percentil espacial modulado por la hora (mín 0.5 del efecto)."""
+        sp = self._sp.get(cid, 0.0)
+        tf = self._tf.get(int(hour) % 24, 1.0)
+        return sp * (0.5 + 0.5 * tf)
+
     # --- mapa: zonas discretas (polígonos cuadrados) con riesgo por hora ---
     def zones_geojson(self, hour: int) -> dict:
         hour = int(hour) % 24
         hx, hy = self.dlon / 2, self.dlat / 2
         feats = []
         for (cid, lon, lat, r) in self._by_hour.get(hour, []):
-            rn = r / self.max_risk
+            rn = self._risk_norm(cid, hour)
             feats.append({
                 "type": "Feature",
                 "geometry": {
@@ -120,7 +145,7 @@ class RiskStore:
             d = _haversine_m((lon, lat), (zlon, zlat))
             if d < best_d:
                 best_d, best_r, best_c = d, r, c
-        return best_r, best_r / self.max_risk, best_c
+        return best_r, self._risk_norm(best_c, hour), best_c
 
     # --- alerta anticipada (look-ahead) ---
     def lookahead_alert(
