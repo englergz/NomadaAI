@@ -90,13 +90,18 @@ def main() -> None:
         w.writerows(rows)
 
     red = [r["exposure_reduction_pct"] for r in rows]
+    # IC 95% por bootstrap para la reducción media
+    import random as _rnd
+    _rng = _rnd.Random(42); _n = len(red)
+    _boot = sorted(sum(red[_rng.randrange(_n)] for _ in range(_n)) / _n for _ in range(2000))
+    ci = (round(_boot[int(0.025 * 2000)], 1), round(_boot[int(0.975 * 2000)], 1))
     extra_dist = [
         100 * (r["safe_dist_m"] - r["direct_dist_m"]) / r["direct_dist_m"]
         for r in rows if r.get("direct_dist_m")
     ]
     print("\n===== RESUMEN OE4 (protección: ruta segura vs. directa) =====")
     print(f"Rutas evaluadas:            {len(rows)}  ({len(pairs)} O-D × {len(HOURS)} horas)")
-    print(f"Reducción de exposición:    media {fmean(red):.1f}%  ·  mediana {median(red):.1f}%  ·  máx {max(red):.1f}%")
+    print(f"Reducción de exposición:    media {fmean(red):.1f}%  (IC95% {ci[0]}–{ci[1]}%)  ·  mediana {median(red):.1f}%  ·  máx {max(red):.1f}%")
     print(f"Rutas que mejoran (>0%):    {100*sum(1 for x in red if x > 0)/len(red):.1f}%")
     if extra_dist:
         print(f"Sobrecosto de distancia:    media {fmean(extra_dist):.1f}%")

@@ -76,6 +76,23 @@ def evaluate(
     baseline = summarize(base_fdes)
     markov = summarize(markov_fdes)
 
+    # Intervalos de confianza al 95% por bootstrap (1000 remuestreos) — rigor estadístico.
+    import random
+
+    def _boot_ci(vals: list[float], stat, iters: int = 1000, seed: int = 42):
+        if len(vals) < 5:
+            return None
+        rng = random.Random(seed)
+        nn = len(vals)
+        out = sorted(stat([vals[rng.randrange(nn)] for _ in range(nn)]) for _ in range(iters))
+        return [round(out[int(0.025 * iters)], 1), round(out[int(0.975 * iters)], 1)]
+
+    _acc50 = lambda v: 100 * sum(x <= 50 for x in v) / len(v)  # noqa: E731
+    ci95 = {
+        "acc_50m_pct": _boot_ci(fdes, _acc50),
+        "fde_median_m": _boot_ci(fdes, statistics.median),
+    }
+
     def _mejora(ref: dict) -> float | None:
         if overall.get("acc_50m_pct") is not None and ref.get("acc_50m_pct") is not None:
             return round(overall["acc_50m_pct"] - ref["acc_50m_pct"], 1)
@@ -86,6 +103,7 @@ def evaluate(
         "n_test": predictor.n_test,
         "evaluated": len(fdes),
         "overall": overall,
+        "ci95": ci95,                    # intervalos de confianza 95% (bootstrap)
         "baseline": baseline,            # extrapolación en línea recta (referencia ingenua)
         "markov": markov,                # cadena de Markov 1er orden (referencia que aprende)
         "mejora_vs_baseline_pp": _mejora(baseline),
