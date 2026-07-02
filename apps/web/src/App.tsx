@@ -162,6 +162,7 @@ export default function App() {
   const [histGlobal, setHistGlobal] = useState<any>(null);              // contexto global (BI)
   const [showHelp, setShowHelp] = useState(false);
   const [log, setLog] = useState<string[]>([]);
+  const [showConsole, setShowConsole] = useState(true);
   const [finished, setFinished] = useState(false);
   const [drawMsg, setDrawMsg] = useState("Haz clic en el mapa: 1) dónde estás, 2) a dónde vas.");
   const [theme, setTheme] = useState<"dark" | "light">(() =>
@@ -676,6 +677,15 @@ export default function App() {
     <>
       <div id="map" ref={containerRef} />
 
+      {/* Banner informativo flotante al centro (lo que está pasando de fondo, visible). */}
+      {(busy || (mode === "draw" && !running && drawMsg) || safeMsg) && (
+        <div className="banner">
+          {busy && <div className="banner-line loading">⏳ {busy}</div>}
+          {!busy && mode === "draw" && !running && drawMsg && <div className="banner-line">📍 {drawMsg}</div>}
+          {safeMsg && <div className="banner-line ok">🛡️ {safeMsg}</div>}
+        </div>
+      )}
+
       {/* Barra superior: tema + mapa */}
       <div className="topbar">
         <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>{theme === "dark" ? "☀️ Claro" : "🌙 Oscuro"}</button>
@@ -683,7 +693,7 @@ export default function App() {
         <button className={riskOn ? "on" : ""} onClick={() => toggleRisk(!riskOn)}>{riskOn ? "🟥 Riesgo: ON" : "⬜ Riesgo: OFF"}</button>
         <button className={poisOn ? "on" : ""} onClick={() => togglePois(!poisOn)}>{poisOn ? "📍 Lugares: ON" : "📍 Lugares: OFF"}</button>
         <button className={follow ? "on" : ""} onClick={() => setFollow(!follow)}>{follow ? "🎯 Seguir: ON" : "🧭 Seguir: OFF"}</button>
-        <button className="help-btn" onClick={() => setShowHelp(true)} title="¿Cómo funciona?">? Ayuda</button>
+        <button className="help-btn" onClick={() => setShowHelp(true)} title="¿Cómo funciona?" aria-label="Ayuda">?</button>
         {CLERK_ENABLED && <AuthBar onUser={setAuthUid} setGetToken={(fn) => { authGetTokenRef.current = fn; }} />}
       </div>
 
@@ -699,8 +709,8 @@ export default function App() {
           <>
             <div className="counts">
               <div><b>{(health.n_trajectories ?? 0).toLocaleString()}</b><span>trayectorias</span></div>
-              <div><b>{(health.n_train ?? 0).toLocaleString()}</b><span>entrenan el modelo</span></div>
-              <div><b>{(health.n_test ?? 0).toLocaleString()}</b><span>prueba (no vistas)</span></div>
+              <div><b>{(health.n_train ?? 0).toLocaleString()}</b><span>entrenamiento</span></div>
+              <div><b>{(health.n_test ?? 0).toLocaleString()}</b><span>prueba</span></div>
             </div>
             <p className="counts-cap">Datos: simulación de tráfico de Tumaco (SUMO).</p>
           </>
@@ -729,8 +739,6 @@ export default function App() {
             </select>
             <label className="lbl">Prioridad de seguridad: <b>{riskWeight}%</b> {riskWeight === 0 ? "(ruta más corta)" : "(evita riesgo)"}</label>
             <input className="range" type="range" min={0} max={100} step={10} value={riskWeight} onChange={(e) => setRiskWeight(Number(e.target.value))} disabled={running} />
-            <p className="hint" style={{ marginTop: 6 }}>{drawMsg}</p>
-            {safeMsg && <div className="metric">{safeMsg}</div>}
           </>
         )}
 
@@ -747,17 +755,16 @@ export default function App() {
         <label className="lbl">Umbral de alerta: <b>{threshold}%</b></label>
         <input className="range" type="range" min={0} max={100} step={5} value={threshold} onChange={(e) => setThreshold(Number(e.target.value))} />
 
-        {!running ? (
+        {running ? (
+          <button className="secondary" onClick={stopSim}>■ Detener simulación</button>
+        ) : (
           <div className="row">
             {mode === "test"
               ? <button onClick={startTest} disabled={!tripId || !!busy}>{busy ? "⏳ " + busy : "▶ Iniciar simulación"}</button>
               : <button onClick={startDraw} disabled={!!busy}>{busy ? "⏳ " + busy : "▶ Generar ruta y simular"}</button>}
-            <button className="secondary" onClick={clearAll} disabled={!!busy}>Limpiar</button>
+            {finished && <button className="secondary" onClick={clearAll} disabled={!!busy}>Terminar</button>}
           </div>
-        ) : (
-          <button className="secondary" onClick={stopSim}>■ Detener</button>
         )}
-        {busy && <div className="status">⏳ {busy}</div>}
 
         {(running || finished) && <div className="clock">🕒 {fmtClock(clock)} · {timeScale === 1 ? "tiempo real" : `×${timeScale}`}</div>}
         <div className="progress"><div className="bar" style={{ width: `${progress}%` }} /></div>
@@ -876,18 +883,25 @@ export default function App() {
         <div className="legend">
           <span className="leg"><span className="dot blue" /> capturado</span>
           <span className="leg"><span className="dot orange" /> predicho</span>
-          <span className="leg"><span className="dot red" /> zona alerta</span>
+          <span className="leg"><span className="dot red" /> zona de riesgo en la ruta</span>
           <span className="leg"><span className="dot gray" /> ruta directa</span>
         </div>
       </div>
 
       {/* Telemetría flotante (las "entrañas" en tiempo real) */}
       {log.length > 0 && (
-        <div className="telemetry">
-          <div className="telemetry-h">● ACTIVIDAD DEL SISTEMA · entradas/salidas del modelo</div>
-          <div className="telemetry-body">
-            {log.map((l, i) => <div key={i} className="telemetry-l">{l}</div>)}
+        <div className={`telemetry ${showConsole ? "" : "collapsed"}`}>
+          <div className="telemetry-h">
+            <span>● Actividad del sistema</span>
+            <button className="telemetry-toggle" onClick={() => setShowConsole((v) => !v)}>
+              {showConsole ? "Ocultar ▾" : "Mostrar ▸"}
+            </button>
           </div>
+          {showConsole && (
+            <div className="telemetry-body">
+              {log.map((l, i) => <div key={i} className="telemetry-l">{l}</div>)}
+            </div>
+          )}
         </div>
       )}
 

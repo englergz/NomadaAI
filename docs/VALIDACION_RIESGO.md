@@ -64,6 +64,27 @@ Declarar esto es lo correcto: convierte una limitación de datos en una **contri
 (los modelos de riesgo urbano estándar tienen alcance limitado en contextos de conflicto armado y
 homogeneidad socioeconómica como Tumaco).
 
+## Soporte teórico y técnica ante la escasez de datos
+
+La imposibilidad de contar con incidentes georreferenciados **no invalida** el enfoque: la literatura
+ofrece técnicas diseñadas justamente para eso.
+
+- **Risk Terrain Modeling (Caplan & Kennedy, 2011):** modela el riesgo a partir de **factores
+  ambientales/estructurales del territorio**, no de puntos de delito — es el método indicado cuando
+  el microdato de incidentes es escaso o inexistente. Es el marco que usamos.
+- **Densidad poblacional como factor de riesgo (Brender, 2012, citado en Bámaca López, 2014):**
+  *"el aumento de la población —y por ende la densidad poblacional— hace aumentar el estrés y la
+  frustración que conduce a la conducta violenta"*. Respalda que el factor dominante del índice
+  reconstruido (densidad poblacional real DANE) es teóricamente pertinente.
+- **Desigualdad > pobreza como generadora de violencia (Kruijt, 2008; Banco Mundial, 2001):** en un
+  municipio homogéneo (estrato 1) el gradiente socioeconómico no discrimina — coherente con nuestro
+  hallazgo.
+- **Datos de la propia ciudad (CEDRE / U. de Nariño, 2024):** violencia (24,8%) e inseguridad (23,5%)
+  son el **problema #1** de Tumaco; NBI con paredes exteriores inadecuadas 29,4%, hacinamiento 17,2%.
+- **Reporte ciudadano participativo** como fuente para superar el vacío oficial: la app móvil
+  (Android/iOS) incorporará **reporte de incidentes**, alimentando el modelo con datos comunitarios
+  (enfoque participativo de seguridad; Arteaga Botello, 2005).
+
 ## Referencias
 
 - Caplan, J. M., & Kennedy, L. W. (2011). *Risk Terrain Modeling.* Justice Quarterly.
@@ -71,3 +92,8 @@ homogeneidad socioeconómica como Tumaco).
 - Shaw, C., & McKay, H. (1942). *Juvenile Delinquency and Urban Areas.*
 - DANE (2018). *Censo Nacional de Población y Vivienda* — población por manzana (servicio Esri Colombia).
 - Policía Nacional de Colombia — datos.gov.co, dataset `m8fd-ahd9` (homicidios).
+- Bámaca López, E. E. (2014). *Violencia y Pobreza: pan y tortilla del cada día.* RELACSO, FLACSO México, No. 5.
+- Brender (2012), en Bámaca López (2014) — densidad poblacional y conducta violenta.
+- Kruijt, D. (2008) / Banco Mundial (2001) — desigualdad y violencia en América Latina.
+- Centro de Estudios de Desarrollo Regional (CEDRE), Universidad de Nariño (2024). *Encuesta Socioeconómica de Tumaco 2024.*
+- Arteaga Botello, N. (2005) — enfoque comunitario/participativo de la seguridad.
