@@ -77,7 +77,9 @@ Varias afirmaciones hoy penden de **una sola** cita. Hay que **reforzarlas**. Es
 | Patrón temporal (noche/domingo) | CEJ 2019 [9]; INMLCF [10] | *(reforzar con 1-2 artículos académicos — verificar)* |
 | Pesos locales por zona (GWR) | Fotheringham et al. [11] | *(reforzar: Brunsdon; Cahill & Mulligan — verificar)* |
 
-> **Regla:** no inventar referencias. Las marcadas "verificar" se buscan y confirman antes de citar.
+> **Regla:** no inventar referencias. **Estado: reforzado** — cada afirmación tiene ahora 2-4 fuentes
+> verificadas en `REFERENCIAS.md` (Painter, Chalfin et al., Drawve, Sampson et al., Ratcliffe,
+> Cahill & Mulligan, Felson & Boba, etc.).
 
 ## 5. Mejoras priorizadas (qué atacar y en qué orden)
 1. **Reforzar citación** (2-4 por afirmación) en todos los docs — barato, sube el rigor de inmediato.

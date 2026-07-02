@@ -721,7 +721,7 @@ export default function App() {
       {/* Barra superior: menú de capas/vista agrupado + ayuda + sesión */}
       <div className="topbar">
         <div className="menu-wrap">
-          <button className={menuOpen ? "on" : ""} onClick={() => setMenuOpen((v) => !v)}>☰ Capas y vista</button>
+          <button className={menuOpen ? "on" : ""} onClick={() => setMenuOpen((v) => !v)}>☰ Menú</button>
           {menuOpen && (
             <div className="menu" onMouseLeave={() => setMenuOpen(false)}>
               <div className="menu-sec">Tema</div>
@@ -733,16 +733,27 @@ export default function App() {
                 ))}
               </div>
               <div className="menu-sec">Mapa</div>
-              <button className={`menu-row ${sat ? "on" : ""}`} onClick={() => toggleSat(!sat)}>🛰️ Satelital<span>{sat ? "ON" : "OFF"}</span></button>
-              <button className={`menu-row ${follow ? "on" : ""}`} onClick={() => setFollow(!follow)}>🎯 Seguir vehículo<span>{follow ? "ON" : "OFF"}</span></button>
+              {([["🛰️", "Satelital", sat, () => toggleSat(!sat)],
+                 ["🎯", "Seguir vehículo", follow, () => setFollow(!follow)]] as const).map(([ic, lbl, on, fn], i) => (
+                <button key={i} className="menu-row" onClick={fn as () => void}>
+                  <span className="menu-lbl">{ic} {lbl}</span><span className={`sw ${on ? "on" : ""}`}>{on ? "ON" : "OFF"}</span>
+                </button>
+              ))}
               <div className="menu-sec">Capas</div>
-              <button className={`menu-row ${riskOn ? "on" : ""}`} onClick={() => toggleRisk(!riskOn)}>🟥 Riesgo<span>{riskOn ? "ON" : "OFF"}</span></button>
-              <button className={`menu-row ${poisOn ? "on" : ""}`} onClick={() => togglePois(!poisOn)}>📍 Lugares<span>{poisOn ? "ON" : "OFF"}</span></button>
-              <button className={`menu-row ${corridorsOn ? "on" : ""}`} onClick={() => toggleCorridors(!corridorsOn)}>🛣️ Trayectorias<span>{corridorsOn ? "ON" : "OFF"}</span></button>
+              {([["🟥", "Riesgo", riskOn, () => toggleRisk(!riskOn)],
+                 ["📍", "Lugares", poisOn, () => togglePois(!poisOn)],
+                 ["🛣️", "Trayectorias", corridorsOn, () => toggleCorridors(!corridorsOn)]] as const).map(([ic, lbl, on, fn], i) => (
+                <button key={i} className="menu-row" onClick={fn as () => void}>
+                  <span className="menu-lbl">{ic} {lbl}</span><span className={`sw ${on ? "on" : ""}`}>{on ? "ON" : "OFF"}</span>
+                </button>
+              ))}
+              <div className="menu-div" />
+              <button className="menu-row" onClick={() => { setShowHelp(true); setMenuOpen(false); }}>
+                <span className="menu-lbl">❓ ¿Cómo funciona?</span>
+              </button>
             </div>
           )}
         </div>
-        <button className="help-btn" onClick={() => setShowHelp(true)} title="¿Cómo funciona?" aria-label="Ayuda">?</button>
         {CLERK_ENABLED && !(window as unknown as { __CLERK_OFF__?: boolean }).__CLERK_OFF__ && <AuthBar onUser={setAuthUid} setGetToken={(fn) => { authGetTokenRef.current = fn; }} />}
       </div>
 

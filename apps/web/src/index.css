@@ -270,7 +270,9 @@ h2.step { font-size: 13px; margin: 18px 0 8px; color: var(--text); text-transfor
 .menu-seg { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
 .menu-seg button { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 6px 4px; font-size: 11px; box-shadow: none; }
 .menu-seg button.on { border-color: var(--accent); background: rgba(47,129,247,0.15); }
-.menu-row { display: flex; align-items: center; justify-content: space-between; width: 100%; background: transparent; border: 1px solid transparent; color: var(--text); border-radius: 7px; padding: 7px 8px; font-size: 12px; box-shadow: none; }
+.menu-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; background: transparent; border: none; color: var(--text); border-radius: 7px; padding: 8px 8px; font-size: 12.5px; box-shadow: none; text-align: left; }
 .menu-row:hover { background: var(--bg); }
-.menu-row span { font-size: 10px; color: var(--muted); font-weight: 700; }
-.menu-row.on span { color: var(--accent); }
+.menu-lbl { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sw { flex: none; min-width: 34px; text-align: center; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
+.sw.on { color: #fff; background: var(--accent); border-color: var(--accent); }
+.menu-div { height: 1px; background: var(--border); margin: 8px 4px; }
