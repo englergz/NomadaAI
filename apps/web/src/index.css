@@ -181,12 +181,13 @@ body.light .topbar button { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
 .topbar button.on { border-color: var(--accent); color: var(--accent); }
 
 /* Telemetría flotante (sin fondo, estilo overlay de juego) */
-.telemetry { position: absolute; left: 360px; right: 274px; bottom: 12px; z-index: 11; max-height: 36vh; pointer-events: none; }
-.telemetry-h { font: 600 11px ui-monospace, monospace; color: #93c5fd; letter-spacing: 0.04em; text-shadow: 0 1px 2px #000, 0 0 3px #000; margin-bottom: 4px; }
-.telemetry-body { overflow-y: auto; max-height: calc(36vh - 22px); pointer-events: auto; }
-.telemetry-l { font: 11px ui-monospace, monospace; color: #d7e0ea; line-height: 1.55; text-shadow: 0 1px 2px #000, 0 0 3px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-body.light .telemetry-h { color: #1d4ed8; text-shadow: 0 1px 2px #fff, 0 0 3px #fff; }
-body.light .telemetry-l { color: #0f172a; text-shadow: 0 1px 2px #fff, 0 0 3px #fff; }
+.telemetry { position: absolute; left: 360px; bottom: 12px; z-index: 11; width: 380px; max-width: calc(100vw - 660px);
+  background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+.telemetry.collapsed { width: auto; }
+.telemetry-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 600 11px ui-monospace, monospace; color: var(--accent); letter-spacing: 0.03em; }
+.telemetry-toggle { width: auto; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 2px 8px; font-size: 10px; box-shadow: none; }
+.telemetry-body { overflow-y: auto; max-height: 30vh; margin-top: 6px; }
+.telemetry-l { font: 11px ui-monospace, monospace; color: var(--text); line-height: 1.5; white-space: normal; word-break: break-word; margin-bottom: 2px; opacity: 0.85; }
 
 /* Tema claro: SOLO la pantalla del teléfono adapta (el marco/notch quedan oscuros). */
 body.light .phone-screen { background: linear-gradient(160deg, #f6f9fc, #e7edf3); }
@@ -230,7 +231,14 @@ body.light .push-time { color: #b91c1c; }
 .reset-link { color: var(--accent); cursor: pointer; text-decoration: underline; }
 
 /* Botón y panel de ayuda */
-.help-btn { font-weight: 600; }
+.help-btn { width: 34px; height: 34px; padding: 0; border-radius: 50%; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; }
+
+/* Banner informativo flotante al centro-superior del mapa */
+.banner { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; flex-direction: column; gap: 6px; align-items: center; width: max-content; max-width: min(560px, 70vw); pointer-events: none; }
+.banner-line { background: color-mix(in srgb, var(--panel) 94%, transparent); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 9px 18px; font-size: 13px; font-weight: 500; text-align: center; box-shadow: 0 8px 28px rgba(0,0,0,0.4); }
+.banner-line.loading { border-color: var(--accent); }
+.banner-line.ok { background: rgba(22,163,74,0.16); border-color: #16a34a; color: #bbf7d0; }
+body.light .banner-line.ok { color: #14532d; }
 .help-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 24px; }
 .help-modal { position: relative; width: min(560px, 92vw); max-height: 86vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
 .help-modal h2 { font-size: 18px; margin: 0 0 8px; text-transform: none; letter-spacing: 0; color: var(--text); }
