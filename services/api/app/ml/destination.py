@@ -247,8 +247,12 @@ class DestinationPredictor:
             out.append([float(lon), float(lat)])
         return out
 
-    def get_demo(self, tid: str, topk: int = 3, frac: float = 0.75) -> dict | None:
-        """Para un viaje real: prefijo observado (75%), predicción y recorrido real."""
+    def get_demo(self, tid: str, topk: int = 3, frac: float = 0.75, noise_m: float = 0.0) -> dict | None:
+        """Para un viaje real: prefijo observado (75%), predicción y recorrido real.
+
+        `noise_m` > 0 perturba el prefijo con ruido gaussiano (σ metros) para simular GPS real y
+        medir la **robustez** de la predicción (prueba de honestidad frente al dato SUMO limpio).
+        """
         pts = self.true_dict.get(tid)
         if not pts or len(pts) < 4:
             return None
@@ -264,6 +268,15 @@ class DestinationPredictor:
 
         prefix_ll = ll(prefix_m)
         truth_ll = ll(suffix_m)
+
+        if noise_m and noise_m > 0:
+            import random as _r
+            rng = _r.Random(hash(tid) & 0xFFFF)
+            for c in prefix_ll:
+                dlat = rng.gauss(0, noise_m) / 111320.0
+                dlon = rng.gauss(0, noise_m) / (111320.0 * max(0.1, math.cos(math.radians(c[1]))))
+                c[0] += dlon
+                c[1] += dlat
 
         prefix_for_pred = [(c[0], c[1], i) for i, c in enumerate(prefix_ll)]
         # horizonte = nº de puntos del recorrido real oculto (para comparar de igual a igual)

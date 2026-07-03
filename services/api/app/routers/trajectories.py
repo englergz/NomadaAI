@@ -28,6 +28,7 @@ _eval_cache: dict[int, dict] = {}
 @router.get("/evaluate")
 def evaluate(
     n: int = Query(160, ge=5, le=2000),
+    noise_m: float = Query(0.0, ge=0, le=100, description="Ruido GPS σ (m) para prueba de robustez"),
     predictor: DestinationPredictor = Depends(get_predictor),
 ) -> dict:
     """Efectividad de la predicción de destino sobre el conjunto TEST (no visto).
@@ -35,11 +36,13 @@ def evaluate(
     Para cada viaje de prueba reproduce la división 75/25, predice excluyendo la propia
     trayectoria (analogía solo con TRAIN) y mide el error final (FDE) contra el recorrido
     real a igual horizonte. Reporta acierto a ≤50 m y ≤100 m, global y por tipo.
+    `noise_m` perturba el prefijo (GPS realista) para medir la robustez.
     """
     import statistics
 
-    if n in _eval_cache:
-        return _eval_cache[n]
+    ckey = (n, round(noise_m, 1))
+    if ckey in _eval_cache:
+        return _eval_cache[ckey]
 
     test_ids = sorted(predictor.test_ids)[:n]
     fdes: list[float] = []
@@ -47,7 +50,7 @@ def evaluate(
     markov_fdes: list[float] = []
     by_type: dict[str, list[float]] = {}
     for tid in test_ids:
-        d = predictor.get_demo(tid)
+        d = predictor.get_demo(tid, noise_m=noise_m)
         if not d or d.get("fde_m") is None:
             continue
         fde = float(d["fde_m"])
@@ -112,7 +115,8 @@ def evaluate(
         "note": "FDE = error final vs recorrido real al horizonte de continuación (no visto). "
                 "baseline = línea recta; markov = transición más probable aprendida (TRAIN).",
     }
-    _eval_cache[n] = result
+    result["noise_m"] = noise_m
+    _eval_cache[ckey] = result
     return result
 
 

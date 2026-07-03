@@ -203,10 +203,12 @@ export default function App() {
     try { return (localStorage.getItem("nomadaai_theme") as "system" | "light" | "dark") || "system"; } catch { return "system"; }
   });
   useEffect(() => { try { localStorage.setItem("nomadaai_theme", themePref); } catch { /* ignore */ } }, [themePref]);
-  const [theme, setTheme] = useState<"dark" | "light">(() =>
-    typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches
-      ? "light" : "dark"
-  );
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    let pref = "system";
+    try { pref = localStorage.getItem("nomadaai_theme") || "system"; } catch { /* ignore */ }
+    if (pref === "light" || pref === "dark") return pref;
+    return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  });
   const [sat, setSat] = useState(false);
   const [riskOn, setRiskOn] = useState(true);
   const [poisOn, setPoisOn] = useState(false);
