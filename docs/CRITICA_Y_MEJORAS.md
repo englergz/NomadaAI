@@ -27,7 +27,7 @@
 6. **El patrón horario es nacional, transferido a Tumaco.** El día sí es local (dato propio), pero la
    curva por hora asume que Tumaco sigue el promedio colombiano — la violencia de conflicto armado
    puede tener otra dinámica horaria que el homicidio nacional (riñas, etc.).
-7. **OE4 (−6,8%) es un proxy de un proxy.** Mide reducción de exposición contra una superficie de
+7. **OE4 (−7,0%) es un proxy de un proxy.** Mide reducción de exposición contra una superficie de
    riesgo **no validada**. Es internamente consistente, no externamente válido.
 8. ~~Sin estadística inferencial.~~ ✅ **RESUELTO:** intervalos de confianza 95% por bootstrap en OE1
    (90% [85–94]) y OE4 (7,0% [6,4–7,6]).

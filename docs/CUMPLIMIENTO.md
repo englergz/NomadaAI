@@ -22,9 +22,10 @@
 
 ## Lo que está sólido (fortalezas)
 
-- **OE1 supera la meta** (90% > 85%) y de forma **sin sesgo** (train/test, conjunto no visto).
+- **OE1 supera la meta** (90% > 85%, IC 95% [85–94]) y de forma **sin sesgo** (train/test, conjunto no visto);
+  **robusto** bajo ruido GPS realista (72–82%).
 - **Marco de riesgo replicable y auditable** (RTM multivariable, trazable por factor) con base
-  criminológica citada y datos oficiales colombianos.
+  criminológica citada y datos oficiales colombianos; **replicado en Cali** (prueba de adaptabilidad).
 - **Alerta anticipada caracterizada** (88.7% avisos antes de la zona, ~280 m / 25 s de anticipación).
 - **Producto real desplegado** (web + API en la nube), con simulación en vivo y evaluación
   comparativa (no visto vs. rutas nuevas).
@@ -63,13 +64,14 @@
 - [x] **Rigor estadístico** — intervalos de confianza (bootstrap) en OE1 (90% [85–94]) y OE4.
 - [x] **Citación reforzada** — 2-4 fuentes IEEE por afirmación (`REFERENCIAS.md`).
 - [x] **Autocrítica** documentada (`CRITICA_Y_MEJORAS.md`).
+- [x] **Robustez de OE1** medida con ruido GPS gaussiano: 90% (0 m) → 82% (5 m) → 72% (10 m) → desempeño realista de calle **72–82%** (deja de ser crítica especulativa).
+- [x] **Replicabilidad** demostrada: pipeline de riesgo corrido en **Cali** (el factor socioeconómico discrimina en territorio heterogéneo; en Tumaco homogéneo es inerte → prueba de adaptabilidad). Ver `HALLAZGOS_Y_DESAFIOS.md`.
 
 **Falta (mayormente redacción):**
 - [ ] **OE1 — informe de caracterización** redactado en la tesis (análisis ya hecho: TrajCL/TRACLUS/Fréchet).
 - [ ] **OE2/OE4 — informes** de datos y de QA (cobertura de pruebas + tasa de errores) formalizados.
 - [ ] **Precisión ≥85% del riesgo (OE2):** requiere microdato **DIJIN** (petición radicada) — declarado.
 - [ ] **Percepción ≥30% (OE4):** encuesta con usuarios = trabajo futuro (no aplica con datos simulados).
-- [ ] **Replicabilidad:** correr el pipeline de riesgo en una 2ª ciudad (peso de resultados).
 
 ### Sobre "¿el modelo aprende con el uso?" (aclaración honesta)
 
