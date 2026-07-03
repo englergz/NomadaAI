@@ -16,9 +16,9 @@ tiempo real en el Distrito de Tumaco, Nariño.**
 
 Trabajo de Grado, **Maestría en Gestión de Tecnologías de la Información y del Conocimiento (MGTIC)**, Facultad de Ingeniería, Universidad de Nariño. 
 
-**Autores**: 
-- Engler González. 
-- PhD. Andrés Calderón. (**Director**)
+**Autor**: Engler González Prado — `englergonzalez@udenar.edu.co`
+
+**Director**: PhD. Andrés Calderón · **Co-director**: PhD. Javier Jiménez
 
 **Ejemplo de uso** / *ver [docs/METODOLOGIA.md](docs/METODOLOGIA.md) | Método, modelos y técnicas; inyección por terminal*
 ```bash
@@ -50,10 +50,14 @@ Toda la documentación está en `app/docs/` (citación IEEE).
 | Documento | Contenido |
 |-----------|-----------|
 | [docs/METODOLOGIA.md](docs/METODOLOGIA.md) | Paradigma, 4 objetivos específicos, fases, datos y variables, evaluación, uso por terminal |
-| [docs/MODELO_PREDICCION.md](docs/MODELO_PREDICCION.md) | OE1 — predicción de destino: caracterización, método KNN+rumbo, ablation, métrica FDE, resultados |
-| [docs/MODELO_RIESGO.md](docs/MODELO_RIESGO.md) | OE2 — Índice de Riesgo Urbano (RTM): factores F1–F8, fórmula, pesos, sensibilidad, ética |
-| [docs/CUMPLIMIENTO.md](docs/CUMPLIMIENTO.md) | Autoevaluación crítica: cumplimiento de cada objetivo/indicador, vacíos y qué pulir |
-| [docs/PARA_COWORK.md](docs/PARA_COWORK.md) | Estado, resultados, límites y supuestos para la redacción de la tesis |
+| [docs/MODELO_PREDICCION.md](docs/MODELO_PREDICCION.md) | OE1 — predicción de destino: método k-vecinos+rumbo (desviación de RNN declarada), FDE, IC 95%, robustez GPS |
+| [docs/MODELO_RIESGO.md](docs/MODELO_RIESGO.md) | OE2 — Índice de Riesgo Urbano (RTM): factores, fórmula, pesos, modulación hora×día, sensibilidad, ética |
+| [docs/VALIDACION_RIESGO.md](docs/VALIDACION_RIESGO.md) | OE2 — validación posible sin microdato: análisis de sensibilidad (ρ≈0,99), temporal citado (CEJ/INMLCF) |
+| [docs/CUMPLIMIENTO.md](docs/CUMPLIMIENTO.md) | Tablero prometido→hecho→cumplido por objetivo/indicador del anteproyecto; vacíos y ruta a 100% |
+| [docs/CRITICA_Y_MEJORAS.md](docs/CRITICA_Y_MEJORAS.md) | Autocrítica sin sesgo (grietas científicas y de producto) + política de citación 2–4 fuentes |
+| [docs/HALLAZGOS_Y_DESAFIOS.md](docs/HALLAZGOS_Y_DESAFIOS.md) | Hallazgos, desafíos, generalización y evidencia de réplica (Cali) |
+| [docs/REFERENCIAS.md](docs/REFERENCIAS.md) | Bibliografía IEEE consolidada (2–4 fuentes verificadas por afirmación) |
+| [docs/PLAN_PRODUCTO.md](docs/PLAN_PRODUCTO.md) | Arquitectura de producto, panel admin, guion de sustentación |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arquitectura, stack, contrato de API, modelo de datos |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Despliegue (Hugging Face Space + Supabase) |
 
@@ -87,7 +91,10 @@ npm run dev:web                        # http://localhost:5173
 ```
 
 ## Estado
-- ✅ **OE1** predicción de destino — operativo; **acierto ≈90% a ≤50 m** sobre conjunto no visto.
-- ✅ **OE2** riesgo espacio-temporal por zonas — operativo (`/risk/zones?hour=`); enriquecimiento socioeconómico documentado.
-- ✅ **OE3** alerta anticipada + ruteo (networkx) — operativo (`/predict/online`, `/route/build`).
-- ✅ **OE4** evaluación sin sesgo (train/test) — `/trajectories/evaluate`.
+- ✅ **OE1** predicción de destino — operativo; **90% a ≤50 m (IC 95% [85–94])** sobre conjunto no visto (train/test 80/20). Robustez con ruido GPS gaussiano: **72–82%** (desempeño realista de calle).
+- ✅ **OE2** riesgo por lugar×hora×día (RTM) — operativo (`/risk/zones?hour=&day=`); ordenamiento robusto (ρ≈0,99). Es un **índice fundamentado, no un predictor validado** contra microdato (limitación declarada; petición DIJIN en trámite).
+- ✅ **OE3** ruteo ponderado por riesgo + alerta anticipada — operativo (`/route/build`, `/predict/online`); panel con ≥3 capas.
+- ✅ **OE4** evaluación sin sesgo — reducción de exposición **7,0% (IC 95% [6,4–7,6])**; la ruta segura mejora en 95% de los casos (`/trajectories/evaluate`).
+- ✅ **Replicabilidad** — marco de riesgo replicado en **Cali** (adaptabilidad: allí el factor socioeconómico discrimina; en Tumaco es homogéneo).
+
+> **Nota de honestidad.** El objetivo general aprobado es sobre **datos simulados** (SUMO). Los indicadores de precisión se reportan sobre ese entorno; la validación con GPS/delito real y el estudio de percepción con usuarios son trabajo futuro declarado. Ver [docs/CRITICA_Y_MEJORAS.md](docs/CRITICA_Y_MEJORAS.md).
