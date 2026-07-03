@@ -89,7 +89,7 @@ function AuthBar({ onUser, setGetToken }: {
   return (
     <>
       <SignedOut>
-        <SignInButton mode="modal"><button className="help-btn">Iniciar sesión</button></SignInButton>
+        <SignInButton mode="modal"><button>Iniciar sesión</button></SignInButton>
       </SignedOut>
       <SignedIn><UserButton afterSignOutUrl="/" /></SignedIn>
     </>
