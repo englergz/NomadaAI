@@ -286,3 +286,23 @@ h2.step { font-size: 13px; margin: 18px 0 8px; color: var(--text); text-transfor
 /* Selector de ciudad en el subtítulo */
 .city-sel { background: transparent; border: none; border-bottom: 1px dashed var(--accent); color: var(--accent); font-weight: 700; font-size: 12px; padding: 0 2px; cursor: pointer; font-family: inherit; }
 .city-sel:disabled { opacity: 0.6; cursor: default; }
+
+/* --- Ajustes finos --- */
+/* Los botones de Clerk NO deben heredar mi `button{width:100%}` (arregla la "X" y el modal) */
+button[class^="cl-"], button[class*=" cl-"], [class^="cl-"] button, [class*=" cl-"] button { width: auto; }
+/* Menú por encima del simulador de móvil, incluso en pantallas angostas */
+.topbar { z-index: 30; }
+.menu { z-index: 40; }
+/* Sombras más suaves en modo claro (el menú se veía pesado) */
+body.light .menu { box-shadow: 0 8px 24px rgba(15,23,42,0.12); }
+body.light .topbar button { box-shadow: 0 2px 8px rgba(15,23,42,0.10); }
+body.light .panel { box-shadow: 0 6px 22px rgba(15,23,42,0.12); }
+/* Notch del móvil en negro real */
+.phone-notch { background: #000; }
+
+/* Minimizar/mostrar panel + nota del menú */
+.panel-collapse { position: absolute; top: 12px; right: 12px; width: auto; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 7px; padding: 2px 9px; font-size: 15px; line-height: 1; box-shadow: none; }
+.panel-open { position: absolute; top: 16px; left: 16px; z-index: 11; width: auto; background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 12px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.menu-note { font-size: 10.5px; line-height: 1.5; color: var(--muted); margin: 8px 6px 2px; }
+.menu-note a { color: var(--accent); cursor: pointer; text-decoration: none; }
+.menu-note a:hover { text-decoration: underline; }

@@ -23,8 +23,9 @@ const TIME_SCALES = [
   { v: 30, label: "×30" }, { v: 60, label: "×60" }, { v: 120, label: "×120" },
 ];
 const DRAW_VEHICLES = [
-  { key: "", label: "Automático (detectar)" }, { key: "mot", label: "Motocicleta" },
+  { key: "", label: "Carro (predeterminado)" }, { key: "mot", label: "Motocicleta" },
   { key: "car", label: "Carro" }, { key: "bus", label: "Bus" }, { key: "truck", label: "Camión" },
+  { key: "taxi", label: "Taxi" },
 ];
 // Velocidad por tipo (m/s) → el tiempo de recorrido depende del vehículo.
 const SPEED_BY_TYPE: Record<string, number> = { mot: 10, car: 8.3, bus: 6.5, truck: 5.5, taxi: 8.3 };
@@ -215,6 +216,7 @@ export default function App() {
   const [corridorsOn, setCorridorsOn] = useState(true);
   const [follow, setFollow] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(true);
   const [evalRes, setEvalRes] = useState<any>(null);
   const [evalAlerts, setEvalAlerts] = useState<any>(null);
   const [evalScn, setEvalScn] = useState<any[] | null>(null);
@@ -801,6 +803,14 @@ export default function App() {
               <button className="menu-row" onClick={() => { setShowHelp(true); setMenuOpen(false); }}>
                 <span className="menu-lbl"><Icon name="help" /> ¿Cómo funciona?</span>
               </button>
+              <p className="menu-note">
+                Las alertas y la actividad se revisan y se usan para mejorar la IA de Nómada.AI. El núcleo
+                se alimenta de datos reales verificables y/o teóricos, pero es una IA y <b>puede cometer
+                errores</b>, incluso en riesgos y predicciones de destino. Puedes{" "}
+                <a onClick={() => { setShowHelp(true); setMenuOpen(false); }}>administrar tu actividad</a>,
+                incluida tu ubicación.{" "}
+                <a onClick={() => { setShowHelp(true); setMenuOpen(false); }}>Más información sobre tus opciones</a>.
+              </p>
             </div>
           )}
         </div>
@@ -809,7 +819,11 @@ export default function App() {
 
       {showHelp && <HelpPanel onClose={() => setShowHelp(false)} />}
 
-      <div className="panel">
+      {!panelOpen && (
+        <button className="panel-open" onClick={() => setPanelOpen(true)} title="Mostrar panel">☰ Panel</button>
+      )}
+      <div className="panel" style={{ display: panelOpen ? undefined : "none" }}>
+        <button className="panel-collapse" onClick={() => setPanelOpen(false)} title="Ocultar panel">«</button>
         <h1>Nómada.AI</h1>
         <p className="subtitle">Navegación consciente del riesgo · <select className="city-sel" value={city} onChange={(e) => changeCity(e.target.value)} disabled={running}>
           {Object.entries(CITIES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
@@ -818,7 +832,8 @@ export default function App() {
           <p className="panel-lead">Predice a dónde vas y te avisa de las zonas de riesgo <b>antes</b> de llegar,
             proponiendo la ruta que menos te expone. Aquí lo pruebas sobre Tumaco.</p>
         ) : (
-          <div className="status" style={{ marginTop: 8 }}>Mapa de riesgo de <b>{CITIES[city].label}</b> — evidencia de replicabilidad del marco. La simulación de viajes está disponible en Tumaco.</div>
+          <p className="panel-lead">Mapa de riesgo de <b>{CITIES[city].label}</b>: evidencia de que el marco se
+            replica. La simulación de viajes está disponible en Tumaco.</p>
         )}
 
         {health && (
