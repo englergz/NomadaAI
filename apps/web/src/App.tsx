@@ -199,7 +199,10 @@ export default function App() {
   const [showConsole, setShowConsole] = useState(true);
   const [finished, setFinished] = useState(false);
   const [drawMsg, setDrawMsg] = useState("Haz clic en el mapa: 1) dónde estás, 2) a dónde vas.");
-  const [themePref, setThemePref] = useState<"system" | "light" | "dark">("system");
+  const [themePref, setThemePref] = useState<"system" | "light" | "dark">(() => {
+    try { return (localStorage.getItem("nomadaai_theme") as "system" | "light" | "dark") || "system"; } catch { return "system"; }
+  });
+  useEffect(() => { try { localStorage.setItem("nomadaai_theme", themePref); } catch { /* ignore */ } }, [themePref]);
   const [theme, setTheme] = useState<"dark" | "light">(() =>
     typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches
       ? "light" : "dark"
@@ -375,8 +378,14 @@ export default function App() {
   // init map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    // Estilo inicial con la base correcta según el tema → evita el flash de teselas claras al cargar.
+    const initStyle = JSON.parse(JSON.stringify(osmStyle));
+    for (const l of initStyle.layers) {
+      if (l.id === "light") l.layout = { visibility: theme === "light" ? "visible" : "none" };
+      if (l.id === "dark") l.layout = { visibility: theme === "dark" ? "visible" : "none" };
+    }
     const map = new maplibregl.Map({
-      container: containerRef.current, style: osmStyle, center: TUMACO_CENTER, zoom: TUMACO_ZOOM,
+      container: containerRef.current, style: initStyle, center: TUMACO_CENTER, zoom: TUMACO_ZOOM,
     });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl(), "bottom-right");
@@ -395,11 +404,11 @@ export default function App() {
       map.addLayer({
         id: "risk-fill", type: "fill", source: "risk",
         paint: {
-          // Rampa calmada: la mayoría de la ciudad queda tenue/verde y solo los HOTSPOTS resaltan.
+          // Rampa secuencial verde→amarillo→naranja→rojo (percentil): distingue bien 20% de 60% de 90%.
           "fill-color": ["interpolate", ["linear"], ["get", "risk_norm"],
-            0, "#16a34a", 0.7, "#22c55e", 0.85, "#f59e0b", 0.93, "#f97316", 1, "#ef4444"],
+            0, "#22c55e", 0.25, "#a3e635", 0.45, "#facc15", 0.6, "#f59e0b", 0.78, "#f97316", 0.9, "#ef4444", 1, "#b91c1c"],
           "fill-opacity": ["interpolate", ["linear"], ["get", "risk_norm"],
-            0, 0.05, 0.7, 0.10, 0.85, 0.32, 1, 0.6],
+            0, 0.14, 0.5, 0.34, 0.9, 0.52, 1, 0.66],
         },
       } as never);
       map.addLayer({
@@ -803,11 +812,12 @@ export default function App() {
         <p className="subtitle">Navegación consciente del riesgo · <select className="city-sel" value={city} onChange={(e) => changeCity(e.target.value)} disabled={running}>
           {Object.entries(CITIES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select></p>
-        {city !== "tumaco" && (
-          <div className="status" style={{ marginTop: 8 }}>Mapa de riesgo de <b>{CITIES[city].label}</b> — evidencia de replicabilidad. La simulación de viajes está disponible en Tumaco.</div>
+        {city === "tumaco" ? (
+          <p className="panel-lead">Predice a dónde vas y te avisa de las zonas de riesgo <b>antes</b> de llegar,
+            proponiendo la ruta que menos te expone. Aquí lo pruebas sobre Tumaco.</p>
+        ) : (
+          <div className="status" style={{ marginTop: 8 }}>Mapa de riesgo de <b>{CITIES[city].label}</b> — evidencia de replicabilidad del marco. La simulación de viajes está disponible en Tumaco.</div>
         )}
-        <p className="panel-lead">Predice a dónde vas y te avisa de las zonas de riesgo <b>antes</b> de llegar,
-          proponiendo la ruta que menos te expone. Aquí lo pruebas sobre Tumaco.</p>
 
         {health && (
           <>

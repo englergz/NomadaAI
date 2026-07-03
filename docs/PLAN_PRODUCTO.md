@@ -99,6 +99,20 @@ es opcional y cambiable. Tipos con datos en el demo: moto, carro, bus, camión (
   iOS**, Google Maps en Android, MapLibre en web — detrás de una interfaz común. Notificaciones push,
   ubicación en segundo plano y permisos = APIs nativas de Expo.
 
+## B.9 Panel de administración (config total) — visión de producto
+Un **panel web de admin** para administrar TODO sin tocar código (tiene sentido y es la evolución natural):
+- **Ciudades/regiones:** selectores reales del mundo (país → departamento → municipio, desde DANE/GADM);
+  alta de una ciudad = elegir el municipio y correr el pipeline (`rebuild_risk_city.py`) desde la UI.
+- **Pesos del riesgo por ciudad** (densidad, periferia, policía, socioec., iluminación…) editables con
+  vista previa del mapa. Base para **calibración por ciudad** (y GWR cuando haya datos).
+- **Ingesta de trayectorias:** subir/conectar datos de movilidad (GPS real o SUMO) por ciudad →
+  reentrenar el modelo de predicción; hoy Tumaco usa SUMO, el panel lo generaliza.
+- **Entrenamientos:** lanzar/monitorear reentrenos; ver totales (trayectorias, train, test) por ciudad.
+- **BI de uso:** cuántos viajes vienen del **simulador** vs. de un **móvil en movimiento** (real).
+  → añadir columna `source` (`sim` | `mobile`) a `sim_effectiveness` (hoy ya guarda `mode`, `session`).
+- **Moderación** de reportes ciudadanos.
+> Es un frente grande (roadmap), pero encaja: convierte el prototipo en una **plataforma administrable**.
+
 ## Presentación para la sustentación (objetivo: completa, contundente, fenomenal)
 Guion propuesto (con las cifras y figuras ya listas):
 1. **Problema** (Tumaco, violencia/inseguridad = problema #1, CEDRE) → figura de contexto.
