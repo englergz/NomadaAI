@@ -60,6 +60,20 @@ funciona en el extremo de escasez y escala hacia contextos con más datos**. Afi
 cualquier parte" sin re-calibrar sería sobre-vender; afirmar "el marco es transferible y se adapta"
 es exacto.
 
+### Evidencia de replicabilidad: Cali (2ª ciudad)
+Se replicó el pipeline de riesgo a **Cali** (`rebuild_risk_city.py`, sin trayectorias — la malla se
+construye desde las manzanas DANE): **15 030 manzanas → 4 268 celdas, 1,77 M hab, 18 estaciones de
+policía**. Figura `img/replica_cali_vs_tumaco.png`. Hallazgo clave que **valida la adaptabilidad**:
+
+- **Tumaco es homogéneo** (99% estrato 1) → el factor socioeconómico **no discrimina**.
+- **Cali es heterogéneo** (estratos 1-6 repartidos: 22%/24%/26%/7%/6%/2% de manzanas) → el factor
+  socioeconómico **sí discrimina** (corr índice-vulnerabilidad = **0,59**), contribuyendo tanto como
+  la densidad (0,59). El mismo marco, **sin cambiar código**, activa un factor que en Tumaco quedaba
+  inerte, solo re-calibrando pesos.
+
+Esto **demuestra** (no solo afirma) las dos mitades del argumento: el marco **sobrevive a la escasez**
+(Tumaco) y **aprovecha la abundancia** (Cali). Es el "peso de resultados" para la defensa.
+
 ## 5. ¿Estamos documentando todo? (índice)
 
 Sí. Trazabilidad de los hallazgos:

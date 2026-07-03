@@ -77,6 +77,34 @@ sin afirmar una curva validada. Piso nocturno ya aplicado (la violencia no se an
 
 ---
 
+## B.7 Multi-ciudad en la UI (selector + animación)
+- El rótulo "Tumaco" pasa a ser un **selector de ciudad** (Tumaco, Cali, …). Al cambiar: `map.flyTo`
+  hacia la nueva ciudad + recarga de su capa de riesgo (`/risk/zones?city=…`). Cada ciudad tiene su
+  `<city>_riesgo_horario.csv` (ya generado para Cali). El backend elige el archivo por `city`.
+- Onboarding de ciudad = correr `rebuild_risk_city.py --city X --mpio "X" --bbox …` (DANE+OSM). Sin código.
+
+## B.8 Arquitectura escritorio vs. móvil (decisión de implementación)
+- **La vista actual (panel + simulador) es de ESCRITORIO** (herramienta de análisis/demo/tesis).
+- **Desde el móvil (navegador)** debe cargar la **app de usuario** (mapa + navegación segura + alertas),
+  no el panel de análisis. Detección por viewport/`user-agent`; **mismo dominio**, distinta vista.
+- **App nativa Android/iOS y web = MISMO código** (Expo / React Native + React Native Web): una sola
+  base para móvil y web de usuario; el panel de escritorio queda como vista aparte (web).
+- **Capas nativas por SO:** el mapa puede usar el nativo de cada plataforma — **Apple Maps (MapKit) en
+  iOS**, Google Maps en Android, MapLibre en web — detrás de una interfaz común. Notificaciones push,
+  ubicación en segundo plano y permisos = APIs nativas de Expo.
+
+## Presentación para la sustentación (objetivo: completa, contundente, fenomenal)
+Guion propuesto (con las cifras y figuras ya listas):
+1. **Problema** (Tumaco, violencia/inseguridad = problema #1, CEDRE) → figura de contexto.
+2. **Objetivos** (textual del anteproyecto).
+3. **Método** (predicción por recuperación; riesgo RTM multi-factor citado; ruteo consciente del riesgo).
+4. **Resultados con IC**: OE1 90% [85–94]; OE3 rutas+POIs; OE4 −7,0% [6,4–7,6]; alerta 88,7%.
+5. **El giro honesto**: el mapa era de tráfico → reconstrucción con DANE; `img/riesgo_antes_despues.png`.
+6. **Replicabilidad demostrada**: Tumaco (escasez) → Cali (abundancia); `img/replica_cali_vs_tumaco.png`.
+7. **Autocrítica** (las 10 grietas) → madurez investigativa.
+8. **Producto y roadmap** (app, reporte ciudadano, multi-ciudad).
+9. **Cierre**: "marco replicable que funciona en el extremo de la escasez y escala hacia la abundancia".
+
 ## Roadmap por fases
 1. **Modelo v2 (corto):** añadir **iluminación** (OSM) + POIs de riesgo + distancia a policía; recalibrar.
    Conseguir la curva temporal de Forensis o declararla escenario.
