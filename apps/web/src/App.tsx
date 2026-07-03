@@ -1129,6 +1129,11 @@ function HelpPanel({ onClose }: { onClose: () => void }) {
           <li><b>¿Esto es la app final?</b> Es la versión web de demostración. La app se llevará a
             <b>Android e iOS</b> reutilizando el mismo motor (predicción + riesgo + rutas seguras).</li>
         </ul>
+        <p className="help-lead" style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+          <b>Aviso.</b> El riesgo es un <b>índice de referencia relativo</b> (compara zonas entre sí),
+          <b> no una garantía de seguridad</b>. "Menor exposición" no significa "seguro". Usa siempre tu
+          criterio y las fuentes oficiales.
+        </p>
       </div>
     </div>
   );
