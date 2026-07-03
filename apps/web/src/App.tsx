@@ -17,8 +17,9 @@ const TIME_SCALES = [
   { v: 30, label: "×30" }, { v: 60, label: "×60" }, { v: 120, label: "×120" },
 ];
 const DRAW_VEHICLES = [
-  { key: "", label: "Automático" }, { key: "mot", label: "🏍️ Moto" },
-  { key: "car", label: "🚗 Carro" }, { key: "bus", label: "🚌 Bus" },
+  { key: "", label: "Automático (detectar)" }, { key: "mot", label: "Motocicleta" },
+  { key: "car", label: "Carro" }, { key: "taxi", label: "Taxi" },
+  { key: "bus", label: "Bus" }, { key: "truck", label: "Camión" },
 ];
 // Velocidad por tipo (m/s) → el tiempo de recorrido depende del vehículo.
 const SPEED_BY_TYPE: Record<string, number> = { mot: 10, car: 8.3, bus: 6.5, truck: 5.5, taxi: 8.3 };
@@ -74,6 +75,27 @@ const emptyHist = (): HistLocal => ({
   prot: { n: 0, redSum: 0 },
 });
 
+// Iconos SVG monocromos (elegantes, sin emojis). Heredan el color con currentColor.
+function Icon({ name }: { name: string }) {
+  const p: Record<string, string> = {
+    satellite: "M4 13a8 8 0 0 1 8 8M4 17a4 4 0 0 1 4 4M5 20a1 1 0 1 0 .001 0M14.5 3.5l6 6M9 12l3-3M12 15l3-3M8 8.5 15.5 16",
+    follow: "M12 3v3M12 18v3M3 12h3M18 12h3M12 12h.01",
+    risk: "M12 3 2 20h20L12 3zM12 10v4M12 17h.01",
+    places: "M12 21s7-6.4 7-11a7 7 0 1 0-14 0c0 4.6 7 11 7 11zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z",
+    routes: "M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 17h6a3 3 0 0 0 3-3V9",
+    help: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .9-1 1.7M12 17h.01",
+    menu: "M4 7h16M4 12h16M4 17h16",
+  };
+  const circle = name === "follow";
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {circle && <circle cx="12" cy="12" r="7" />}
+      <path d={p[name] || ""} />
+    </svg>
+  );
+}
+
 // Login opcional: activo solo si hay clave publicable de Clerk. Si no, todo es modo invitado.
 const CLERK_ENABLED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -121,6 +143,7 @@ export default function App() {
   const lastPredRef = useRef(0);
   const lastCellRef = useRef("");
   const alertedCellsRef = useRef<Set<string>>(new Set()); // zonas ya avisadas (una vez por viaje)
+  const lastAlertPosRef = useRef<[number, number] | null>(null); // radio de silencio entre alertas
   const runningRef = useRef(false);
   const typeRef = useRef("car");
   const excludeRef = useRef<string | null>(null);
@@ -584,7 +607,7 @@ export default function App() {
     setPredInfo("Detectando movimiento…");
     tripAggRef.current = emptyTripAgg();
     tripMetaRef.current = { mode: modeRef.current, vehicle: typeRef.current, hour };
-    lastPredRef.current = 0; lastCellRef.current = ""; distRef.current = 0; alertedCellsRef.current.clear();
+    lastPredRef.current = 0; lastCellRef.current = ""; distRef.current = 0; alertedCellsRef.current.clear(); lastAlertPosRef.current = null;
     clockRef.current = hour * 3600; setClock(clockRef.current);
 
     const cum = [0];
@@ -672,8 +695,10 @@ export default function App() {
           pushLog(`← riesgo: zona ${a.cell_id} · ${(a.risk_norm * 100).toFixed(0)}% · d=${a.distance_m.toFixed(0)} m · llegada ${String(a.hour).padStart(2, "0")}:${String(a.arrival_min ?? 0).padStart(2, "0")} · ${a.is_high ? "ALTO" : "ok"}`);
           if (a.is_high) {
             setPoint(map, "danger", [a.lon, a.lat]);
-            if (a.cell_id && !alertedCellsRef.current.has(a.cell_id)) {
+            const near = lastAlertPosRef.current && haversine([a.lon, a.lat], lastAlertPosRef.current) < 250;
+            if (a.cell_id && !alertedCellsRef.current.has(a.cell_id) && !near) {
               alertedCellsRef.current.add(a.cell_id);  // esta zona ya avisó: no repetir
+              lastAlertPosRef.current = [a.lon, a.lat]; // radio de silencio de 250 m
               lastCellRef.current = a.cell_id;
               tripAggRef.current.alerts += 1;
               const id = ++notifIdRef.current;
@@ -721,7 +746,7 @@ export default function App() {
       {/* Barra superior: menú de capas/vista agrupado + ayuda + sesión */}
       <div className="topbar">
         <div className="menu-wrap">
-          <button className={menuOpen ? "on" : ""} onClick={() => setMenuOpen((v) => !v)}>☰ Menú</button>
+          <button className={`btn-ic ${menuOpen ? "on" : ""}`} onClick={() => setMenuOpen((v) => !v)}><Icon name="menu" /> Menú</button>
           {menuOpen && (
             <div className="menu" onMouseLeave={() => setMenuOpen(false)}>
               <div className="menu-sec">Tema</div>
@@ -733,23 +758,23 @@ export default function App() {
                 ))}
               </div>
               <div className="menu-sec">Mapa</div>
-              {([["🛰️", "Satelital", sat, () => toggleSat(!sat)],
-                 ["🎯", "Seguir vehículo", follow, () => setFollow(!follow)]] as const).map(([ic, lbl, on, fn], i) => (
+              {([["satellite", "Satelital", sat, () => toggleSat(!sat)],
+                 ["follow", "Seguir vehículo", follow, () => setFollow(!follow)]] as const).map(([ic, lbl, on, fn], i) => (
                 <button key={i} className="menu-row" onClick={fn as () => void}>
-                  <span className="menu-lbl">{ic} {lbl}</span><span className={`sw ${on ? "on" : ""}`}>{on ? "ON" : "OFF"}</span>
+                  <span className="menu-lbl"><Icon name={ic} /> {lbl}</span><span className={`sw ${on ? "on" : ""}`}>{on ? "ON" : "OFF"}</span>
                 </button>
               ))}
               <div className="menu-sec">Capas</div>
-              {([["🟥", "Riesgo", riskOn, () => toggleRisk(!riskOn)],
-                 ["📍", "Lugares", poisOn, () => togglePois(!poisOn)],
-                 ["🛣️", "Trayectorias", corridorsOn, () => toggleCorridors(!corridorsOn)]] as const).map(([ic, lbl, on, fn], i) => (
+              {([["risk", "Riesgo", riskOn, () => toggleRisk(!riskOn)],
+                 ["places", "Lugares", poisOn, () => togglePois(!poisOn)],
+                 ["routes", "Trayectorias", corridorsOn, () => toggleCorridors(!corridorsOn)]] as const).map(([ic, lbl, on, fn], i) => (
                 <button key={i} className="menu-row" onClick={fn as () => void}>
-                  <span className="menu-lbl">{ic} {lbl}</span><span className={`sw ${on ? "on" : ""}`}>{on ? "ON" : "OFF"}</span>
+                  <span className="menu-lbl"><Icon name={ic} /> {lbl}</span><span className={`sw ${on ? "on" : ""}`}>{on ? "ON" : "OFF"}</span>
                 </button>
               ))}
               <div className="menu-div" />
               <button className="menu-row" onClick={() => { setShowHelp(true); setMenuOpen(false); }}>
-                <span className="menu-lbl">❓ ¿Cómo funciona?</span>
+                <span className="menu-lbl"><Icon name="help" /> ¿Cómo funciona?</span>
               </button>
             </div>
           )}
@@ -797,6 +822,7 @@ export default function App() {
             <select className="select" value={drawVeh} onChange={(e) => setDrawVeh(e.target.value)} disabled={running}>
               {DRAW_VEHICLES.map((v) => <option key={v.key} value={v.key}>{v.label}</option>)}
             </select>
+            <p className="counts-cap">Opcional, pero indicar tu vehículo mejora la precisión de la predicción (calles según el tipo). Se puede cambiar en cada viaje.</p>
             <label className="lbl">Prioridad de seguridad: <b>{riskWeight}%</b> {riskWeight === 0 ? "(ruta más corta)" : "(evita riesgo)"}</label>
             <input className="range" type="range" min={0} max={100} step={10} value={riskWeight} onChange={(e) => setRiskWeight(Number(e.target.value))} disabled={running} />
           </>
