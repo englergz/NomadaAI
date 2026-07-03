@@ -18,8 +18,7 @@ const TIME_SCALES = [
 ];
 const DRAW_VEHICLES = [
   { key: "", label: "Automático (detectar)" }, { key: "mot", label: "Motocicleta" },
-  { key: "car", label: "Carro" }, { key: "taxi", label: "Taxi" },
-  { key: "bus", label: "Bus" }, { key: "truck", label: "Camión" },
+  { key: "car", label: "Carro" }, { key: "bus", label: "Bus" }, { key: "truck", label: "Camión" },
 ];
 // Velocidad por tipo (m/s) → el tiempo de recorrido depende del vehículo.
 const SPEED_BY_TYPE: Record<string, number> = { mot: 10, car: 8.3, bus: 6.5, truck: 5.5, taxi: 8.3 };
