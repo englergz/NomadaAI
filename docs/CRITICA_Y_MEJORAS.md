@@ -17,10 +17,10 @@
 3. **La hipótesis "periferia = más riesgo" no está validada** y podría estar invertida. Pasamos de
    "densidad" a "periferia" por teoría + intuición local, pero **ambas son hipótesis sin probar**.
    Elegimos entre teorías rivales sin dato que arbitre.
-4. **El 90% de OE1 está probablemente inflado.** Es sobre trayectorias **SUMO simuladas**, mucho más
-   regulares y repetitivas que GPS real. Un k-vecinos sobre un corpus pequeño y repetitivo
-   "memoriza" rutas. En calle real, con ruido GPS y rutas nuevas, **bajaría**. No hay validación con
-   datos reales.
+4. **El 90% de OE1 está probablemente inflado** (sobre SUMO limpio). ✅ **MEDIDO:** prueba de robustez
+   con ruido GPS gaussiano (`/trajectories/evaluate?noise_m=σ`): 90,0% (0 m) → **81,9% (5 m)** →
+   **71,2% (10 m)** → 60,6% (20 m). Es decir, el rendimiento esperado en calle es **~72–82%**, no 90%
+   — honesto y aún sólido. Deja de ser una debilidad especulativa: es un **resultado cuantificado**.
 5. **Casi todo deriva de un solo dataset sintético (SUMO).** La predicción, el grafo de rutas y el
    factor "actividad" del riesgo salen de las mismas trayectorias. Hay **circularidad**: se evalúa el
    sistema con el mundo que el propio dataset define.
@@ -29,12 +29,18 @@
    puede tener otra dinámica horaria que el homicidio nacional (riñas, etc.).
 7. **OE4 (−6,8%) es un proxy de un proxy.** Mide reducción de exposición contra una superficie de
    riesgo **no validada**. Es internamente consistente, no externamente válido.
-8. **Sin estadística inferencial.** Todo son estimaciones puntuales: no hay **intervalos de confianza**
-   ni **pruebas de significancia** en el 90%, el 6,8% ni las correlaciones.
-9. **Una sola ciudad, sin validación externa.** La "replicabilidad" se **afirma**, no se demuestra:
-   nunca se corrió en una segunda ciudad.
+8. ~~Sin estadística inferencial.~~ ✅ **RESUELTO:** intervalos de confianza 95% por bootstrap en OE1
+   (90% [85–94]) y OE4 (7,0% [6,4–7,6]).
+9. ~~Una sola ciudad.~~ ✅ **MITIGADO:** replicado a **Cali** (mapa de riesgo); allí el factor
+   socioeconómico discrimina (heterogéneo) y en Tumaco no (homogéneo) → demuestra la adaptabilidad.
 10. **Datos desactualizados/limitados.** Censo DANE 2018 (7 años); homicidios sin hora ni coordenadas;
     OSM sin iluminación. La base empírica intra-urbana es débil.
+11. **El tiempo solo cambia la INTENSIDAD, no los lugares.** `riesgo = percentil_espacial × hora × día`:
+    la hora/día escalan el riesgo de forma **uniforme**; el *ranking espacial* es constante. En la
+    realidad los hotspots **se desplazan** por hora (zona de bares peligrosa de noche, no a mediodía).
+    Capturar esa **interacción espacio-temporal** requiere dato espacio-temporal de delito (DIJIN con
+    hora). Mejora futura defendible: modular la **periferia/aislamiento al alza de noche** (menos
+    vigilancia) — declarado, no implementado sin dato.
 
 ## 2. Críticas como producto comercial
 
@@ -44,7 +50,10 @@
    de ruta o pague? Dudoso *product-market fit* con ese margen.
 3. **Riesgo ético/legal serio.** Pintar una zona de "verde/seguro" cuando no lo es puede crear **falsa
    seguridad** (daño real, responsabilidad legal). Etiquetar el riesgo por barrio puede **estigmatizar**
-   comunidades o ser usado en su contra. En una ciudad en conflicto, es delicado.
+   comunidades o ser usado en su contra. En una ciudad en conflicto, es delicado. 🟡 **MITIGABLE ya:**
+   (a) **descargo** visible ("índice de referencia relativo, no garantía de seguridad"); (b) hablar de
+   **"menor exposición relativa"**, nunca de "seguro"; (c) sección de **ética** en la tesis. — descargo
+   añadido en la app (Ayuda).
 4. **El dato es estático** (censo 2018, homicidios históricos). Un producto necesita **actualización
    viva** → depende del bucle de **reporte ciudadano**, que aún no existe.
 5. **No hay foso competitivo (moat).** RTM y k-vecinos son estándar. ¿Qué es defendible frente a un
