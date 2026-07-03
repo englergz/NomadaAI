@@ -15,6 +15,7 @@ from app.ml.router import RouteGraph
 predictor: DestinationPredictor | None = None
 corridors: CorridorStore | None = None
 risk: RiskStore | None = None
+risk_cities: dict[str, RiskStore] = {}  # mapa de riesgo por ciudad (tumaco, cali, …)
 route_graph: RouteGraph | None = None
 
 

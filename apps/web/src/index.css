@@ -282,3 +282,7 @@ h2.step { font-size: 13px; margin: 18px 0 8px; color: var(--text); text-transfor
 .menu-div { height: 1px; background: var(--border); margin: 8px 6px; }
 /* Botones de la barra superior consistentes entre sí (Menú / Iniciar sesión) */
 .topbar button { height: 38px; display: inline-flex; align-items: center; }
+
+/* Selector de ciudad en el subtítulo */
+.city-sel { background: transparent; border: none; border-bottom: 1px dashed var(--accent); color: var(--accent); font-weight: 700; font-size: 12px; padding: 0 2px; cursor: pointer; font-family: inherit; }
+.city-sel:disabled { opacity: 0.6; cursor: default; }
