@@ -77,6 +77,12 @@ sin afirmar una curva validada. Piso nocturno ya aplicado (la violencia no se an
 
 ---
 
+## B.6.1 Vehículo del usuario (registro)
+En el registro/perfil, el usuario puede indicar su **vehículo más usado** (opcional). Se guarda como
+**predeterminado** y se puede **cambiar en cada viaje**. Saber el vehículo mejora la predicción (rutas
+según el tipo: moto/carro/bus/camión). UX: un **banner no intrusivo** motiva a indicarlo, aclarando que
+es opcional y cambiable. Tipos con datos en el demo: moto, carro, bus, camión (taxi ≈ carro).
+
 ## B.7 Multi-ciudad en la UI (selector + animación)
 - El rótulo "Tumaco" pasa a ser un **selector de ciudad** (Tumaco, Cali, …). Al cambiar: `map.flyTo`
   hacia la nueva ciudad + recarga de su capa de riesgo (`/risk/zones?city=…`). Cada ciudad tiene su
