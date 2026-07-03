@@ -12,6 +12,12 @@ import { osmStyle, TUMACO_CENTER, TUMACO_ZOOM } from "./lib/mapStyle";
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+// Ciudades con mapa de riesgo. La SIMULACIÓN de viajes es de Tumaco (sus trayectorias); las demás
+// ciudades muestran el mapa de riesgo replicado (evidencia de replicabilidad).
+const CITIES: Record<string, { label: string; center: [number, number]; zoom: number }> = {
+  tumaco: { label: "Tumaco", center: [-78.785, 1.806], zoom: 13 },
+  cali: { label: "Cali", center: [-76.53, 3.42], zoom: 12 },
+};
 const TIME_SCALES = [
   { v: 1, label: "Tiempo real (×1)" }, { v: 5, label: "×5" }, { v: 15, label: "×15" },
   { v: 30, label: "×30" }, { v: 60, label: "×60" }, { v: 120, label: "×120" },
@@ -164,6 +170,8 @@ export default function App() {
   const [hour, setHour] = useState(20);
   const [day, setDay] = useState<number>(() => (new Date().getDay() + 6) % 7); // 0=lun … 6=dom
   const dayRef = useRef((new Date().getDay() + 6) % 7);
+  const [city, setCity] = useState("tumaco");
+  const cityRef = useRef("tumaco");
   const [threshold, setThreshold] = useState(70);
   const [riskWeight, setRiskWeight] = useState(50); // prioridad de seguridad (0-100) → λ
   const [safeMsg, setSafeMsg] = useState<string>("");
@@ -486,11 +494,18 @@ export default function App() {
     } catch (e) { console.error(e); }
   }
 
-  async function loadRisk(map: maplibregl.Map, h: number, d: number = dayRef.current) {
+  async function loadRisk(map: maplibregl.Map, h: number, d: number = dayRef.current, c: string = cityRef.current) {
     try {
-      const data = await fetch(`${base()}/risk/zones?hour=${h}&day=${d}`).then((r) => r.json());
+      const data = await fetch(`${base()}/risk/zones?hour=${h}&day=${d}&city=${c}`).then((r) => r.json());
       (map.getSource("risk") as maplibregl.GeoJSONSource | undefined)?.setData(data);
     } catch (e) { console.error("risk:", e); }
+  }
+  // Cambia de ciudad: vuela el mapa y recarga su capa de riesgo.
+  function changeCity(next: string) {
+    setCity(next); cityRef.current = next;
+    const map = mapRef.current; const conf = CITIES[next];
+    if (map && conf) { map.flyTo({ center: conf.center, zoom: conf.zoom, duration: 2200, essential: true }); loadRisk(map, hour, day, next); }
+    if (next !== "tumaco") clearAll();  // la simulación es de Tumaco
   }
 
   async function fetchEval() {
@@ -785,7 +800,12 @@ export default function App() {
 
       <div className="panel">
         <h1>Nómada.AI</h1>
-        <p className="subtitle">Navegación consciente del riesgo · Tumaco</p>
+        <p className="subtitle">Navegación consciente del riesgo · <select className="city-sel" value={city} onChange={(e) => changeCity(e.target.value)} disabled={running}>
+          {Object.entries(CITIES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select></p>
+        {city !== "tumaco" && (
+          <div className="status" style={{ marginTop: 8 }}>Mapa de riesgo de <b>{CITIES[city].label}</b> — evidencia de replicabilidad. La simulación de viajes está disponible en Tumaco.</div>
+        )}
         <p className="panel-lead">Predice a dónde vas y te avisa de las zonas de riesgo <b>antes</b> de llegar,
           proponiendo la ruta que menos te expone. Aquí lo pruebas sobre Tumaco.</p>
 
@@ -850,8 +870,8 @@ export default function App() {
         ) : (
           <div className="row">
             {mode === "test"
-              ? <button onClick={startTest} disabled={!tripId || !!busy}>{busy ? "⏳ " + busy : "▶ Iniciar simulación"}</button>
-              : <button onClick={startDraw} disabled={!!busy}>{busy ? "⏳ " + busy : "▶ Generar ruta y simular"}</button>}
+              ? <button onClick={startTest} disabled={!tripId || !!busy || city !== "tumaco"}>{busy ? "⏳ " + busy : "▶ Iniciar simulación"}</button>
+              : <button onClick={startDraw} disabled={!!busy || city !== "tumaco"}>{busy ? "⏳ " + busy : "▶ Generar ruta y simular"}</button>}
             {finished && <button className="secondary" onClick={clearAll} disabled={!!busy}>Terminar</button>}
           </div>
         )}

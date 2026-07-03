@@ -62,7 +62,14 @@ async def lifespan(app: FastAPI):
         risk_csv = s.research_path / "analysis_v2" / "tumaco_riesgo_horario.csv"
     if risk_csv.exists():
         state.risk = RiskStore(risk_csv)
-        logger.info("Riesgo listo: %d zonas × 24h", state.risk.n_zones)
+        state.risk_cities["tumaco"] = state.risk
+        logger.info("Riesgo Tumaco listo: %d zonas × 24h", state.risk.n_zones)
+        # Otras ciudades replicadas (mapa de riesgo, evidencia de replicabilidad).
+        for city in ("cali",):
+            cpath = risk_csv.parent / f"{city}_riesgo_horario.csv"
+            if cpath.exists():
+                state.risk_cities[city] = RiskStore(cpath)
+                logger.info("Riesgo %s listo: %d zonas", city, state.risk_cities[city].n_zones)
     else:
         logger.warning("No existe %s — capa de riesgo deshabilitada", risk_csv)
 
