@@ -27,11 +27,11 @@ export function levelFor(riskNorm: number): AlertLevel {
 export const ALERT_MESSAGES: Record<Exclude<AlertLevel, 'despejado'>, { title: string; body: string }> = {
   precaucion: {
     title: 'Precaución en este tramo',
-    body: 'Mantén el ritmo, evita detenerte y guarda el teléfono mientras avanzas.',
+    body: 'Mantén el ritmo y evita detenerte; lleva el teléfono en soporte o guía por voz, no en la mano.',
   },
   atencion: {
     title: 'Atención en este tramo',
-    body: 'Sigue la ruta sin paradas, ventanas/casco arriba y avisa a alguien tu recorrido.',
+    body: 'Sigue la ruta sin paradas, ventanas arriba o casco puesto, y comparte tu recorrido con alguien.',
   },
 };
 

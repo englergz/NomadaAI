@@ -6,7 +6,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { baseStyle, CITIES, DEFAULT_CITY, RISK_FILL_COLOR, RISK_LINE_COLOR } from '@/constants/map';
-import type { RiskMapProps } from './risk-map.types';
+import { ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
 
 export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination }: RiskMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -47,7 +47,14 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
       map.addLayer({
         id: 'route-safe', type: 'line', source: 'route-safe',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#2f81f7', 'line-width': 5 },
+        paint: {
+          // color POR TRAMO según nivel de riesgo (azul → ámbar → coral)
+          'line-color': ['match', ['get', 'level'],
+            'precaucion', ROUTE_LEVEL_COLORS.precaucion,
+            'atencion', ROUTE_LEVEL_COLORS.atencion,
+            ROUTE_LEVEL_COLORS.despejado] as never,
+          'line-width': 5,
+        },
       });
       loadedRef.current = true;
     });
@@ -91,7 +98,7 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
         ({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} }) as never;
       const empty = { type: 'FeatureCollection', features: [] } as never;
       (map.getSource('route-safe') as maplibregl.GeoJSONSource | undefined)?.setData(
-        routes && routes.safe.length ? line(routes.safe as [number, number][]) : empty,
+        routes && routes.safe.length ? (segmentsFeatureCollection(routes) as never) : empty,
       );
       (map.getSource('route-direct') as maplibregl.GeoJSONSource | undefined)?.setData(
         routes && routes.direct.length ? line(routes.direct as [number, number][]) : empty,

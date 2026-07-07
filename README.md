@@ -1,5 +1,5 @@
 ---
-title: NómadaAI
+title: Nómada.AI
 emoji: 🗺️
 colorFrom: blue
 colorTo: indigo
@@ -11,7 +11,7 @@ license: other
 
 <p align="center"><img src="apps/web/public/icon-192.png" alt="Nómada.AI" width="96" /></p>
 
-# NómadaAI
+# Nómada.AI
 
 > **Licencia:** [PolyForm Noncommercial 1.0.0](LICENSE) — código visible y de uso
 > académico/no comercial; cualquier uso comercial requiere permiso del autor.

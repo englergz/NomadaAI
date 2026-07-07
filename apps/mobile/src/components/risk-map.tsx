@@ -6,7 +6,7 @@ import { StyleSheet, Text, View, useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { baseStyle, CITIES, DEFAULT_CITY, RISK_FILL_COLOR, RISK_LINE_COLOR } from '@/constants/map';
-import type { RiskMapProps } from './risk-map.types';
+import { ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
 
 // Carga perezosa: si el módulo nativo no está (Expo Go), no reventamos el bundle.
 let ML: typeof import('@maplibre/maplibre-react-native') | null = null;
@@ -67,15 +67,18 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
         </GeoJSONSource>
       )}
       {routes && routes.safe.length > 1 && (
-        <GeoJSONSource
-          id="route-safe"
-          data={{ type: 'Feature', geometry: { type: 'LineString', coordinates: routes.safe }, properties: {} } as never}
-        >
+        <GeoJSONSource id="route-safe" data={segmentsFeatureCollection(routes) as never}>
           <Layer
             id="route-safe"
             type="line"
             layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-            paint={{ 'line-color': '#2f81f7', 'line-width': 5 }}
+            paint={{
+              'line-color': ['match', ['get', 'level'],
+                'precaucion', ROUTE_LEVEL_COLORS.precaucion,
+                'atencion', ROUTE_LEVEL_COLORS.atencion,
+                ROUTE_LEVEL_COLORS.despejado] as never,
+              'line-width': 5,
+            }}
           />
         </GeoJSONSource>
       )}

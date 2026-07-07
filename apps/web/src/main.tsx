@@ -55,7 +55,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           localization={esES}
           afterSignOutUrl="/"
           appearance={{
-            layout: { logoImageUrl: "/icon-192.png", logoPlacement: "inside" },
+            layout: { logoImageUrl: "/logo-rounded.png", logoPlacement: "inside" },
             variables: { colorPrimary: "#2f81f7", borderRadius: "12px" },
           }}
         >

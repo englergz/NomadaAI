@@ -18,7 +18,7 @@ import type { RouteLines } from '@/components/risk-map.types';
 import { CITIES, DEFAULT_CITY } from '@/constants/map';
 import { Colors } from '@/constants/theme';
 import { api } from '@/lib/api';
-import { ProximityTracker, zoneAt, type AlertLevel } from '@/lib/alerts';
+import { levelFor, ProximityTracker, zoneAt, type AlertLevel } from '@/lib/alerts';
 import { coverageCity, searchPlaces, type Place } from '@/lib/geocode';
 
 // Prioridad de seguridad → λ (risk_weight) del backend.
@@ -78,14 +78,27 @@ export default function MapScreen() {
     return () => clearTimeout(t);
   }, [query]);
 
+  // Timeout duro: en web el diálogo de geolocalización puede quedar sin respuesta
+  // y getCurrentPositionAsync no resuelve nunca — no podemos colgar el flujo por eso.
+  function withTimeout<T>(p: Promise<T>, ms: number, tag: string): Promise<T> {
+    return Promise.race([
+      p,
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`timeout:${tag}`)), ms)),
+    ]);
+  }
+
   async function locate(): Promise<[number, number] | null> {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await withTimeout(
+        Location.requestForegroundPermissionsAsync(), 20000, 'permiso',
+      );
       if (status !== 'granted') {
         setBanner({ text: 'Sin permiso de ubicación. Actívalo en Ajustes.', tone: 'warn' });
         return null;
       }
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const pos = await withTimeout(
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }), 10000, 'gps',
+      );
       const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
       setUserLoc(loc);
       // Cobertura: si está lejos de toda ciudad soportada, avisamos con honestidad.
@@ -110,19 +123,33 @@ export default function MapScreen() {
     setRouting(true);
     setBanner({ text: 'Generando ruta segura…', tone: 'info' });
     try {
-      // Origen: tu ubicación si está en cobertura; si no, el centro de la ciudad demo.
+      // Origen: tu ubicación si está en cobertura; si no (o si el GPS no responde
+      // a tiempo), el centro de la ciudad demo — el flujo nunca se queda colgado.
       let origin = userLoc && !outOfCoverage ? userLoc : null;
       if (!origin) {
-        const loc = await locate();
+        const loc = await locate().catch(() => null);
         origin = loc && coverageCity(loc as Coordinate) ? loc : CITIES[DEFAULT_CITY].center;
       }
-      const r: BuildRouteResponse = await api.buildRoute({
-        origin: origin as Coordinate,
-        dest: dest.coord,
-        hour: new Date().getHours(),
-        risk_weight: PRIORITIES[priority].w,
+      const r: BuildRouteResponse = await withTimeout(
+        api.buildRoute({
+          origin: origin as Coordinate,
+          dest: dest.coord,
+          hour: new Date().getHours(),
+          risk_weight: PRIORITIES[priority].w,
+        }),
+        45000, // el Space gratuito puede tardar en despertar
+        'ruta',
+      );
+      // Nivel por tramo (punto medio de cada segmento contra la malla de riesgo):
+      // así la línea muestra precaución/atención EN el tramo, no solo en el banner.
+      const risk = riskRef.current;
+      const safeLevels = r.coords.slice(0, -1).map((p, i) => {
+        const q = r.coords[i + 1];
+        const mid: Coordinate = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+        const hit = zoneAt(risk, mid);
+        return hit ? levelFor(hit.riskNorm) : 'despejado';
       });
-      setRoutes({ safe: r.coords, direct: r.direct_coords });
+      setRoutes({ safe: r.coords, direct: r.direct_coords, safeLevels });
       const red = r.comparison?.exposure_reduction_pct ?? 0;
       // EVITAR vs AVISAR: si el desvío no reduce exposición, no fingimos un desvío útil.
       if (red >= 2) {
