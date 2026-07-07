@@ -117,7 +117,9 @@ export default function MapScreen() {
     }
   }
 
-  async function goSafe() {
+  const lastOriginRef = useRef<[number, number] | null>(null);
+
+  async function goSafe(prioIdx: number = priority) {
     if (!dest || routing) return;
     Keyboard.dismiss();
     setRouting(true);
@@ -125,17 +127,19 @@ export default function MapScreen() {
     try {
       // Origen: tu ubicación si está en cobertura; si no (o si el GPS no responde
       // a tiempo), el centro de la ciudad demo — el flujo nunca se queda colgado.
-      let origin = userLoc && !outOfCoverage ? userLoc : null;
+      // Al recalcular (cambio de prioridad) se reutiliza el último origen.
+      let origin = (userLoc && !outOfCoverage ? userLoc : null) ?? lastOriginRef.current;
       if (!origin) {
         const loc = await locate().catch(() => null);
         origin = loc && coverageCity(loc as Coordinate) ? loc : CITIES[DEFAULT_CITY].center;
       }
+      lastOriginRef.current = origin;
       const r: BuildRouteResponse = await withTimeout(
         api.buildRoute({
           origin: origin as Coordinate,
           dest: dest.coord,
           hour: new Date().getHours(),
-          risk_weight: PRIORITIES[priority].w,
+          risk_weight: PRIORITIES[prioIdx].w,
         }),
         45000, // el Space gratuito puede tardar en despertar
         'ruta',
@@ -151,12 +155,15 @@ export default function MapScreen() {
       });
       setRoutes({ safe: r.coords, direct: r.direct_coords, safeLevels });
       const red = r.comparison?.exposure_reduction_pct ?? 0;
+      const km = (r.distance_m / 1000).toFixed(1);
+      const prio = PRIORITIES[prioIdx].label;
       // EVITAR vs AVISAR: si el desvío no reduce exposición, no fingimos un desvío útil.
+      // Siempre se muestran km y % para que se VEA el recálculo aunque el trazo coincida.
       if (red >= 2) {
-        setBanner({ text: `Ruta segura: −${red.toFixed(1)}% de exposición vs. la directa.`, tone: 'ok' });
+        setBanner({ text: `Ruta ${prio.toLowerCase()}: ${km} km · −${red.toFixed(1)}% de exposición vs. la directa.`, tone: 'ok' });
       } else {
         setBanner({
-          text: 'El tramo de riesgo es inevitable en este viaje: mantente atento durante el recorrido.',
+          text: `Sin alternativa más segura para este viaje (${km} km · −${red.toFixed(1)}%): el tramo de riesgo es inevitable, mantente atento.`,
           tone: 'warn',
         });
       }
@@ -323,7 +330,11 @@ export default function MapScreen() {
           {PRIORITIES.map((p, i) => (
             <Pressable
               key={p.label}
-              onPress={() => setPriority(i)}
+              onPress={() => {
+                setPriority(i);
+                // Con ruta en pantalla, cambiar la prioridad RECALCULA de inmediato.
+                if (routes && dest && !onTrip) goSafe(i);
+              }}
               style={[
                 styles.prio,
                 { borderColor: i === priority ? c.accent : c.border, backgroundColor: i === priority ? c.backgroundSelected : 'transparent' },
@@ -363,7 +374,7 @@ export default function MapScreen() {
           </Pressable>
         ) : (
           <Pressable
-            onPress={goSafe}
+            onPress={() => goSafe()}
             disabled={!dest || routing}
             style={({ pressed }) => [
               styles.cta,
