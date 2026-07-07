@@ -490,7 +490,11 @@ export default function App() {
 
     fetch(`${base()}/health`).then((r) => r.json()).then(setHealth).catch(console.error);
     api.tripsSample(40).then((r) => { setTrips(r.trips); if (r.trips[0]) setTripId(r.trips[0].id); }).catch(console.error);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); map.remove(); };
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      map.remove();
+      mapRef.current = null; // sin esto, el remount de StrictMode opera sobre un mapa destruido
+    };
   }, []);
 
   function toggleSat(next: boolean) {
@@ -508,6 +512,7 @@ export default function App() {
   }
 
   async function loadRisk(map: maplibregl.Map, h: number, d: number = dayRef.current, c: string = cityRef.current) {
+    if (!(map as unknown as { style?: unknown }).style) return; // mapa ya destruido (remount de StrictMode)
     try {
       const data = await fetch(`${base()}/risk/zones?hour=${h}&day=${d}&city=${c}`).then((r) => r.json());
       (map.getSource("risk") as maplibregl.GeoJSONSource | undefined)?.setData(data);
@@ -785,24 +790,30 @@ export default function App() {
                 ))}
               </div>
               <div className="menu-sec">Mapa</div>
-              {([["satellite", "Satelital", sat, () => toggleSat(!sat)],
-                 ["follow", "Seguir vehículo", follow, () => setFollow(!follow)]] as const).map(([ic, lbl, on, fn], i) => (
-                <button key={i} className="menu-row" onClick={fn as () => void}>
-                  <span className="menu-lbl"><Icon name={ic} /> {lbl}</span><span className={`sw ${on ? "on" : ""}`}>{on ? "ON" : "OFF"}</span>
-                </button>
-              ))}
+              <div className="menu-group">
+                {([["satellite", "Satelital", sat, () => toggleSat(!sat)],
+                   ["follow", "Seguir vehículo", follow, () => setFollow(!follow)]] as const).map(([ic, lbl, on, fn], i) => (
+                  <button key={i} className="menu-row" onClick={fn as () => void}>
+                    <span className="menu-lbl"><Icon name={ic} /> {lbl}</span><span className={`sw ${on ? "on" : ""}`}>{on ? "ON" : "OFF"}</span>
+                  </button>
+                ))}
+              </div>
               <div className="menu-sec">Capas</div>
-              {([["risk", "Riesgo", riskOn, () => toggleRisk(!riskOn)],
-                 ["places", "Lugares", poisOn, () => togglePois(!poisOn)],
-                 ["routes", "Trayectorias", corridorsOn, () => toggleCorridors(!corridorsOn)]] as const).map(([ic, lbl, on, fn], i) => (
-                <button key={i} className="menu-row" onClick={fn as () => void}>
-                  <span className="menu-lbl"><Icon name={ic} /> {lbl}</span><span className={`sw ${on ? "on" : ""}`}>{on ? "ON" : "OFF"}</span>
-                </button>
-              ))}
+              <div className="menu-group">
+                {([["risk", "Riesgo", riskOn, () => toggleRisk(!riskOn)],
+                   ["places", "Lugares", poisOn, () => togglePois(!poisOn)],
+                   ["routes", "Trayectorias", corridorsOn, () => toggleCorridors(!corridorsOn)]] as const).map(([ic, lbl, on, fn], i) => (
+                  <button key={i} className="menu-row" onClick={fn as () => void}>
+                    <span className="menu-lbl"><Icon name={ic} /> {lbl}</span><span className={`sw ${on ? "on" : ""}`}>{on ? "ON" : "OFF"}</span>
+                  </button>
+                ))}
+              </div>
               <div className="menu-div" />
-              <button className="menu-row" onClick={() => { setShowHelp(true); setMenuOpen(false); }}>
-                <span className="menu-lbl"><Icon name="help" /> ¿Cómo funciona?</span>
-              </button>
+              <div className="menu-group">
+                <button className="menu-row" onClick={() => { setShowHelp(true); setMenuOpen(false); }}>
+                  <span className="menu-lbl"><Icon name="help" /> ¿Cómo funciona?</span>
+                </button>
+              </div>
               <p className="menu-note">
                 Las alertas y la actividad se revisan y se usan para mejorar la IA de Nómada.AI. El núcleo
                 se alimenta de datos reales verificables y/o teóricos, pero es una IA y <b>puede cometer
@@ -824,7 +835,7 @@ export default function App() {
       )}
       <div className="panel" style={{ display: panelOpen ? undefined : "none" }}>
         <button className="panel-collapse" onClick={() => setPanelOpen(false)} title="Ocultar panel">«</button>
-        <h1>Nómada.AI</h1>
+        <h1 className="brand"><img src="/favicon.png" alt="" className="brand-logo" /> Nómada.AI</h1>
         <p className="subtitle">Navegación consciente del riesgo · <select className="city-sel" value={city} onChange={(e) => changeCity(e.target.value)} disabled={running}>
           {Object.entries(CITIES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select></p>
