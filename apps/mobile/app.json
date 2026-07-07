@@ -35,6 +35,13 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 120
         }
+      ],
+      "@maplibre/maplibre-react-native",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Nómada.AI usa tu ubicación para mostrarte en el mapa y guiarte por la ruta más segura."
+        }
       ]
     ],
     "experiments": {

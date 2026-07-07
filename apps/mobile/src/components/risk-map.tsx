@@ -1,0 +1,82 @@
+// Mapa de la app de usuario — implementación NATIVA (Android/iOS) con MapLibre Native.
+// Requiere un development build (npx expo run:android / run:ios o EAS); en Expo Go
+// el módulo nativo no existe y se muestra un aviso en su lugar.
+import { useMemo } from 'react';
+import { StyleSheet, Text, View, useColorScheme } from 'react-native';
+
+import { Colors } from '@/constants/theme';
+import { baseStyle, CITIES, DEFAULT_CITY, RISK_FILL_COLOR, RISK_LINE_COLOR } from '@/constants/map';
+import type { RiskMapProps } from './risk-map.types';
+
+// Carga perezosa: si el módulo nativo no está (Expo Go), no reventamos el bundle.
+let ML: typeof import('@maplibre/maplibre-react-native') | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  ML = require('@maplibre/maplibre-react-native');
+} catch {
+  ML = null;
+}
+
+export default function RiskMap({ dark, riskOn, riskData, userLocation }: RiskMapProps) {
+  const scheme = useColorScheme();
+  const c = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const style = useMemo(() => baseStyle(dark), [dark]);
+  const city = CITIES[DEFAULT_CITY];
+
+  if (!ML) {
+    return (
+      <View style={[styles.fallback, { backgroundColor: c.background }]}>
+        <Text style={[styles.fallbackTitle, { color: c.text }]}>Mapa nativo no disponible</Text>
+        <Text style={[styles.fallbackBody, { color: c.textSecondary }]}>
+          Expo Go no incluye MapLibre Native. Usa un development build
+          (npx expo run:android / run:ios) o la versión web.
+        </Text>
+      </View>
+    );
+  }
+
+  const { Map, Camera, GeoJSONSource, Layer } = ML;
+  return (
+    <Map style={styles.map} mapStyle={style as never}>
+      <Camera
+        initialViewState={{ center: city.center, zoom: city.zoom } as never}
+        center={userLocation ?? undefined}
+        zoom={userLocation ? 15 : undefined}
+      />
+      {riskData && riskOn && (
+        <GeoJSONSource id="risk" data={riskData as never}>
+          <Layer id="risk-fill" type="fill" paint={{ 'fill-color': RISK_FILL_COLOR as never }} />
+          <Layer
+            id="risk-line"
+            type="line"
+            paint={{ 'line-color': RISK_LINE_COLOR, 'line-width': 0.5 }}
+          />
+        </GeoJSONSource>
+      )}
+      {userLocation && (
+        <GeoJSONSource
+          id="me"
+          data={{ type: 'Feature', geometry: { type: 'Point', coordinates: userLocation }, properties: {} } as never}
+        >
+          <Layer
+            id="me-dot"
+            type="circle"
+            paint={{
+              'circle-radius': 7,
+              'circle-color': '#2f81f7',
+              'circle-stroke-width': 3,
+              'circle-stroke-color': '#ffffff',
+            }}
+          />
+        </GeoJSONSource>
+      )}
+    </Map>
+  );
+}
+
+const styles = StyleSheet.create({
+  map: { flex: 1 },
+  fallback: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 8 },
+  fallbackTitle: { fontSize: 16, fontWeight: '700' },
+  fallbackBody: { fontSize: 13, textAlign: 'center', lineHeight: 19 },
+});
