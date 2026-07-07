@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Keyboard, Platform, Pressable, StyleSheet, Text, TextInput,
-  View, useColorScheme,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -14,7 +14,9 @@ import * as Location from 'expo-location';
 import type { BuildRouteResponse, Coordinate, RiskZonesResponse } from '@nomadaai/shared';
 
 import RiskMap from '@/components/risk-map';
+import SettingsSheet from '@/components/settings-sheet';
 import type { RouteLines } from '@/components/risk-map.types';
+import { useResolvedScheme, useSettings } from '@/lib/settings';
 import { CITIES, DEFAULT_CITY } from '@/constants/map';
 import { Colors } from '@/constants/theme';
 import { api } from '@/lib/api';
@@ -29,10 +31,12 @@ const PRIORITIES = [
 ] as const;
 
 export default function MapScreen() {
-  const scheme = useColorScheme();
+  const scheme = useResolvedScheme();
   const dark = scheme === 'dark';
-  const c = Colors[dark ? 'dark' : 'light'];
+  const c = Colors[scheme];
   const insets = useSafeAreaInsets();
+  const { settings } = useSettings();
+  const [showSettings, setShowSettings] = useState(false);
 
   const [riskOn, setRiskOn] = useState(true);
   const [riskData, setRiskData] = useState<RiskZonesResponse | null>(null);
@@ -254,6 +258,7 @@ export default function MapScreen() {
       <RiskMap
         dark={dark} riskOn={riskOn} riskData={riskData}
         userLocation={userLoc} routes={routes} destination={dest?.coord ?? null}
+        riskStyle={{ palette: settings.palette, intensity: settings.intensity, opacity: settings.opacity }}
       />
 
       {/* Controles superiores */}
@@ -265,6 +270,12 @@ export default function MapScreen() {
           <Text style={[styles.chipText, { color: c.text }]}>‹ Volver</Text>
         </Pressable>
         <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable
+            onPress={() => setShowSettings(true)}
+            style={[styles.chip, { backgroundColor: c.backgroundElement, borderColor: c.border }]}
+          >
+            <Text style={[styles.chipText, { color: c.text }]}>⚙︎</Text>
+          </Pressable>
           <Pressable
             onPress={locate}
             style={[styles.chip, { backgroundColor: c.backgroundElement, borderColor: userLoc ? c.accent : c.border }]}
@@ -392,6 +403,8 @@ export default function MapScreen() {
           </Text>
         )}
       </View>
+
+      <SettingsSheet visible={showSettings} onClose={() => setShowSettings(false)} />
     </View>
   );
 }

@@ -2,10 +2,10 @@
 // Requiere un development build (npx expo run:android / run:ios o EAS); en Expo Go
 // el módulo nativo no existe y se muestra un aviso en su lugar.
 import { useMemo } from 'react';
-import { StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
-import { baseStyle, CITIES, DEFAULT_CITY, RISK_FILL_COLOR, RISK_LINE_COLOR } from '@/constants/map';
+import { baseStyle, CITIES, DEFAULT_CITY, HEAT_PALETTES, riskFillColor } from '@/constants/map';
 import { ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
 
 // Carga perezosa: si el módulo nativo no está (Expo Go), no reventamos el bundle.
@@ -17,9 +17,8 @@ try {
   ML = null;
 }
 
-export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination }: RiskMapProps) {
-  const scheme = useColorScheme();
-  const c = Colors[scheme === 'dark' ? 'dark' : 'light'];
+export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination, riskStyle }: RiskMapProps) {
+  const c = Colors[dark ? 'dark' : 'light'];
   const style = useMemo(() => baseStyle(dark), [dark]);
   const city = CITIES[DEFAULT_CITY];
 
@@ -45,11 +44,18 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
       />
       {riskData && riskOn && (
         <GeoJSONSource id="risk" data={riskData as never}>
-          <Layer id="risk-fill" type="fill" paint={{ 'fill-color': RISK_FILL_COLOR as never }} />
+          <Layer
+            id="risk-fill"
+            type="fill"
+            paint={{
+              'fill-color': riskFillColor(riskStyle?.palette ?? 'calor', riskStyle?.intensity ?? 0.5) as never,
+              'fill-opacity': riskStyle?.opacity ?? 0.7,
+            }}
+          />
           <Layer
             id="risk-line"
             type="line"
-            paint={{ 'line-color': RISK_LINE_COLOR, 'line-width': 0.5 }}
+            paint={{ 'line-color': HEAT_PALETTES[riskStyle?.palette ?? 'calor'].line, 'line-width': 0.5 }}
           />
         </GeoJSONSource>
       )}

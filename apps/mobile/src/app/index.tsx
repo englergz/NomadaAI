@@ -1,7 +1,7 @@
 // Pantalla inicial de la APP DE USUARIO (Fase 0: identidad + conexión a la API).
 // En Fase 1 esta pantalla pasa a ser el mapa en vivo con navegación segura.
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
@@ -9,10 +9,11 @@ import type { HealthResponse } from '@nomadaai/shared';
 
 import { Colors } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { useResolvedScheme } from '@/lib/settings';
 
 export default function Home() {
-  const scheme = useColorScheme();
-  const c = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const scheme = useResolvedScheme();
+  const c = Colors[scheme];
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 

@@ -1,15 +1,15 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { SettingsProvider, useResolvedScheme } from '@/lib/settings';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  const scheme = useColorScheme();
+function Root() {
+  const scheme = useResolvedScheme(); // respeta el ajuste Sistema/Claro/Oscuro del usuario
   const dark = scheme === 'dark';
-  const colors = Colors[dark ? 'dark' : 'light'];
+  const colors = Colors[scheme];
   const base = dark ? DarkTheme : DefaultTheme;
   // Tema de navegación alineado a los design tokens (par claro/oscuro).
   const theme = {
@@ -27,5 +27,13 @@ export default function RootLayout() {
     <ThemeProvider value={theme}>
       <Stack screenOptions={{ headerShown: false }} />
     </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <SettingsProvider>
+      <Root />
+    </SettingsProvider>
   );
 }
