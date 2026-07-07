@@ -50,7 +50,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <SafeBoot>
       {clerkKey ? (
-        <ClerkProvider publishableKey={clerkKey} localization={esES} afterSignOutUrl="/">
+        <ClerkProvider
+          publishableKey={clerkKey}
+          localization={esES}
+          afterSignOutUrl="/"
+          appearance={{
+            layout: { logoImageUrl: "/icon-192.png", logoPlacement: "inside" },
+            variables: { colorPrimary: "#2f81f7", borderRadius: "12px" },
+          }}
+        >
           <App />
         </ClerkProvider>
       ) : (

@@ -1,22 +1,54 @@
+/* ============================================================
+   Design tokens Nómada.AI — UN solo sistema, claro y oscuro PARES.
+   Los componentes solo usan tokens; nunca hex sueltos.
+   Rutas: azul → ámbar → coral (rojo puro reservado al mapa de calor).
+   ============================================================ */
 :root {
-  --bg: #0f1419;
-  --panel: #1a2129;
-  --text: #e6edf3;
-  --muted: #8b98a5;
-  --accent: #2f81f7;
-  --border: #2d3640;
+  /* superficie */
+  --bg: #0f141a;            /* fondo app / inputs hundidos */
+  --panel: #161d26;         /* superficies elevadas (paneles, topbar, menú) */
+  --panel-2: #1d2632;       /* superficie sobre panel (grupos, tarjetas) */
+  /* contenido */
+  --text: #e8edf3;
+  --muted: #94a1ae;
+  --border: #2a333f;
+  /* marca y paleta de rutas */
+  --accent: #2f81f7;        /* azul: despejado / acción principal */
+  --amber: #f5a524;         /* ámbar: precaución */
+  --coral: #ff6b5e;         /* coral: atención (nunca rojo puro en UI) */
+  --ok: #22c55e;
+  /* tintes derivados (mismo cálculo en ambos temas) */
+  --accent-tint: color-mix(in srgb, var(--accent) 14%, transparent);
+  --amber-tint: color-mix(in srgb, var(--amber) 14%, transparent);
+  --coral-tint: color-mix(in srgb, var(--coral) 14%, transparent);
+  --ok-tint: color-mix(in srgb, var(--ok) 12%, transparent);
+  /* geometría y elevación */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --shadow-1: 0 4px 16px rgba(2, 8, 18, 0.35);
+  --shadow-2: 0 12px 40px rgba(2, 8, 18, 0.45);
 }
 
 body.light {
-  --bg: #eef2f6;
+  --bg: #eef2f7;
   --panel: #ffffff;
-  --text: #1a2129;
-  --muted: #5b6672;
-  --accent: #2f81f7;
-  --border: #d3dae2;
+  --panel-2: #f3f6fa;
+  --text: #17212c;
+  --muted: #5b6773;
+  --border: #dbe2ea;
+  --shadow-1: 0 2px 10px rgba(15, 23, 42, 0.10);
+  --shadow-2: 0 10px 32px rgba(15, 23, 42, 0.14);
 }
 
 * { box-sizing: border-box; }
+
+/* Scroll discreto y temado (el nativo se veía como una barra gruesa pegada al panel) */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: padding-box; }
 
 html, body, #root {
   margin: 0;
@@ -38,12 +70,14 @@ html, body, #root {
   overflow-y: auto;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-lg);
   padding: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-2);
 }
 
 .panel h1 { font-size: 16px; margin: 0 0 4px; }
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand-logo { width: 22px; height: 22px; border-radius: 6px; flex: none; }
 .panel .subtitle { font-size: 12px; color: var(--muted); margin: 0 0 16px; }
 .panel h2 { font-size: 13px; margin: 16px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 
@@ -63,7 +97,7 @@ button.secondary { background: transparent; border: 1px solid var(--border); col
 .hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
 .row { display: flex; gap: 8px; margin-top: 8px; }
 .badge { font-size: 11px; color: var(--muted); }
-.status { font-size: 11px; padding: 6px 8px; border-radius: 6px; background: rgba(47,129,247,0.12); margin-top: 8px; }
+.status { font-size: 11px; padding: 6px 8px; border-radius: 6px; background: var(--accent-tint); margin-top: 8px; }
 
 .select {
   width: 100%;
@@ -84,10 +118,10 @@ button.secondary { background: transparent; border: 1px solid var(--border); col
 }
 .result-row { font-size: 12px; color: var(--text); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
-.dot.blue { background: #2f81f7; }
-.dot.orange { background: #f97316; }
-.dot.green { background: #22c55e; }
-.dot.red { background: #ef4444; }
+.dot.blue { background: var(--accent); }
+.dot.orange { background: var(--amber); }
+.dot.green { background: var(--ok); }
+.dot.red { background: #ef4444; } /* rojo puro: solo leyenda del mapa de calor */
 .metric {
   margin-top: 8px;
   font-size: 13px;
@@ -104,7 +138,7 @@ button.secondary { background: transparent; border: 1px solid var(--border); col
   width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
   border-radius: 8px; padding: 7px 8px; font-size: 12px;
 }
-.veh-btn.on { border-color: var(--accent); background: rgba(47,129,247,0.15); }
+.veh-btn.on { border-color: var(--accent); background: var(--accent-tint); }
 .veh-btn span { font-size: 16px; }
 
 .progress { height: 6px; background: var(--border); border-radius: 4px; margin-top: 12px; overflow: hidden; }
@@ -136,7 +170,7 @@ button.secondary { background: transparent; border: 1px solid var(--border); col
 .counts span { font-size: 9px; color: var(--muted); }
 .tabs { display: flex; gap: 6px; margin: 14px 0 6px; }
 .tabs button { flex: 1; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 8px; font-size: 12px; }
-.tabs button.on { border-color: var(--accent); background: rgba(47,129,247,0.15); color: var(--text); }
+.tabs button.on { border-color: var(--accent); background: var(--accent-tint); color: var(--text); }
 .range { width: 100%; margin: 6px 0 4px; accent-color: var(--accent); }
 .clock { margin-top: 10px; font-size: 18px; font-variant-numeric: tabular-nums; letter-spacing: 1px; color: #fde047; text-align: center; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 6px; }
 .tag-unseen { background: rgba(34,197,94,0.18); color: #bbf7d0; border: 1px solid #22c55e; border-radius: 6px; padding: 1px 6px; font-size: 10px; }
@@ -148,7 +182,7 @@ button.secondary { background: transparent; border: 1px solid var(--border); col
 
 /* Barra superior (tema / mapa) */
 .topbar { position: absolute; top: 16px; right: 16px; z-index: 12; display: flex; gap: 8px; }
-.topbar button { width: auto; background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 7px 12px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.topbar button { width: auto; background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 7px 12px; font-size: 12px; box-shadow: var(--shadow-1); }
 
 /* Efectividad */
 .eval-btn { margin-top: 12px; background: #16a34a; }
@@ -168,7 +202,6 @@ button.secondary { background: transparent; border: 1px solid var(--border); col
 
 /* Tema claro: el teléfono es un DISPOSITIVO → siempre oscuro (no cambia). */
 body.light .clock { background: #e2e8f0; color: #92400e; }
-body.light .topbar button { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
 
 /* Marcador "puck" con dirección */
 .veh-puck { position: relative; width: 38px; height: 38px; }
@@ -182,7 +215,7 @@ body.light .topbar button { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
 
 /* Telemetría flotante (sin fondo, estilo overlay de juego) */
 .telemetry { position: absolute; left: 360px; bottom: 12px; z-index: 11; width: 380px; max-width: calc(100vw - 660px);
-  background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+  background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--border); border-radius: var(--r-md); padding: 8px 10px; box-shadow: var(--shadow-1); }
 .telemetry.collapsed { width: auto; }
 .telemetry-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 600 11px ui-monospace, monospace; color: var(--accent); letter-spacing: 0.03em; }
 .telemetry-toggle { width: auto; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 2px 8px; font-size: 10px; box-shadow: none; }
@@ -235,12 +268,12 @@ body.light .push-time { color: #b91c1c; }
 
 /* Banner informativo flotante al centro-superior del mapa */
 .banner { position: absolute; top: 66px; left: calc(50% + 160px); transform: translateX(-50%); z-index: 12; display: flex; flex-direction: column; gap: 6px; align-items: center; width: max-content; max-width: min(520px, 52vw); pointer-events: none; }
-.banner-line { background: color-mix(in srgb, var(--panel) 94%, transparent); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 9px 18px; font-size: 13px; font-weight: 500; text-align: center; box-shadow: 0 8px 28px rgba(0,0,0,0.4); }
+.banner-line { background: color-mix(in srgb, var(--panel) 94%, transparent); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 9px 18px; font-size: 13px; font-weight: 500; text-align: center; box-shadow: var(--shadow-1); }
 .banner-line.loading { border-color: var(--accent); }
 .banner-line.ok { background: rgba(22,163,74,0.16); border-color: #16a34a; color: #bbf7d0; }
 body.light .banner-line.ok { color: #14532d; }
 .help-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 24px; }
-.help-modal { position: relative; width: min(560px, 92vw); max-height: 86vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.help-modal { position: relative; width: min(560px, 92vw); max-height: 86vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 22px 24px; box-shadow: var(--shadow-2); }
 .help-modal h2 { font-size: 18px; margin: 0 0 8px; text-transform: none; letter-spacing: 0; color: var(--text); }
 .help-modal h3 { font-size: 13px; margin: 16px 0 6px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.03em; }
 .help-modal p, .help-modal li { font-size: 13px; line-height: 1.55; color: var(--text); }
@@ -262,24 +295,27 @@ h2.step { font-size: 13px; margin: 18px 0 8px; color: var(--text); text-transfor
 .benefit b { display: block; font-size: 17px; color: var(--text); }
 .benefit span { font-size: 9px; color: var(--muted); }
 
-/* Menú agrupado de capas/vista */
+/* Menú agrupado de capas/vista — secciones como GRUPOS (estilo ajustes iOS/Material):
+   cabecera + contenedor panel-2 con filas separadas por hairline, y aire entre grupos. */
 .menu-wrap { position: relative; }
-.menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; width: 250px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.45); }
-.menu-sec { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 10px 6px 5px; }
-.menu-sec:first-child { margin-top: 2px; }
-.menu-seg { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
-/* .menu-scoped para GANARLE en especificidad a `.topbar button` (evita ancho auto/borde/sombra) */
-.menu .menu-seg button { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 34px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 0; font-size: 12px; box-shadow: none; text-align: center; }
+.menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: 270px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px; box-shadow: var(--shadow-2); }
+.menu-sec { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; color: var(--muted); margin: 14px 4px 6px; }
+.menu-sec:first-child { margin-top: 0; }
+.menu-group { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
+.menu-group > * + * { border-top: 1px solid var(--border); }
+.menu-seg { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+/* selectores anidados para GANARLE en especificidad a `.topbar button` */
+.menu .menu-seg button { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 34px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 0; font-size: 12px; box-shadow: none; text-align: center; }
 .btn-ic { display: inline-flex !important; align-items: center; gap: 6px; }
 .menu-lbl svg, .btn-ic svg { color: var(--muted); flex: none; }
 .menu-row.on .menu-lbl svg { color: var(--accent); }
-.menu .menu-seg button.on { border-color: var(--accent); background: rgba(47,129,247,0.15); color: var(--accent); font-weight: 600; }
-.menu .menu-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; height: 40px; background: transparent; border: none; color: var(--text); border-radius: 8px; padding: 0 10px; font-size: 13px; box-shadow: none; text-align: left; }
-.menu .menu-row:hover { background: var(--bg); }
-.menu-lbl { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.menu .menu-seg button.on { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); font-weight: 600; }
+.menu .menu-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; height: 42px; background: transparent; border: none; color: var(--text); border-radius: 0; padding: 0 12px; font-size: 13px; box-shadow: none; text-align: left; }
+.menu .menu-row:hover { background: var(--accent-tint); }
+.menu-lbl { display: inline-flex; align-items: center; gap: 9px; white-space: nowrap; }
 .sw { flex: none; width: 42px; text-align: center; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 3px 0; }
 .sw.on { color: #fff; background: var(--accent); border-color: var(--accent); }
-.menu-div { height: 1px; background: var(--border); margin: 8px 6px; }
+.menu-div { height: 1px; background: var(--border); margin: 12px 2px; }
 /* Botones de la barra superior consistentes entre sí (Menú / Iniciar sesión) */
 .topbar button { height: 38px; display: inline-flex; align-items: center; }
 
@@ -293,16 +329,13 @@ button[class^="cl-"], button[class*=" cl-"], [class^="cl-"] button, [class*=" cl
 /* Menú por encima del simulador de móvil, incluso en pantallas angostas */
 .topbar { z-index: 30; }
 .menu { z-index: 40; }
-/* Sombras más suaves en modo claro (el menú se veía pesado) */
-body.light .menu { box-shadow: 0 8px 24px rgba(15,23,42,0.12); }
-body.light .topbar button { box-shadow: 0 2px 8px rgba(15,23,42,0.10); }
-body.light .panel { box-shadow: 0 6px 22px rgba(15,23,42,0.12); }
+/* Las sombras claras/oscuras ya son pares vía --shadow-1/--shadow-2 (tokens). */
 /* Notch del móvil en negro real */
 .phone-notch { background: #000; }
 
 /* Minimizar/mostrar panel + nota del menú */
 .panel-collapse { position: absolute; top: 12px; right: 12px; width: auto; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 7px; padding: 2px 9px; font-size: 15px; line-height: 1; box-shadow: none; }
-.panel-open { position: absolute; top: 16px; left: 16px; z-index: 11; width: auto; background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 12px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.panel-open { position: absolute; top: 16px; left: 16px; z-index: 11; width: auto; background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 8px 12px; font-size: 12px; box-shadow: var(--shadow-1); }
 .menu-note { font-size: 10.5px; line-height: 1.5; color: var(--muted); margin: 8px 6px 2px; }
 .menu-note a { color: var(--accent); cursor: pointer; text-decoration: none; }
 .menu-note a:hover { text-decoration: underline; }
