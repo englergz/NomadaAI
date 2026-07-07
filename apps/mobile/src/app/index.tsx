@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { router } from 'expo-router';
 import type { HealthResponse } from '@nomadaai/shared';
 
 import { Colors } from '@/constants/theme';
@@ -61,7 +62,7 @@ export default function Home() {
             styles.cta,
             { backgroundColor: c.accent, opacity: pressed ? 0.85 : 1 },
           ]}
-          onPress={() => { /* Fase 1: abre el mapa y la navegación segura */ }}
+          onPress={() => router.push('/map')}
         >
           <Text style={styles.ctaText}>Ir seguro</Text>
         </Pressable>
