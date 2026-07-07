@@ -6,12 +6,16 @@ colorTo: indigo
 sdk: docker
 app_port: 7860
 pinned: false
-license: mit
+license: other
 ---
 
 <p align="center"><img src="apps/web/public/icon-192.png" alt="Nómada.AI" width="96" /></p>
 
 # NómadaAI
+
+> **Licencia:** [PolyForm Noncommercial 1.0.0](LICENSE) — código visible y de uso
+> académico/no comercial; cualquier uso comercial requiere permiso del autor.
+> © Engler González · Tesis MGTIC, Universidad de Nariño.
 
 **Aplicación inteligente para la gestión segura de rutas urbanas mediante análisis de datos en
 tiempo real en el Distrito de Tumaco, Nariño.** 
