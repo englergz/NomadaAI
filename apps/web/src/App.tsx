@@ -831,7 +831,7 @@ export default function App() {
       {showHelp && <HelpPanel onClose={() => setShowHelp(false)} />}
 
       {!panelOpen && (
-        <button className="panel-open" onClick={() => setPanelOpen(true)} title="Mostrar panel">☰ Panel</button>
+        <button className="panel-open btn-ic" onClick={() => setPanelOpen(true)} title="Mostrar panel"><Icon name="menu" /> Panel</button>
       )}
       <div className="panel" style={{ display: panelOpen ? undefined : "none" }}>
         <button className="panel-collapse" onClick={() => setPanelOpen(false)} title="Ocultar panel">«</button>

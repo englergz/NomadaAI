@@ -335,7 +335,8 @@ button[class^="cl-"], button[class*=" cl-"], [class^="cl-"] button, [class*=" cl
 
 /* Minimizar/mostrar panel + nota del menú */
 .panel-collapse { position: absolute; top: 12px; right: 12px; width: auto; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 7px; padding: 2px 9px; font-size: 15px; line-height: 1; box-shadow: none; }
-.panel-open { position: absolute; top: 16px; left: 16px; z-index: 11; width: auto; background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 8px 12px; font-size: 12px; box-shadow: var(--shadow-1); }
+/* Mismo estilo que los botones de la topbar (Menú): altura, radio, sombra y tipografía pares */
+.panel-open { position: absolute; top: 16px; left: 16px; z-index: 11; width: auto; height: 38px; align-items: center; background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 7px 12px; font-size: 12px; box-shadow: var(--shadow-1); }
 .menu-note { font-size: 10.5px; line-height: 1.5; color: var(--muted); margin: 8px 6px 2px; }
 .menu-note a { color: var(--accent); cursor: pointer; text-decoration: none; }
 .menu-note a:hover { text-decoration: underline; }
