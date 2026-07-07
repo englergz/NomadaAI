@@ -89,6 +89,33 @@ export interface RouteResponse {
   note?: string;
 }
 
+// --- Ruteo real sobre la red vial (usado por web y móvil) ---
+export interface BuildRouteRequest {
+  origin: Coordinate; // [lon, lat] — dónde estoy
+  dest: Coordinate;   // [lon, lat] — a dónde voy
+  type?: string;      // vehículo (opcional)
+  hour?: number;      // 0–23
+  risk_weight?: number; // λ: prioridad de seguridad (0–5)
+}
+
+export interface RouteComparison {
+  safe_distance_m: number;
+  direct_distance_m: number;
+  safe_exposure: number;
+  direct_exposure: number;
+  exposure_reduction_pct: number;
+}
+
+export interface BuildRouteResponse {
+  coords: Coordinate[];        // ruta segura
+  distance_m: number;
+  n: number;
+  vehicle_restricted: boolean;
+  directional: boolean;
+  direct_coords: Coordinate[]; // ruta directa (para comparar)
+  comparison?: RouteComparison | null;
+}
+
 // --- Riesgo (OE2) ---
 export type RiskZonesResponse = FeatureCollection;
 

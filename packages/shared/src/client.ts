@@ -1,5 +1,7 @@
 // Cliente API tipado — consumido por web y (futuro) móvil.
 import type {
+  BuildRouteRequest,
+  BuildRouteResponse,
   HealthResponse,
   PredictRequest,
   PredictResponse,
@@ -61,6 +63,18 @@ export class NomadaApi {
   riskZones(bbox?: [number, number, number, number]) {
     const q = bbox ? `?bbox=${bbox.join(",")}` : "";
     return this.req<RiskZonesResponse>(`/risk/zones${q}`);
+  }
+
+  buildRoute(body: BuildRouteRequest) {
+    return this.req<BuildRouteResponse>("/route/build", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  pois(limit?: number) {
+    const q = limit ? `?limit=${limit}` : "";
+    return this.req<FeatureCollection>(`/pois${q}`);
   }
 
   safeRoute(body: RouteRequest) {

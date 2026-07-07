@@ -17,7 +17,7 @@ try {
   ML = null;
 }
 
-export default function RiskMap({ dark, riskOn, riskData, userLocation }: RiskMapProps) {
+export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination }: RiskMapProps) {
   const scheme = useColorScheme();
   const c = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const style = useMemo(() => baseStyle(dark), [dark]);
@@ -50,6 +50,49 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation }: RiskMa
             id="risk-line"
             type="line"
             paint={{ 'line-color': RISK_LINE_COLOR, 'line-width': 0.5 }}
+          />
+        </GeoJSONSource>
+      )}
+      {routes && routes.direct.length > 1 && (
+        <GeoJSONSource
+          id="route-direct"
+          data={{ type: 'Feature', geometry: { type: 'LineString', coordinates: routes.direct }, properties: {} } as never}
+        >
+          <Layer
+            id="route-direct"
+            type="line"
+            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+            paint={{ 'line-color': '#8a97a5', 'line-width': 4, 'line-dasharray': [1.2, 1.6], 'line-opacity': 0.85 }}
+          />
+        </GeoJSONSource>
+      )}
+      {routes && routes.safe.length > 1 && (
+        <GeoJSONSource
+          id="route-safe"
+          data={{ type: 'Feature', geometry: { type: 'LineString', coordinates: routes.safe }, properties: {} } as never}
+        >
+          <Layer
+            id="route-safe"
+            type="line"
+            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+            paint={{ 'line-color': '#2f81f7', 'line-width': 5 }}
+          />
+        </GeoJSONSource>
+      )}
+      {destination && (
+        <GeoJSONSource
+          id="dest"
+          data={{ type: 'Feature', geometry: { type: 'Point', coordinates: destination }, properties: {} } as never}
+        >
+          <Layer
+            id="dest-dot"
+            type="circle"
+            paint={{
+              'circle-radius': 8,
+              'circle-color': '#2f81f7',
+              'circle-stroke-width': 3,
+              'circle-stroke-color': '#ffffff',
+            }}
           />
         </GeoJSONSource>
       )}
