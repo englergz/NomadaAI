@@ -8,10 +8,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { baseStyle, CITIES, DEFAULT_CITY, RISK_FILL_COLOR, RISK_LINE_COLOR } from '@/constants/map';
 import type { RiskMapProps } from './risk-map.types';
 
-export default function RiskMap({ dark, riskOn, riskData, userLocation }: RiskMapProps) {
+export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination }: RiskMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
+  const destMarkerRef = useRef<maplibregl.Marker | null>(null);
   const loadedRef = useRef(false);
 
   useEffect(() => {
@@ -33,6 +34,20 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation }: RiskMa
       map.addLayer({
         id: 'risk-line', type: 'line', source: 'risk',
         paint: { 'line-color': RISK_LINE_COLOR, 'line-width': 0.5 },
+      });
+      // Rutas: directa (gris discontinua) debajo, segura (azul de marca) encima.
+      const empty = { type: 'FeatureCollection', features: [] } as never;
+      map.addSource('route-direct', { type: 'geojson', data: empty });
+      map.addSource('route-safe', { type: 'geojson', data: empty });
+      map.addLayer({
+        id: 'route-direct', type: 'line', source: 'route-direct',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#8a97a5', 'line-width': 4, 'line-dasharray': [1.2, 1.6], 'line-opacity': 0.85 },
+      });
+      map.addLayer({
+        id: 'route-safe', type: 'line', source: 'route-safe',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#2f81f7', 'line-width': 5 },
       });
       loadedRef.current = true;
     });
@@ -66,6 +81,45 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation }: RiskMa
     };
     if (loadedRef.current) apply(); else map.once('load', apply);
   }, [riskOn, riskData]);
+
+  // Rutas segura/directa: pinta y encuadra ambas.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const line = (coords: [number, number][]) =>
+        ({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} }) as never;
+      const empty = { type: 'FeatureCollection', features: [] } as never;
+      (map.getSource('route-safe') as maplibregl.GeoJSONSource | undefined)?.setData(
+        routes && routes.safe.length ? line(routes.safe as [number, number][]) : empty,
+      );
+      (map.getSource('route-direct') as maplibregl.GeoJSONSource | undefined)?.setData(
+        routes && routes.direct.length ? line(routes.direct as [number, number][]) : empty,
+      );
+      if (routes && routes.safe.length > 1) {
+        const b = new maplibregl.LngLatBounds();
+        for (const p of [...routes.safe, ...routes.direct]) b.extend(p as [number, number]);
+        map.fitBounds(b, { padding: { top: 90, bottom: 240, left: 40, right: 40 }, duration: 1200 });
+      }
+    };
+    if (loadedRef.current) apply(); else map.once('load', apply);
+  }, [routes]);
+
+  // Marcador de destino.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (destination) {
+      if (!destMarkerRef.current) {
+        destMarkerRef.current = new maplibregl.Marker({ color: '#2f81f7' }).setLngLat(destination).addTo(map);
+      } else {
+        destMarkerRef.current.setLngLat(destination);
+      }
+    } else if (destMarkerRef.current) {
+      destMarkerRef.current.remove();
+      destMarkerRef.current = null;
+    }
+  }, [destination]);
 
   // Ubicación del usuario: marcador + flyTo la primera vez.
   useEffect(() => {
