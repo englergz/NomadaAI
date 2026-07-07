@@ -9,6 +9,8 @@ pinned: false
 license: mit
 ---
 
+<p align="center"><img src="apps/web/public/icon-192.png" alt="Nómada.AI" width="96" /></p>
+
 # NómadaAI
 
 **Aplicación inteligente para la gestión segura de rutas urbanas mediante análisis de datos en
