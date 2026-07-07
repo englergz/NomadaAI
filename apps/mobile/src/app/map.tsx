@@ -1,5 +1,6 @@
-// Vista principal de la app de usuario (Fase 2): mapa + buscador de destino +
-// ruta segura vs directa. Permiso de ubicación EN CONTEXTO (al tocar el botón).
+// Vista principal de la app de usuario (Fases 2–3): mapa + buscador de destino +
+// ruta segura vs directa + alertas graduadas por acción durante el recorrido.
+// Permisos (ubicación, notificaciones) SIEMPRE en contexto, nunca al abrir.
 // Regla de ruteo: EVITAR cuando hay alternativa; AVISAR cuando el riesgo es inevitable.
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -17,6 +18,7 @@ import type { RouteLines } from '@/components/risk-map.types';
 import { CITIES, DEFAULT_CITY } from '@/constants/map';
 import { Colors } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { ProximityTracker, zoneAt, type AlertLevel } from '@/lib/alerts';
 import { coverageCity, searchPlaces, type Place } from '@/lib/geocode';
 
 // Prioridad de seguridad → λ (risk_weight) del backend.
@@ -36,7 +38,7 @@ export default function MapScreen() {
   const [riskData, setRiskData] = useState<RiskZonesResponse | null>(null);
   const [userLoc, setUserLoc] = useState<[number, number] | null>(null);
   const [outOfCoverage, setOutOfCoverage] = useState(false);
-  const [banner, setBanner] = useState<{ text: string; tone: 'ok' | 'warn' | 'info' } | null>(null);
+  const [banner, setBanner] = useState<{ text: string; tone: 'ok' | 'warn' | 'info' | 'coral' } | null>(null);
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Place[]>([]);
@@ -46,6 +48,14 @@ export default function MapScreen() {
   const [routing, setRouting] = useState(false);
   const [routes, setRoutes] = useState<RouteLines | null>(null);
   const searchSeq = useRef(0);
+
+  // Recorrido (Fase 3): seguimiento + alertas de proximidad una-vez-por-zona.
+  const [onTrip, setOnTrip] = useState(false);
+  const [tripLevel, setTripLevel] = useState<AlertLevel>('despejado');
+  const trackerRef = useRef(new ProximityTracker());
+  const watchRef = useRef<Location.LocationSubscription | null>(null);
+  const riskRef = useRef<RiskZonesResponse | null>(null);
+  useEffect(() => { riskRef.current = riskData; }, [riskData]);
 
   useEffect(() => {
     let alive = true;
@@ -131,10 +141,78 @@ export default function MapScreen() {
   }
 
   function clearTrip() {
+    stopTrip();
     setDest(null); setRoutes(null); setBanner(null); setQuery(''); setResults([]);
   }
 
-  const toneColor = { ok: c.ok, warn: c.amber, info: c.accent } as const;
+  // Notificación local (nativa). En web solo banner in-app.
+  async function notifyLocal(title: string, body: string) {
+    if (Platform.OS === 'web') return;
+    try {
+      const Notifications = await import('expo-notifications');
+      await Notifications.scheduleNotificationAsync({ content: { title, body }, trigger: null });
+    } catch { /* sin permiso o sin módulo: el banner in-app ya avisó */ }
+  }
+
+  // Cada posición del recorrido: nivel en vivo + alerta 1 vez por zona.
+  function handlePosition(pos: Coordinate) {
+    setUserLoc(pos as [number, number]);
+    const hit = zoneAt(riskRef.current, pos);
+    setTripLevel(hit?.level ?? 'despejado');
+    const alert = trackerRef.current.check(riskRef.current, pos);
+    if (alert) {
+      setBanner({ text: `${alert.title}: ${alert.body}`, tone: alert.level === 'atencion' ? 'coral' : 'warn' });
+      notifyLocal(alert.title, alert.body);
+    }
+  }
+
+  async function startTrip() {
+    if (onTrip) return;
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      setBanner({ text: 'El recorrido necesita tu ubicación. Actívala en Ajustes.', tone: 'warn' });
+      return;
+    }
+    // Notificaciones: permiso EN CONTEXTO, justo cuando empieza el primer recorrido.
+    if (Platform.OS !== 'web') {
+      try {
+        const Notifications = await import('expo-notifications');
+        await Notifications.requestPermissionsAsync();
+      } catch { /* opcional: sin notificaciones seguimos con banners */ }
+    }
+    trackerRef.current.reset();
+    setTripLevel('despejado');
+    setOnTrip(true);
+    setBanner({ text: 'Recorrido iniciado. Te avisaremos solo cuando haga falta.', tone: 'info' });
+    watchRef.current = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.Balanced, timeInterval: 4000, distanceInterval: 15 },
+      (p) => handlePosition([p.coords.longitude, p.coords.latitude]),
+    );
+  }
+
+  function stopTrip() {
+    watchRef.current?.remove();
+    watchRef.current = null;
+    if (onTrip) setBanner(null);
+    setOnTrip(false);
+    setTripLevel('despejado');
+  }
+
+  useEffect(() => () => { watchRef.current?.remove(); }, []);
+
+  // Sonda de desarrollo: permite inyectar posiciones para verificar alertas sin GPS.
+  if (__DEV__ && Platform.OS === 'web') {
+    (globalThis as Record<string, unknown>).__alertProbe = (lon: number, lat: number) =>
+      handlePosition([lon, lat]);
+  }
+
+  const toneColor = { ok: c.ok, warn: c.amber, info: c.accent, coral: c.coral } as const;
+  // Paleta de alertas por acción: azul → ámbar → coral (nunca rojo puro en UI).
+  const levelUi: Record<AlertLevel, { label: string; color: string }> = {
+    despejado: { label: 'Despejado', color: c.accent },
+    precaucion: { label: 'Precaución', color: c.amber },
+    atencion: { label: 'Atención', color: c.coral },
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
@@ -231,18 +309,45 @@ export default function MapScreen() {
           ))}
         </View>
 
-        <Pressable
-          onPress={goSafe}
-          disabled={!dest || routing}
-          style={({ pressed }) => [
-            styles.cta,
-            { backgroundColor: c.accent, opacity: !dest || routing ? 0.45 : pressed ? 0.85 : 1 },
-          ]}
-        >
-          {routing
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={styles.ctaText}>Ir seguro</Text>}
-        </Pressable>
+        {onTrip ? (
+          <View style={styles.tripRow}>
+            <View style={[styles.levelChip, { borderColor: levelUi[tripLevel].color }]}>
+              <View style={[styles.levelDot, { backgroundColor: levelUi[tripLevel].color }]} />
+              <Text style={{ color: levelUi[tripLevel].color, fontSize: 13, fontWeight: '700' }}>
+                {levelUi[tripLevel].label}
+              </Text>
+            </View>
+            <Pressable
+              onPress={stopTrip}
+              style={({ pressed }) => [
+                styles.cta, styles.tripStop,
+                { borderColor: c.coral, opacity: pressed ? 0.8 : 1 },
+              ]}
+            >
+              <Text style={[styles.ctaText, { color: c.coral }]}>Finalizar</Text>
+            </Pressable>
+          </View>
+        ) : routes ? (
+          <Pressable
+            onPress={startTrip}
+            style={({ pressed }) => [styles.cta, { backgroundColor: c.accent, opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Text style={styles.ctaText}>Iniciar recorrido</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={goSafe}
+            disabled={!dest || routing}
+            style={({ pressed }) => [
+              styles.cta,
+              { backgroundColor: c.accent, opacity: !dest || routing ? 0.45 : pressed ? 0.85 : 1 },
+            ]}
+          >
+            {routing
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={styles.ctaText}>Ir seguro</Text>}
+          </Pressable>
+        )}
         {Platform.OS === 'web' && (
           <Text style={[styles.hintWeb, { color: c.textSecondary }]}>
             En el navegador la ubicación usa el diálogo del propio navegador.
@@ -271,5 +376,12 @@ const styles = StyleSheet.create({
   prio: { flex: 1, borderWidth: 1, borderRadius: 999, paddingVertical: 8, alignItems: 'center' },
   cta: { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   ctaText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  tripRow: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
+  levelChip: {
+    flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderRadius: 14,
+  },
+  levelDot: { width: 10, height: 10, borderRadius: 5 },
+  tripStop: { flex: 1, backgroundColor: 'transparent', borderWidth: 1.5 },
   hintWeb: { fontSize: 11, textAlign: 'center' },
 });
