@@ -5,10 +5,10 @@ import { View } from 'react-native';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { baseStyle, CITIES, DEFAULT_CITY, RISK_FILL_COLOR, RISK_LINE_COLOR } from '@/constants/map';
+import { baseStyle, CITIES, DEFAULT_CITY, HEAT_PALETTES, RISK_FILL_COLOR, RISK_LINE_COLOR, riskFillColor } from '@/constants/map';
 import { ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
 
-export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination }: RiskMapProps) {
+export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination, riskStyle }: RiskMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
@@ -74,6 +74,19 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     const src = map.getSource('base') as maplibregl.RasterTileSource | undefined;
     if (src?.setTiles) src.setTiles((baseStyle(dark).sources.base.tiles as string[]));
   }, [dark]);
+
+  // Personalización del heatmap: paleta, intensidad y transparencia (Ajustes).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !riskStyle) return;
+    const apply = () => {
+      if (!map.getLayer('risk-fill')) return;
+      map.setPaintProperty('risk-fill', 'fill-color', riskFillColor(riskStyle.palette, riskStyle.intensity) as never);
+      map.setPaintProperty('risk-fill', 'fill-opacity', riskStyle.opacity);
+      map.setPaintProperty('risk-line', 'line-color', HEAT_PALETTES[riskStyle.palette].line);
+    };
+    if (loadedRef.current) apply(); else map.once('load', apply);
+  }, [riskStyle]);
 
   // Datos y visibilidad de la capa de riesgo.
   useEffect(() => {

@@ -29,6 +29,12 @@ export function segmentsFeatureCollection(routes: RouteLines) {
   };
 }
 
+export interface RiskStyle {
+  palette: 'calor' | 'semaforo' | 'frio';
+  intensity: number; // 0–1
+  opacity: number;   // 0–1 (transparencia global de la capa)
+}
+
 export interface RiskMapProps {
   dark: boolean;
   riskOn: boolean;
@@ -36,4 +42,5 @@ export interface RiskMapProps {
   userLocation: [number, number] | null; // [lon, lat]
   routes?: RouteLines | null;
   destination?: [number, number] | null; // marcador de destino
+  riskStyle?: RiskStyle;
 }
