@@ -48,22 +48,29 @@ export async function searchPlaces(query: string, city: CityKey): Promise<Place[
     pois = (await loadPois()).filter((p) => norm(p.name).includes(q)).slice(0, 6);
   } catch { /* sin POIs seguimos con OSM */ }
 
-  // 2) Nominatim (OSM) limitado al bbox de la ciudad. Uso ligero (búsqueda explícita).
+  // 2) Nominatim (OSM): direcciones y lugares. Se añade la ciudad a la consulta y el
+  // viewbox como preferencia (sin bounded, que descartaba direcciones); luego se
+  // filtra por cercanía real a la ciudad para no traer resultados de otro país.
   let osm: Place[] = [];
   try {
     const [w, s, e, n] = cityBBox(city);
+    const cityName = CITIES[city].label;
+    const q2 = norm(query).includes(norm(cityName)) ? query : `${query}, ${cityName}`;
     const url =
-      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&bounded=1` +
-      `&viewbox=${w},${n},${e},${s}&q=${encodeURIComponent(query)}`;
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=co` +
+      `&viewbox=${w},${n},${e},${s}&q=${encodeURIComponent(q2)}`;
     const res = await fetch(url, { headers: { 'accept-language': 'es' } });
     if (res.ok) {
       const rows = (await res.json()) as { display_name: string; lon: string; lat: string; type?: string }[];
-      osm = rows.map((r) => ({
-        name: r.display_name.split(',')[0],
-        detail: r.display_name.split(',').slice(1, 3).join(',').trim() || (r.type ?? 'lugar'),
-        coord: [Number(r.lon), Number(r.lat)] as Coordinate,
-        source: 'osm' as const,
-      }));
+      osm = rows
+        .map((r) => ({
+          name: r.display_name.split(',')[0],
+          detail: r.display_name.split(',').slice(1, 3).join(',').trim() || (r.type ?? 'lugar'),
+          coord: [Number(r.lon), Number(r.lat)] as Coordinate,
+          source: 'osm' as const,
+        }))
+        .filter((p) => distM(p.coord, CITIES[city].center) < 25000)
+        .slice(0, 5);
     }
   } catch { /* red o rate-limit: devolvemos lo local */ }
 
