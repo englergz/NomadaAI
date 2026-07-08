@@ -1,7 +1,7 @@
 {
   "config_file": "risk_config.tumaco.json",
-  "config_sha256": "bce92c88faa9f126fac6e64dd64b336944ecf475460a1cfa34d3731972ebd9da",
-  "generated_at": "2026-07-08T18:00:04+00:00",
+  "config_sha256": "2fd7a0653aea2508e36cc4e3bf3e35560f824439237fd52654a903d6f9d5436e",
+  "generated_at": "2026-07-08T22:57:16+00:00",
   "factores_activos": {
     "densidad": 0.35,
     "periferia": 0.3,
