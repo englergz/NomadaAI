@@ -16,6 +16,10 @@ export interface Settings {
   riskOn: boolean;        // capa de riesgo
   satellite: boolean;     // base satelital
   poisOn: boolean;        // lugares (POIs)
+  // Viaje y alertas
+  vehicle: string | null; // vehículo predeterminado (moto/carro/bus/camion) — opcional (B.6.1)
+  threshold: number;      // umbral de alerta anticipada sobre risk_norm (0–1)
+  autoTrip: boolean;      // iniciar recorrido libre automáticamente al detectar movimiento
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -26,6 +30,9 @@ export const DEFAULT_SETTINGS: Settings = {
   riskOn: true,
   satellite: false,
   poisOn: false,
+  vehicle: null,
+  threshold: 0.7,
+  autoTrip: false,
 };
 
 const KEY = 'nomadaai_settings_v1';
