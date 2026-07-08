@@ -32,22 +32,26 @@ const KEY = 'nomadaai_settings_v1';
 
 interface Ctx {
   settings: Settings;
+  hydrated: boolean; // true cuando ya se leyeron los ajustes persistidos
   set: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }
 
-const SettingsContext = createContext<Ctx>({ settings: DEFAULT_SETTINGS, set: () => {} });
+const SettingsContext = createContext<Ctx>({ settings: DEFAULT_SETTINGS, hydrated: false, set: () => {} });
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)
       .then((s) => { if (s) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(s) }); })
-      .catch(() => { /* sin persistencia seguimos con defaults */ });
+      .catch(() => { /* sin persistencia seguimos con defaults */ })
+      .finally(() => setHydrated(true));
   }, []);
 
   const value = useMemo<Ctx>(() => ({
     settings,
+    hydrated,
     set: (key, v) => {
       setSettings((prev) => {
         const next = { ...prev, [key]: v };
@@ -55,7 +59,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         return next;
       });
     },
-  }), [settings]);
+  }), [settings, hydrated]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }

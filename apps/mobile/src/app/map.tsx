@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 import type { BuildRouteResponse, Coordinate, RiskZonesResponse } from '@nomadaai/shared';
 
 import ReportSheet from '@/components/report-sheet';
@@ -22,7 +23,7 @@ import { CITIES, DEFAULT_CITY } from '@/constants/map';
 import { Colors } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { levelFor, ProximityTracker, zoneAt, type AlertLevel } from '@/lib/alerts';
-import { coverageCity, searchPlaces, type Place } from '@/lib/geocode';
+import { coverageCity, distM, searchPlaces, type Place } from '@/lib/geocode';
 
 // Prioridad de seguridad → λ (risk_weight) del backend.
 const PRIORITIES = [
@@ -36,7 +37,7 @@ export default function MapScreen() {
   const dark = scheme === 'dark';
   const c = Colors[scheme];
   const insets = useSafeAreaInsets();
-  const { settings, set } = useSettings();
+  const { settings, set, hydrated } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
@@ -205,7 +206,41 @@ export default function MapScreen() {
     } catch { /* sin permiso o sin módulo: el banner in-app ya avisó */ }
   }
 
-  // Cada posición del recorrido: nivel en vivo + alerta 1 vez por zona.
+  // Prefijo del recorrido para el modelo de predicción (OE1): puntos [lon,lat,t].
+  const tripPtsRef = useRef<{ lon: number; lat: number; t: number }[]>([]);
+  const lastPredictRef = useRef(0);
+
+  // Movimiento real → modelo: con velocidad sostenida (~≥15 km/h) el prefijo se envía a
+  // /predict/online, que predice el destino y devuelve la ALERTA ANTICIPADA de riesgo.
+  async function feedModel(speedMps: number) {
+    const now = Date.now();
+    if (now - lastPredictRef.current < 15000) return; // máx. 1 llamada cada 15 s
+    const pts = tripPtsRef.current.slice(-40);        // prefijo acotado (payload pequeño)
+    if (pts.length < 4) return;
+    lastPredictRef.current = now;
+    try {
+      const d = new Date();
+      const r = await api.predictOnline({
+        points: pts,
+        t_seconds: d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds(),
+        day: (d.getDay() + 6) % 7, // JS 0=dom → API 0=lun
+        speed_mps: Math.min(Math.max(speedMps, 1), 39),
+        threshold: 0.7,
+      });
+      const a = r.alert;
+      // Alerta anticipada: llega ANTES de entrar a la zona; misma regla una-vez-por-zona.
+      if (a?.is_high && trackerRef.current.seenOnce(`pre:${a.cell_id}`)) {
+        const lvl = levelFor(a.risk_norm);
+        const eta = a.arrival_min > 0 ? ` en ~${a.arrival_min} min` : ' más adelante';
+        const title = lvl === 'atencion' ? 'Atención' : 'Precaución';
+        const body = `Tu camino pasa por un tramo de riesgo${eta}. Puedes ajustar la ruta o extremar cuidado.`;
+        setBanner({ text: `${title}: ${body}`, tone: lvl === 'atencion' ? 'coral' : 'warn' });
+        notifyLocal(`${title}: riesgo${eta}`, body);
+      }
+    } catch { /* sin red no interrumpimos el recorrido */ }
+  }
+
+  // Cada posición del recorrido: nivel en vivo + alerta 1 vez por zona + modelo.
   function handlePosition(pos: Coordinate) {
     setUserLoc(pos as [number, number]);
     const hit = zoneAt(riskRef.current, pos);
@@ -214,6 +249,17 @@ export default function MapScreen() {
     if (alert) {
       setBanner({ text: `${alert.title}: ${alert.body}`, tone: alert.level === 'atencion' ? 'coral' : 'warn' });
       notifyLocal(alert.title, alert.body);
+    }
+    // Acumula el prefijo y estima velocidad entre las dos últimas posiciones.
+    const t = Date.now() / 1000;
+    const pts = tripPtsRef.current;
+    const prev = pts[pts.length - 1];
+    pts.push({ lon: pos[0], lat: pos[1], t });
+    if (pts.length > 120) pts.splice(0, pts.length - 120);
+    if (prev) {
+      const dt = t - prev.t;
+      const speed = dt > 0 ? distM([prev.lon, prev.lat], pos) / dt : 0;
+      if (speed >= 4) feedModel(speed); // ~15 km/h: hay desplazamiento real (moto/carro/bus)
     }
   }
 
@@ -232,6 +278,8 @@ export default function MapScreen() {
       } catch { /* opcional: sin notificaciones seguimos con banners */ }
     }
     trackerRef.current.reset();
+    tripPtsRef.current = [];
+    lastPredictRef.current = 0;
     setTripLevel('despejado');
     setOnTrip(true);
     setBanner({ text: 'Recorrido iniciado. Te avisaremos solo cuando haga falta.', tone: 'info' });
@@ -268,50 +316,55 @@ export default function MapScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
       <StatusBar style={dark ? 'light' : 'dark'} />
-      <RiskMap
-        dark={dark} riskOn={riskOn} riskData={riskData}
-        userLocation={userLoc} routes={routes} destination={dest?.coord ?? null}
-        riskStyle={{ palette: settings.palette, intensity: settings.intensity, opacity: settings.opacity }}
-        satellite={settings.satellite} poisData={poisData} poisOn={settings.poisOn}
-      />
+      {/* El mapa se crea cuando los ajustes ya están hidratados: nace con el tema/base
+          correctos y se evita el swap de tiles (y su flash) en el arranque. */}
+      {hydrated && (
+        <RiskMap
+          dark={dark} riskOn={riskOn} riskData={riskData}
+          userLocation={userLoc} routes={routes} destination={dest?.coord ?? null}
+          riskStyle={{ palette: settings.palette, intensity: settings.intensity, opacity: settings.opacity }}
+          satellite={settings.satellite} poisData={poisData} poisOn={settings.poisOn}
+        />
+      )}
 
-      {/* Controles superiores */}
-      <View style={[styles.top, { top: insets.top + 12 }]}>
+      {/* Volver: chip circular clásico «‹» */}
+      <Pressable
+        onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+        style={[styles.fab, { top: insets.top + 12, left: 16, backgroundColor: c.backgroundElement, borderColor: c.border }]}
+        hitSlop={6}
+      >
+        <Ionicons name="chevron-back" size={22} color={c.text} />
+      </Pressable>
+
+      {/* Pila flotante derecha: perfil · ajustes · reportar */}
+      <View style={[styles.rightStack, { top: insets.top + 12 }]}>
         <Pressable
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-          style={[styles.chip, { backgroundColor: c.backgroundElement, borderColor: c.border }]}
+          onPress={() => setBanner({ text: 'Tu perfil llega con el inicio de sesión (próxima fase).', tone: 'info' })}
+          style={[styles.fab, styles.inStack, { backgroundColor: c.backgroundElement, borderColor: c.border }]}
         >
-          <Text style={[styles.chipText, { color: c.text }]}>‹ Volver</Text>
+          <Ionicons name="person-circle-outline" size={23} color={c.text} />
         </Pressable>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable
-            onPress={() => setShowSettings(true)}
-            style={[styles.chip, { backgroundColor: c.backgroundElement, borderColor: c.border }]}
-          >
-            <Text style={[styles.chipText, { color: c.text }]}>⚙︎</Text>
-          </Pressable>
-          <Pressable
-            onPress={locate}
-            style={[styles.chip, { backgroundColor: c.backgroundElement, borderColor: userLoc ? c.accent : c.border }]}
-          >
-            <Text style={[styles.chipText, { color: userLoc ? c.accent : c.text }]}>◎</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => set('riskOn', !riskOn)}
-            style={[styles.chip, { backgroundColor: c.backgroundElement, borderColor: riskOn ? c.accent : c.border }]}
-          >
-            <Text style={[styles.chipText, { color: riskOn ? c.accent : c.text }]}>
-              Riesgo {riskOn ? 'ON' : 'OFF'}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setShowReport(true)}
-            style={[styles.chip, { backgroundColor: c.backgroundElement, borderColor: c.coral }]}
-          >
-            <Text style={[styles.chipText, { color: c.coral }]}>Reportar</Text>
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => setShowSettings(true)}
+          style={[styles.fab, styles.inStack, { backgroundColor: c.backgroundElement, borderColor: c.border }]}
+        >
+          <Ionicons name="settings-outline" size={21} color={c.text} />
+        </Pressable>
+        <Pressable
+          onPress={() => setShowReport(true)}
+          style={[styles.fab, styles.inStack, { backgroundColor: c.backgroundElement, borderColor: c.coral }]}
+        >
+          <Ionicons name="alert-circle-outline" size={22} color={c.coral} />
+        </Pressable>
       </View>
+
+      {/* Mi ubicación: FAB clásico abajo a la derecha, sobre la barra inferior */}
+      <Pressable
+        onPress={locate}
+        style={[styles.fab, styles.locFab, { bottom: insets.bottom + 244, backgroundColor: c.backgroundElement, borderColor: userLoc ? c.accent : c.border }]}
+      >
+        <Ionicons name="locate-outline" size={21} color={userLoc ? c.accent : c.text} />
+      </Pressable>
 
       {/* Banner de estado (in-app, no intrusivo) */}
       {banner && (
@@ -403,18 +456,30 @@ export default function MapScreen() {
           >
             <Text style={styles.ctaText}>Iniciar recorrido</Text>
           </Pressable>
-        ) : (
+        ) : dest ? (
           <Pressable
             onPress={() => goSafe()}
-            disabled={!dest || routing}
+            disabled={routing}
             style={({ pressed }) => [
               styles.cta,
-              { backgroundColor: c.accent, opacity: !dest || routing ? 0.45 : pressed ? 0.85 : 1 },
+              { backgroundColor: c.accent, opacity: routing ? 0.45 : pressed ? 0.85 : 1 },
             ]}
           >
             {routing
               ? <ActivityIndicator size="small" color="#fff" />
               : <Text style={styles.ctaText}>Ir seguro</Text>}
+          </Pressable>
+        ) : (
+          // Sin destino también te cuidamos: el modelo PREDICE a dónde vas por cómo te
+          // mueves y lanza la alerta anticipada (OE1+OE3). CTA secundario, no invasivo.
+          <Pressable
+            onPress={startTrip}
+            style={({ pressed }) => [
+              styles.cta, styles.ctaGhost,
+              { borderColor: c.accent, opacity: pressed ? 0.8 : 1 },
+            ]}
+          >
+            <Text style={[styles.ctaText, { color: c.accent }]}>Recorrido libre</Text>
           </Pressable>
         )}
         {Platform.OS === 'web' && (
@@ -431,9 +496,16 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
-  chip: { borderWidth: 1, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },
-  chipText: { fontSize: 13, fontWeight: '600' },
+  // Botonera flotante: círculos consistentes (44pt, área táctil accesible)
+  fab: {
+    position: 'absolute', width: 44, height: 44, borderRadius: 22,
+    borderWidth: 1, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  rightStack: { position: 'absolute', right: 16, gap: 10 },
+  inStack: { position: 'relative' },
+  locFab: { right: 16 },
   banner: { position: 'absolute', left: 24, right: 24, borderWidth: 1, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 16 },
   sheet: {
     position: 'absolute', left: 0, right: 0, gap: 10,
@@ -447,6 +519,7 @@ const styles = StyleSheet.create({
   prioRow: { flexDirection: 'row', gap: 8 },
   prio: { flex: 1, borderWidth: 1, borderRadius: 999, paddingVertical: 8, alignItems: 'center' },
   cta: { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
+  ctaGhost: { backgroundColor: 'transparent', borderWidth: 1.5 },
   ctaText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   tripRow: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
   levelChip: {

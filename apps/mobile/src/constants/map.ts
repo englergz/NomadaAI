@@ -52,9 +52,11 @@ export type HeatPaletteKey = keyof typeof HEAT_PALETTES;
 
 // Expresión de color del heatmap. `intensity` desplaza las paradas: con intensidad
 // alta los colores fuertes aparecen desde riesgos más bajos (y viceversa).
+// Rango recalibrado a pedido: 50% = aspecto suave por defecto, 100% = el antiguo
+// tope medio (no satura), 0% = aún más tenue que antes.
 export function riskFillColor(palette: HeatPaletteKey, intensity: number) {
   const base = [0.0, 0.35, 0.6, 0.85, 1.0];
-  const scale = 1.5 - intensity; // 0→1.5 (suave) · 0.5→1.0 (default) · 1→0.5 (fuerte)
+  const scale = 2.0 - intensity; // 0→2.0 (muy suave) · 0.5→1.5 (default) · 1→1.0 (máximo)
   const stops = base.map((s, i) => Math.min(1, s * scale) + i * 1e-6); // estrictamente creciente
   const colors = HEAT_PALETTES[palette].colors;
   const expr: unknown[] = ['interpolate', ['linear'], ['get', 'risk_norm']];
