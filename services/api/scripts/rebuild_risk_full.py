@@ -194,8 +194,26 @@ def main(cfg_path: Path):
         "socioeconomico": None,     # se activa con DANE manzana/estratos (§3.2)
         "pois_riesgo": None,        # se activa con Overpass del tipo correcto (§3.2 / R2)
         "iluminacion": None,        # se activa con OSM lit=* o VIIRS (§3.2 / R2)
-        "delito_reportado": None,   # se activa con DIJIN o F_report(z,t) (§6 / R3)
+        # F_report(z,t) (§6 / R3): exportar GET /incidents/aggregate a tumaco_reportes.json
+        # para activar este factor; sin archivo (o sin volumen) queda None → OFF reportado.
+        "delito_reportado": None,
     }
+    rep_file = ART / "tumaco_reportes.json"
+    if rep_file.exists():
+        rep = json.loads(rep_file.read_text(encoding="utf-8")).get("cells", [])
+        if len(rep) >= 10:  # volumen mínimo para una superficie con sentido
+            acc = [0.0] * len(cells)
+            for r in rep:
+                x, y = to3857(r["lon"], r["lat"])
+                ix = int((x - x0) // CELL); iy = int((y - y0) // CELL)
+                try:
+                    acc[cells.index((ix, iy))] += float(r["peso"])
+                except ValueError:
+                    pass  # reporte fuera de la malla urbana
+            raw["delito_reportado"] = acc
+            print(f"F_report: {len(rep)} celdas con reportes agregadas al factor delito_reportado")
+        else:
+            print(f"F_report: solo {len(rep)} celdas con reportes (<10): factor sigue sin dato")
 
     active, skipped = [], []
     for name, fc in cfg["factors"].items():

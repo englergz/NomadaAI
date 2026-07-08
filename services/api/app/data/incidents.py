@@ -87,3 +87,28 @@ def report(rec: dict[str, Any]) -> dict[str, Any]:
             new_id = cur.fetchone()[0]
         conn.commit()
     return {"accepted": True, "id": str(new_id)}
+
+
+# --- F_report(z,t): agregación ANÓNIMA por celda con decaimiento (MODELO_RIESGO.md §6) ---
+# Nunca expone reportes crudos: solo conteos ponderados por celda aproximada (~110 m).
+def aggregate(city: str = "tumaco", half_life_days: float = 30.0) -> dict[str, Any]:
+    if not available():
+        return {"available": False, "cells": []}
+    _ensure()
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                select round(lon::numeric, 3), round(lat::numeric, 3),
+                       sum(exp(-ln(2) * extract(epoch from now() - created_at) / (86400 * %s))),
+                       count(*)
+                from incidents where city = %s
+                group by 1, 2
+                """,
+                (half_life_days, city),
+            )
+            cells = [
+                {"lon": float(r[0]), "lat": float(r[1]), "peso": round(float(r[2]), 4), "n": int(r[3])}
+                for r in cur.fetchall()
+            ]
+    return {"available": True, "half_life_days": half_life_days, "cells": cells}

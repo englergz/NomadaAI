@@ -35,6 +35,22 @@ def risk_zones(
     return fc
 
 
+@router.get("/incidents/aggregate")
+def incidents_aggregate(
+    city: str = Query("tumaco"),
+    half_life_days: float = Query(30.0, gt=0, le=365),
+) -> dict:
+    """F_report(z,t) — agregación ANÓNIMA por celda con decaimiento exponencial (§6).
+
+    Solo conteos ponderados (~110 m); jamás reportes individuales. Alimenta el factor
+    'delito_reportado' del pipeline cuando haya volumen suficiente.
+    """
+    try:
+        return incidents.aggregate(city, half_life_days)
+    except Exception as e:  # noqa: BLE001
+        return {"available": False, "error": str(e), "cells": []}
+
+
 @router.post("/incidents/report", response_model=IncidentResponse)
 def report_incident(
     report: IncidentReport, authorization: Optional[str] = Header(None)

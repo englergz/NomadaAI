@@ -102,7 +102,7 @@ que produce los resultados de la tesis) de lo **definido pero DESHABILITADO** aq
 | Componente | Estado | Nota |
 |---|---|---|
 | **Modulación temporal (hora × día)** | **ACTIVO** | `TEMP(h)` con piso nocturno; el día se estima con homicidios locales [R3]. |
-| **Reporte ciudadano (capa viva)** | **Producto / v-próxima** | Genera dato local **georreferenciado y con hora** → habilita calibración y validación **sin depender solo de la DIJIN** (§6). |
+| **Reporte ciudadano (capa viva)** | **OPERATIVO (ingesta)** | La app persiste reportes (`/incidents/report`, rate-limit) y los agrega anónimos con decaimiento (`/incidents/aggregate` → `F_report(z,t)`); el pipeline activa el factor `delito_reportado` al alcanzar volumen mínimo (≥10 celdas). Habilita calibración **sin depender solo de la DIJIN** (§6). |
 
 ![Zonificación de Tumaco](img/tumaco_zonas.png)
 *Figura 3. Zonificación en malla (~150 m, 425 zonas) sobre el área urbana simulada.*
