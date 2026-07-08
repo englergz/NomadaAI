@@ -1,43 +1,64 @@
 #!/usr/bin/env python3
-"""Reconstruye el índice de riesgo con COBERTURA COMPLETA del casco urbano (OE2).
+"""Reconstruye el índice de riesgo (OE2) como FRAMEWORK CONFIGURABLE de factores.
 
-Problema: la malla anterior se derivaba solo de las trayectorias SUMO → había manzanas pobladas
-**sin celda** (grillas faltantes) y celdas con "población 0" que no eran seguras. Este script
-construye la malla de 150 m sobre **todas las manzanas censales DANE pobladas** del casco urbano
-(unión con las celdas de actividad de tráfico), de modo que toda zona con viviendas tenga su celda.
+El registro de factores y sus pesos viven en `risk_config.<city>.json` (MODELO_RIESGO.md §3–§4):
+cada factor se declara { enabled, weight, temporal_profile }; los pesos se RE-NORMALIZAN a Σ=1
+sobre los factores ACTIVOS y con dato; un factor disabled (o sin dato, que se reporta) aporta 0.
 
-Índice por celda = 0.65·norm(densidad poblacional DANE) + 0.35·norm(actividad de tráfico).
-Niveles por cuantiles. Curva temporal (relativa) preservada desde el CSV horario actual.
+Modulación temporal POR FACTOR (§7 — resuelve "tiempo = intensidad, no lugar"): cada factor
+puede llevar su propio perfil horario (flat = curva CEJ global; night_up = sube de noche, para
+periferia/iluminación; nightlife = franja nocturna de los POIs). Con perfiles distintos el
+RANKING ESPACIAL cambia con la hora sin necesidad de microdato.
 
-Salidas (con respaldo .bak): artifacts/risk/tumaco_riesgo_horario.csv y tumaco_zonas_riesgo_v2.csv
+Compatibilidad (golden test, scripts/GOLDEN.md): con la configuración equivalente (4 factores
+activos 0.35/0.30/0.20/0.15, todos 'flat', night_floor 0.5) la salida reproduce EXACTAMENTE los
+artefactos que respaldan las cifras de la tesis. La trazabilidad (hash de config + fecha) va en
+un sidecar `*_meta.json`, no en el CSV, para no alterar el formato.
+
+Salidas (con respaldo .bak): tumaco_riesgo_horario.csv, tumaco_zonas_riesgo_v2.csv, *_meta.json
 """
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import math
 import shutil
 import urllib.parse
 import urllib.request
-from collections import defaultdict
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 ART = Path(__file__).resolve().parents[1] / "artifacts" / "risk"
 RTM = ART / "tumaco_zonas_riesgo_rtm.csv"
 HOURLY = ART / "tumaco_riesgo_horario.csv"
+CONFIG_DEFAULT = ART / "risk_config.tumaco.json"
 SVC = ("https://ags.esri.co/arcgis/rest/services/LivingAtlas/"
        "Censo_personas_manzana_2018/MapServer/0/query")
 R = 20037508.34
 CELL = 150.0
 MARGIN = 6  # celdas de margen alrededor del área con trayectorias (evita traer zona rural lejana)
 
-# Pesos del índice (editables por CLI). Reflejan una hipótesis criminológica para Tumaco:
-# densidad (exposición/actividades rutinarias) + periferia/aislamiento (baja vigilancia, corredores).
-W_DENS = 0.35    # densidad poblacional (DANE)
-W_EXPO = 0.20    # actividad/tráfico
-W_PERIPH = 0.30  # periferia/aislamiento
-W_POLICE = 0.15  # lejanía de estación de policía (guardián capaz, Cohen & Felson 1979)
-NIGHT_FLOOR = 0.5  # piso de la curva temporal (la violencia no se anula de madrugada)
+# Curva horaria con respaldo citable: CEJ "Reloj de la Criminalidad" (2019) + INMLCF —
+# homicidios concentrados 18:00–23:59 (pico ~20:00–22:00). Curva relativa 0–1.
+HOUR_REL = {0: .55, 1: .50, 2: .45, 3: .42, 4: .45, 5: .50, 6: .55, 7: .60, 8: .62, 9: .63,
+            10: .65, 11: .67, 12: .70, 13: .72, 14: .74, 15: .76, 16: .80, 17: .88, 18: .95,
+            19: 1.0, 20: 1.0, 21: .98, 22: .90, 23: .75}
+
+
+def temporal_profiles(night_floor: float) -> dict:
+    """Perfiles horarios por factor (§7). 'flat' es la curva global legacy (CEJ + piso)."""
+    flat = {h: night_floor + (1 - night_floor) * HOUR_REL[h] for h in range(24)}
+    # night_up: espejo de la curva de actividad diurna — de noche/madrugada el factor pesa MÁS
+    # (menos vigilancia natural: periferia/aislamiento, iluminación). Normalizado a máx=1.
+    inv = {h: 1.0 - 0.5 * HOUR_REL[h] for h in range(24)}
+    mx = max(inv.values())
+    night_up = {h: night_floor + (1 - night_floor) * (inv[h] / mx) for h in range(24)}
+    # nightlife: franja de generadores nocturnos (bares/licor): 19:00–02:00 alta, día baja.
+    nl_rel = {h: (1.0 if h >= 20 or h <= 1 else 0.85 if h in (18, 19, 2) else 0.25) for h in range(24)}
+    nightlife = {h: night_floor + (1 - night_floor) * nl_rel[h] for h in range(24)}
+    return {"flat": flat, "night_up": night_up, "nightlife": nightlife}
 
 
 def to3857(lon, lat):
@@ -52,14 +73,8 @@ def to4326(x, y):
     return lon, lat
 
 
-def minmax(xs):
-    lo, hi = min(xs), max(xs)
-    return [(v - lo) / (hi - lo) if hi > lo else 0.0 for v in xs]
-
-
 def pctile(xs):
-    """Cada valor → su percentil [0,1]. Así todos los factores quedan uniformes y los PESOS
-    controlan la influencia real (no la varianza de cada factor)."""
+    """Cada valor → su percentil [0,1]: los PESOS (no la varianza) gobiernan la influencia."""
     order = sorted(range(len(xs)), key=lambda i: xs[i])
     r = [0.0] * len(xs)
     n = len(xs) or 1
@@ -90,8 +105,6 @@ def centroid(geom):
 
 
 def fetch_police():
-    """Estaciones de policía → (x,y) en 3857. Lee el archivo bundleado (por ciudad); si no,
-    consulta OSM. Factor 'guardián capaz' (Cohen & Felson, 1979)."""
     pf = ART / "tumaco_police.json"
     if pf.exists():
         pts = json.loads(pf.read_text(encoding="utf-8"))
@@ -124,13 +137,17 @@ def fetch_manzanas():
     return feats
 
 
-def main():
+def main(cfg_path: Path):
+    cfg_text = cfg_path.read_text(encoding="utf-8")
+    cfg = json.loads(cfg_text)
+    night_floor = float(cfg.get("night_floor", 0.5))
+    profiles = temporal_profiles(night_floor)
+
     zonas = list(csv.DictReader(open(RTM)))
     z0 = zonas[0]
     x0 = float(z0["x_center"]) - (int(z0["ix"]) + 0.5) * CELL
     y0 = float(z0["y_center"]) - (int(z0["iy"]) + 0.5) * CELL
 
-    # actividad (tráfico) por celda existente + rango del área urbana con trayectorias
     act = {}
     ixs, iys = [], []
     for z in zonas:
@@ -150,41 +167,53 @@ def main():
             continue
         x, y = to3857(c[0], c[1])
         ix = int((x - x0) // CELL); iy = int((y - y0) // CELL)
-        if ix_min <= ix <= ix_max and iy_min <= iy <= iy_max:  # dentro del casco urbano (+margen)
+        if ix_min <= ix <= ix_max and iy_min <= iy <= iy_max:
             pob[(ix, iy)] += p
 
-    # Unión de celdas: con población (DANE) o con actividad (trayectorias)
     cells = sorted(set(act) | set(pob))
-    print(f"Celdas: antes {len(zonas)} (solo tráfico)  →  ahora {len(cells)} (tráfico ∪ población)")
-    nuevas_pob = sum(1 for c in cells if c in pob and c not in act)
-    print(f"  celdas nuevas por población (antes faltaban): {nuevas_pob}")
+    print(f"Celdas: {len(zonas)} (solo tráfico) → {len(cells)} (tráfico ∪ población)")
 
     P = [pob.get(c, 0.0) for c in cells]
     A = [act.get(c, 0.0) for c in cells]
-
-    # Factor de PERIFERIA/AISLAMIENTO: distancia (en celdas) al centroide poblacional. Las zonas
-    # periféricas y de baja vigilancia tienden a mayor violencia dirigida (Jacobs 1961 'ojos en la
-    # calle'; Newman 1972 espacio defendible; CEDRE 2024: corredores/débil presencia estatal en la
-    # periferia). Contrapesa el sesgo de "solo el centro concurrido es riesgoso".
-    # coordenadas 3857 del centro de cada celda
     cxy = [(x0 + (ix + 0.5) * CELL, y0 + (iy + 0.5) * CELL) for (ix, iy) in cells]
     tot_p = sum(P) or 1.0
     cx = sum(cxy[i][0] * P[i] for i in range(len(cells))) / tot_p
     cy = sum(cxy[i][1] * P[i] for i in range(len(cells))) / tot_p
     periph = [((cxy[i][0] - cx) ** 2 + (cxy[i][1] - cy) ** 2) ** 0.5 for i in range(len(cells))]
-
-    # Distancia a la estación de policía más cercana (lejanía = menor guardián capaz = ↑ riesgo).
     police = fetch_police()
     print(f"Estaciones de policía (OSM): {len(police)}")
-    if police:
-        nopol = [min(((cxy[i][0] - px) ** 2 + (cxy[i][1] - py) ** 2) ** 0.5 for (px, py) in police)
-                 for i in range(len(cells))]
-    else:
-        nopol = [0.0] * len(cells)
+    nopol = ([min(((cxy[i][0] - px) ** 2 + (cxy[i][1] - py) ** 2) ** 0.5 for (px, py) in police)
+              for i in range(len(cells))] if police else None)
 
-    nd, na, npf, npo = pctile(P), pctile(A), pctile(periph), pctile(nopol)
-    idx = [round(100 * (W_DENS * nd[i] + W_EXPO * na[i] + W_PERIPH * npf[i] + W_POLICE * npo[i]), 2)
-           for i in range(len(cells))]
+    # ── REGISTRO DE FACTORES: nombre → valores crudos (None = sin dato → se omite y reporta) ──
+    raw = {
+        "densidad": P,
+        "periferia": periph,
+        "actividad": A,
+        "policia": nopol,
+        "socioeconomico": None,     # se activa con DANE manzana/estratos (§3.2)
+        "pois_riesgo": None,        # se activa con Overpass del tipo correcto (§3.2 / R2)
+        "iluminacion": None,        # se activa con OSM lit=* o VIIRS (§3.2 / R2)
+        "delito_reportado": None,   # se activa con DIJIN o F_report(z,t) (§6 / R3)
+    }
+
+    active, skipped = [], []
+    for name, fc in cfg["factors"].items():
+        if not fc.get("enabled"):
+            continue
+        if raw.get(name) is None:
+            skipped.append(name)
+            continue
+        active.append((name, float(fc["weight"]), fc.get("temporal_profile", "flat")))
+    if skipped:
+        print(f"AVISO: factores habilitados SIN dato (omitidos, aporte 0): {skipped}")
+    if not active:
+        raise SystemExit("Ningún factor activo con dato: revisa la configuración.")
+
+    s = sum(w for _, w, _ in active) or 1.0
+    active = [(n, w / s, pr) for n, w, pr in active]  # Σ=1 sobre los ACTIVOS con dato
+    npct = {n: pctile(raw[n]) for n, _, _ in active}
+    idx = [round(100 * sum(w * npct[n][i] for n, w, _ in active), 2) for i in range(len(cells))]
 
     order = sorted(range(len(idx)), key=lambda i: idx[i])
     lvl = [""] * len(idx)
@@ -192,52 +221,53 @@ def main():
         q = rank / len(order)
         lvl[i] = "alto" if q >= 0.85 else ("medio" if q >= 0.50 else "bajo")
 
-    from collections import Counter
-    print(f"pesos: densidad={W_DENS} actividad={W_EXPO} periferia={W_PERIPH} lejaníaPolicía={W_POLICE}")
-    print(f"corr(índice): población={pearson(idx, P):.3f} tráfico={pearson(idx, A):.3f} "
-          f"periferia={pearson(idx, periph):.3f} lejaníaPolicía={pearson(idx, nopol):.3f}")
+    print("pesos activos:", {n: round(w, 4) for n, w, _ in active})
+    print("corr(índice):", {n: round(pearson(idx, raw[n]), 3) for n, _, _ in active})
     print(f"niveles: {dict(Counter(lvl))}")
 
-    # centroides lon/lat de cada celda
     def cell_lonlat(ix, iy):
         return to4326(x0 + (ix + 0.5) * CELL, y0 + (iy + 0.5) * CELL)
 
-    # Curva HORARIA con RESPALDO CITABLE (no supuesto): CEJ "Reloj de la Criminalidad" (2019) +
-    # INMLCF/Medicina Legal → los homicidios se concentran 18:00–23:59 (hasta 2× el promedio),
-    # con pico ~20:00-22:00; menor en la mañana/madrugada. Curva relativa (0-1) sobre ese patrón.
-    HOUR_REL = {0: .55, 1: .50, 2: .45, 3: .42, 4: .45, 5: .50, 6: .55, 7: .60, 8: .62, 9: .63,
-                10: .65, 11: .67, 12: .70, 13: .72, 14: .74, 15: .76, 16: .80, 17: .88, 18: .95,
-                19: 1.0, 20: 1.0, 21: .98, 22: .90, 23: .75}
-    tfac = {h: NIGHT_FLOOR + (1 - NIGHT_FLOOR) * HOUR_REL[h] for h in range(24)}
-    print("curva horaria: fuente CEJ Reloj de la Criminalidad 2019 (pico 18-24h)")
-
+    uniform = len({pr for _, _, pr in active}) == 1 and active[0][2] == "flat"
     shutil.copyfile(HOURLY, HOURLY.with_suffix(".csv.bak"))
     with open(HOURLY, "w", newline="") as f:
         w = csv.writer(f); w.writerow(["cell_id", "lon", "lat", "hora", "riesgo_dyn"])
+        flat = profiles["flat"]
         for i, (ix, iy) in enumerate(cells):
             lon, lat = cell_lonlat(ix, iy)
             cid = ix * 100000 + iy
             for h in range(24):
-                w.writerow([cid, round(lon, 6), round(lat, 6), h, round(idx[i] * tfac[h], 2)])
+                if uniform:
+                    # Camino legacy EXACTO (golden test): índice redondeado × curva global.
+                    v = round(idx[i] * flat[h], 2)
+                else:
+                    # Modulación POR FACTOR (§7): el ranking espacial cambia con la hora.
+                    v = round(100 * sum(w2 * profiles[pr][h] * npct[n][i] for n, w2, pr in active), 2)
+                w.writerow([cid, round(lon, 6), round(lat, 6), h, v])
+
     with open(ART / "tumaco_zonas_riesgo_v2.csv", "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["cell_id", "lon", "lat", "poblacion_dane", "n_points", "indice", "nivel"])
         for i, (ix, iy) in enumerate(cells):
             lon, lat = cell_lonlat(ix, iy)
             w.writerow([ix * 100000 + iy, round(lon, 6), round(lat, 6), int(P[i]), int(A[i]), idx[i], lvl[i]])
-    print(f"\nEscrito {HOURLY.name} ({len(cells)} celdas × 24h) + tumaco_zonas_riesgo_v2.csv")
+
+    # Trazabilidad (sidecar, no altera el formato de los CSV): config exacta + hash + fecha.
+    meta = {
+        "config_file": cfg_path.name,
+        "config_sha256": hashlib.sha256(cfg_text.encode()).hexdigest(),
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "factores_activos": {n: round(w, 4) for n, w, _ in active},
+        "perfiles": {n: pr for n, _, pr in active},
+        "omitidos_sin_dato": skipped,
+        "celdas": len(cells),
+    }
+    (ART / "tumaco_riesgo_meta.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"\nEscrito {HOURLY.name} ({len(cells)} celdas × 24h) + tumaco_zonas_riesgo_v2.csv + meta")
 
 
 if __name__ == "__main__":
     import argparse
-    ap = argparse.ArgumentParser(description="Reconstruye el índice de riesgo (pesos editables).")
-    ap.add_argument("--w-dens", type=float, default=W_DENS, help="peso densidad poblacional")
-    ap.add_argument("--w-expo", type=float, default=W_EXPO, help="peso actividad/tráfico")
-    ap.add_argument("--w-periph", type=float, default=W_PERIPH, help="peso periferia/aislamiento")
-    ap.add_argument("--w-police", type=float, default=W_POLICE, help="peso lejanía de policía")
-    ap.add_argument("--night-floor", type=float, default=NIGHT_FLOOR, help="piso de la curva temporal (0-1)")
-    a = ap.parse_args()
-    s = (a.w_dens + a.w_expo + a.w_periph + a.w_police) or 1.0
-    W_DENS, W_EXPO, W_PERIPH, W_POLICE = a.w_dens / s, a.w_expo / s, a.w_periph / s, a.w_police / s
-    NIGHT_FLOOR = a.night_floor
-    main()
+    ap = argparse.ArgumentParser(description="Reconstruye el índice de riesgo desde risk_config.<city>.json")
+    ap.add_argument("--config", type=Path, default=CONFIG_DEFAULT, help="ruta del risk_config.*.json")
+    main(ap.parse_args().config)

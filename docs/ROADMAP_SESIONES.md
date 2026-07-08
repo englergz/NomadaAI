@@ -25,6 +25,12 @@
 5. Extras acordados: endpoint `/risk/explain?cell=` (desglose w_i·pctl(F_i)); hash de config + fecha
    en los CSV de salida (reproducibilidad); re-correr pipeline y reportar números para figuras/TABLA I/ρ/OE4.
 
+### R1b · A6 — Imagen de riesgo COMPARATIVA (al regenerar)
+- Conservar la superficie anterior; presentar AMBAS (config anterior vs. actual) con rótulos de
+  factores activos. Aplicar en README y MODELO_RIESGO.md. En tesis: figura adicional o nota, SIN
+  solaparse con la Fig. 5 (degenerado vs. multifactor) — rotular las dos comparaciones distinto.
+- Reportar números nuevos (correlaciones, zonas, ρ, OE4) para sincronizar docs + tesis.
+
 ### R2 · Adquisición de dato (A3)
 - Overpass tags correctos (bar/pub/nightclub, shop=alcohol, marketplace, bus_station) Tumaco;
   DANE manzana socioec.; iluminación OSM/VIIRS. Vacío → OFF documentado en §3.2 (hallazgo).
