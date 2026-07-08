@@ -61,10 +61,12 @@ El índice es **determinista** (mismos datos → mismo valor) y **trazable**: ca
 descompone en la contribución `w_i·pctl(F_i)` de cada variable → se puede explicar *por qué* una zona
 es de riesgo alto (no es una caja negra).
 
-> **Implementación actual:** `services/api/scripts/rebuild_risk_full.py` calcula el índice sobre los
-> **factores activos de Tumaco** (§3.1) con pesos fijos; la modulación `TEMP(h)`×día se sirve desde
-> `tumaco_riesgo_horario.csv` en `/risk/zones?hour=&day=`. La **configuración por-ciudad**
-> (habilitar/pesar factores desde el panel) es el paso de producto descrito en §4.
+> **Implementación actual:** `rebuild_risk_full.py` calcula el índice desde el **registro
+> configurable** `risk_config.<city>.json` (factores `{enabled, weight, temporal_profile}`,
+> Σ=1 renormalizada sobre los activos; un factor habilitado sin dato se omite y se reporta).
+> Con la config equivalente reproduce exactamente los artefactos de la tesis (golden test,
+> `scripts/GOLDEN.md`); cada corrida deja trazabilidad en `tumaco_riesgo_meta.json` (hash de la
+> config + fecha + factores activos). La edición desde el panel de admin es el paso de producto (§4.3).
 
 ---
 
@@ -177,11 +179,15 @@ F_report(z,t) = Σ_r  c_r · decay(t − t_r) · verif_r
 El riesgo es **dinámico**: `TEMP(h)` modula el índice según la hora [R3]. Hoy la **curva por hora es un
 supuesto informado por la literatura nacional** (las bases públicas no traen la hora del hecho); el
 **día** sí es local (homicidios de Tumaco). Está aislado y **calibrable** con microdato o reporte
-ciudadano. Limitación honesta: la modulación temporal escala el riesgo de forma **uniforme en el
-espacio** — no desplaza los *hotspots* por hora. Capturar esa **interacción espacio-temporal**
-(p. ej., zona de bares peligrosa de noche y no a mediodía) requiere dato espacio-temporal de delito;
-mejora futura defendible: **modular al alza la periferia/aislamiento de noche** (menos vigilancia),
-declarada, no implementada sin dato.
+ciudadano. La limitación de que la modulación fuera **uniforme en el espacio** (no desplazaba los
+*hotspots* por hora) está **resuelta a nivel de framework**: cada factor declara su
+`temporal_profile` en la configuración — `flat` (curva CEJ global), `night_up` (sube de noche:
+periferia/iluminación, por menor vigilancia natural) o `nightlife` (franja 19:00–02:00 de los POIs
+generadores). Con perfiles distintos el índice es `Σ w_i·TEMP_i(h)·pctl(F_i)` y el **ranking
+espacial cambia con la hora sin microdato**. En la configuración de Tumaco que respalda las cifras
+de la tesis todos los factores usan `flat` (equivalente exacto al modelo original, golden test);
+activar perfiles distintos es un **escenario declarado** que exige re-correr pipeline y regenerar
+figuras/tablas.
 
 ![Curva horaria del riesgo](img/risk_hour_curve.png)
 *Figura 6. Modulador horario `TEMP(h)`: el riesgo de cada zona varía con la hora de llegada.*

@@ -1,0 +1,19 @@
+{
+  "config_file": "risk_config.tumaco.json",
+  "config_sha256": "bce92c88faa9f126fac6e64dd64b336944ecf475460a1cfa34d3731972ebd9da",
+  "generated_at": "2026-07-08T18:00:04+00:00",
+  "factores_activos": {
+    "densidad": 0.35,
+    "periferia": 0.3,
+    "actividad": 0.2,
+    "policia": 0.15
+  },
+  "perfiles": {
+    "densidad": "flat",
+    "periferia": "flat",
+    "actividad": "flat",
+    "policia": "flat"
+  },
+  "omitidos_sin_dato": [],
+  "celdas": 475
+}

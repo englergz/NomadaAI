@@ -1,0 +1,16 @@
+{
+  "city": "tumaco",
+  "version": 1,
+  "night_floor": 0.5,
+  "comment": "Registro completo del framework IRU (MODELO_RIESGO.md §3). Σ de pesos se renormaliza sobre los factores ACTIVOS. Un factor disabled aporta 0 y su 'motivo' es la decisión trazable (§3.2). temporal_profile: flat | night_up | nightlife | custom24 (§7).",
+  "factors": {
+    "densidad":        { "enabled": true,  "weight": 0.35, "temporal_profile": "flat", "fuente": "DANE censo manzana" },
+    "periferia":       { "enabled": true,  "weight": 0.30, "temporal_profile": "flat", "fuente": "geometría de la malla" },
+    "actividad":       { "enabled": true,  "weight": 0.20, "temporal_profile": "flat", "fuente": "trayectorias SUMO" },
+    "policia":         { "enabled": true,  "weight": 0.15, "temporal_profile": "flat", "fuente": "OSM amenity=police" },
+    "socioeconomico":  { "enabled": false, "weight": 0.15, "temporal_profile": "flat", "motivo": "Homogeneidad: ~96% de zonas en vulnerabilidad máxima; no discrimina intra-urbano (§3.2)", "fuente": "DANE manzana / TerriData" },
+    "pois_riesgo":     { "enabled": false, "weight": 0.10, "temporal_profile": "nightlife", "motivo": "OSM Tumaco sin bares/discotecas/licoreras del tipo correcto (§3.2)", "fuente": "Overpass amenity=bar/pub/nightclub, shop=alcohol" },
+    "iluminacion":     { "enabled": false, "weight": 0.10, "temporal_profile": "night_up", "motivo": "OSM Tumaco sin alumbrado (highway=street_lamp, lit=*) (§3.2)", "fuente": "OSM / VIIRS" },
+    "delito_reportado":{ "enabled": false, "weight": 0.20, "temporal_profile": "flat", "motivo": "Homicidios abiertos sin coordenadas ni hora; espacializable solo con DIJIN o reporte ciudadano (§3.2, §6)", "fuente": "DIJIN / F_report(z,t)" }
+  }
+}
