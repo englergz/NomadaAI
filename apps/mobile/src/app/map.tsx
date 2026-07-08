@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import type { BuildRouteResponse, Coordinate, RiskZonesResponse } from '@nomadaai/shared';
 
+import ReportSheet from '@/components/report-sheet';
 import RiskMap from '@/components/risk-map';
 import SettingsSheet from '@/components/settings-sheet';
 import type { RouteLines } from '@/components/risk-map.types';
@@ -35,11 +36,13 @@ export default function MapScreen() {
   const dark = scheme === 'dark';
   const c = Colors[scheme];
   const insets = useSafeAreaInsets();
-  const { settings } = useSettings();
+  const { settings, set } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
-  const [riskOn, setRiskOn] = useState(true);
+  const riskOn = settings.riskOn; // capa de riesgo: vive en Ajustes (con acceso rápido aquí)
   const [riskData, setRiskData] = useState<RiskZonesResponse | null>(null);
+  const [poisData, setPoisData] = useState<RiskZonesResponse | null>(null);
   const [userLoc, setUserLoc] = useState<[number, number] | null>(null);
   const [outOfCoverage, setOutOfCoverage] = useState(false);
   const [banner, setBanner] = useState<{ text: string; tone: 'ok' | 'warn' | 'info' | 'coral' } | null>(null);
@@ -68,6 +71,16 @@ export default function MapScreen() {
       .catch(() => { /* sin riesgo no bloqueamos el mapa */ });
     return () => { alive = false; };
   }, []);
+
+  // Capa Lugares: se carga la primera vez que se activa en Ajustes.
+  useEffect(() => {
+    if (!settings.poisOn || poisData) return;
+    let alive = true;
+    api.pois(500)
+      .then((d) => { if (alive) setPoisData(d as RiskZonesResponse); })
+      .catch(() => { /* sin POIs la capa queda vacía */ });
+    return () => { alive = false; };
+  }, [settings.poisOn, poisData]);
 
   // Búsqueda con debounce; se descartan respuestas viejas.
   useEffect(() => {
@@ -259,6 +272,7 @@ export default function MapScreen() {
         dark={dark} riskOn={riskOn} riskData={riskData}
         userLocation={userLoc} routes={routes} destination={dest?.coord ?? null}
         riskStyle={{ palette: settings.palette, intensity: settings.intensity, opacity: settings.opacity }}
+        satellite={settings.satellite} poisData={poisData} poisOn={settings.poisOn}
       />
 
       {/* Controles superiores */}
@@ -283,12 +297,18 @@ export default function MapScreen() {
             <Text style={[styles.chipText, { color: userLoc ? c.accent : c.text }]}>◎</Text>
           </Pressable>
           <Pressable
-            onPress={() => setRiskOn((v) => !v)}
+            onPress={() => set('riskOn', !riskOn)}
             style={[styles.chip, { backgroundColor: c.backgroundElement, borderColor: riskOn ? c.accent : c.border }]}
           >
             <Text style={[styles.chipText, { color: riskOn ? c.accent : c.text }]}>
               Riesgo {riskOn ? 'ON' : 'OFF'}
             </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setShowReport(true)}
+            style={[styles.chip, { backgroundColor: c.backgroundElement, borderColor: c.coral }]}
+          >
+            <Text style={[styles.chipText, { color: c.coral }]}>Reportar</Text>
           </Pressable>
         </View>
       </View>
@@ -405,6 +425,7 @@ export default function MapScreen() {
       </View>
 
       <SettingsSheet visible={showSettings} onClose={() => setShowSettings(false)} />
+      <ReportSheet visible={showReport} onClose={() => setShowReport(false)} location={userLoc} />
     </View>
   );
 }

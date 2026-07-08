@@ -130,7 +130,9 @@ class IncidentReport(BaseModel):
     lon: float
     lat: float
     category: str
-    description: Optional[str] = None
+    description: Optional[str] = Field(default=None, max_length=500)
+    city: str = "tumaco"
+    hour: Optional[int] = Field(default=None, ge=0, le=23)
 
 
 class IncidentResponse(BaseModel):

@@ -48,6 +48,25 @@ export default function SettingsSheet({ visible, onClose }: { visible: boolean; 
           ))}
         </View>
 
+        <Text style={[styles.sec, { color: c.textSecondary }]}>MAPA Y CAPAS</Text>
+        {([['Satelital', 'satellite'], ['Riesgo', 'riskOn'], ['Lugares', 'poisOn']] as const).map(([lbl, key]) => {
+          const on = settings[key];
+          return (
+            <Pressable
+              key={key}
+              onPress={() => set(key, !on)}
+              style={[styles.switchRow, { borderColor: c.border }]}
+            >
+              <Text style={{ color: c.text, fontSize: 14 }}>{lbl}</Text>
+              <View style={[styles.sw, { backgroundColor: on ? c.accent : c.backgroundSelected, borderColor: on ? c.accent : c.border }]}>
+                <Text style={{ color: on ? '#fff' : c.textSecondary, fontSize: 10, fontWeight: '800' }}>
+                  {on ? 'ON' : 'OFF'}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+
         <Text style={[styles.sec, { color: c.textSecondary }]}>MAPA DE CALOR</Text>
         <View style={styles.row}>
           {(Object.keys(HEAT_PALETTES) as HeatPaletteKey[]).map((k) => {
@@ -124,6 +143,11 @@ const styles = StyleSheet.create({
   opt: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 10, alignItems: 'center', gap: 5 },
   swatchRow: { flexDirection: 'row', gap: 3 },
   swatch: { width: 14, height: 14, borderRadius: 4 },
+  switchRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderWidth: 1, borderRadius: 12, paddingVertical: 9, paddingHorizontal: 12,
+  },
+  sw: { borderWidth: 1, borderRadius: 999, paddingVertical: 3, width: 44, alignItems: 'center' },
   sliderRow: { marginTop: 4 },
   sliderLbl: { fontSize: 12, marginBottom: 2 },
   slider: { width: '100%', height: 32 },

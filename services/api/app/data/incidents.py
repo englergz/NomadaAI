@@ -1,0 +1,89 @@
+"""Reportes ciudadanos de incidentes persistidos en Postgres (Supabase).
+
+Cimiento del "tiempo real" participativo (OE2): el usuario reporta tipo/ubicación/hora y el
+dato alimenta la calibración del modelo. Principios aplicados desde ya:
+
+- **Anti-abuso:** rate-limit por usuario en servidor (máx. 5 reportes/hora).
+- **Privacidad (Ley 1581/2012):** se guarda el identificador del usuario solo para moderación
+  y deduplicación; los reportes NUNCA se exponen crudos — solo agregados al modelo.
+- **Degradación elegante:** sin `DATABASE_URL` responde `accepted=False` sin romper la app.
+"""
+from __future__ import annotations
+
+from typing import Any, Optional
+
+from app.core.config import get_settings
+
+_DDL = """
+create table if not exists incidents (
+  id          bigserial primary key,
+  created_at  timestamptz not null default now(),
+  city        text not null default 'tumaco',
+  user_id     text not null default 'anon',
+  category    text not null,
+  description text,
+  lon         double precision not null,
+  lat         double precision not null,
+  hour        int
+);
+create index if not exists incidents_city_idx    on incidents (city);
+create index if not exists incidents_created_idx on incidents (created_at);
+create index if not exists incidents_user_idx    on incidents (user_id, created_at);
+"""
+
+_MAX_PER_HOUR = 5
+
+_ready = False
+
+
+def _dsn() -> Optional[str]:
+    return get_settings().database_url
+
+
+def available() -> bool:
+    return bool(_dsn())
+
+
+def _connect():
+    import psycopg  # import perezoso: la app arranca aunque no esté la credencial
+
+    return psycopg.connect(_dsn(), connect_timeout=6)
+
+
+def _ensure() -> None:
+    global _ready
+    if _ready:
+        return
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(_DDL)
+        conn.commit()
+    _ready = True
+
+
+def report(rec: dict[str, Any]) -> dict[str, Any]:
+    """Inserta un reporte ciudadano. Devuelve {accepted, id?, note?}."""
+    if not available():
+        return {"accepted": False, "note": "Sin base de datos configurada (DATABASE_URL)."}
+    _ensure()
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            # Rate-limit por usuario: máx. _MAX_PER_HOUR reportes en la última hora.
+            cur.execute(
+                "select count(*) from incidents where user_id=%s and created_at > now() - interval '1 hour'",
+                (rec.get("user_id", "anon"),),
+            )
+            n = int(cur.fetchone()[0])
+            if n >= _MAX_PER_HOUR:
+                return {"accepted": False, "note": "Límite de reportes por hora alcanzado. Intenta más tarde."}
+            cur.execute(
+                """
+                insert into incidents (city, user_id, category, description, lon, lat, hour)
+                values (%(city)s, %(user_id)s, %(category)s, %(description)s, %(lon)s, %(lat)s, %(hour)s)
+                returning id
+                """,
+                rec,
+            )
+            new_id = cur.fetchone()[0]
+        conn.commit()
+    return {"accepted": True, "id": str(new_id)}

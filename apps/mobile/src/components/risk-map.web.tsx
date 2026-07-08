@@ -5,10 +5,10 @@ import { View } from 'react-native';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { baseStyle, CITIES, DEFAULT_CITY, HEAT_PALETTES, RISK_FILL_COLOR, RISK_LINE_COLOR, riskFillColor } from '@/constants/map';
-import { ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
+import { baseStyle, baseTiles, CITIES, DEFAULT_CITY, HEAT_PALETTES, RISK_FILL_COLOR, RISK_LINE_COLOR, riskFillColor } from '@/constants/map';
+import { POI_CIRCLE_COLOR, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
 
-export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination, riskStyle }: RiskMapProps) {
+export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination, riskStyle, satellite, poisData, poisOn }: RiskMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
@@ -35,8 +35,19 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
         id: 'risk-line', type: 'line', source: 'risk',
         paint: { 'line-color': RISK_LINE_COLOR, 'line-width': 0.5 },
       });
-      // Rutas: directa (gris discontinua) debajo, segura (azul de marca) encima.
+      // Lugares (POIs): puntos coloreados por categoría.
       const empty = { type: 'FeatureCollection', features: [] } as never;
+      map.addSource('pois', { type: 'geojson', data: empty });
+      map.addLayer({
+        id: 'pois', type: 'circle', source: 'pois',
+        paint: {
+          'circle-radius': 5,
+          'circle-color': POI_CIRCLE_COLOR as never,
+          'circle-stroke-width': 1.2,
+          'circle-stroke-color': '#ffffff',
+        },
+      });
+      // Rutas: directa (gris discontinua) debajo, segura (azul de marca) encima.
       map.addSource('route-direct', { type: 'geojson', data: empty });
       map.addSource('route-safe', { type: 'geojson', data: empty });
       map.addLayer({
@@ -67,13 +78,25 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Tema: cambia la base sin perder cámara ni capas.
+  // Tema/satélite: cambia la base sin perder cámara ni capas.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
     const src = map.getSource('base') as maplibregl.RasterTileSource | undefined;
-    if (src?.setTiles) src.setTiles((baseStyle(dark).sources.base.tiles as string[]));
-  }, [dark]);
+    if (src?.setTiles) src.setTiles(baseTiles(dark, satellite));
+  }, [dark, satellite]);
+
+  // Capa Lugares (POIs): datos + visibilidad.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const src = map.getSource('pois') as maplibregl.GeoJSONSource | undefined;
+      if (src && poisData) src.setData(poisData as never);
+      if (map.getLayer('pois')) map.setLayoutProperty('pois', 'visibility', poisOn ? 'visible' : 'none');
+    };
+    if (loadedRef.current) apply(); else map.once('load', apply);
+  }, [poisOn, poisData]);
 
   // Personalización del heatmap: paleta, intensidad y transparencia (Ajustes).
   useEffect(() => {

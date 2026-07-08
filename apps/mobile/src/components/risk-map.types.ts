@@ -43,4 +43,15 @@ export interface RiskMapProps {
   routes?: RouteLines | null;
   destination?: [number, number] | null; // marcador de destino
   riskStyle?: RiskStyle;
+  satellite?: boolean;                       // base satelital (Ajustes → Mapa)
+  poisData?: RiskZonesResponse | null;       // capa Lugares (FeatureCollection de puntos)
+  poisOn?: boolean;
 }
+
+// Colores de POIs por categoría (mismos del panel de escritorio).
+export const POI_CIRCLE_COLOR = [
+  'match', ['get', 'category'],
+  'seguridad', '#2563eb', 'salud', '#ef4444', 'educación', '#a855f7',
+  'combustible', '#f97316', 'banco', '#16a34a', 'transporte', '#0ea5e9',
+  'comercio', '#b45309', 'culto', '#64748b', '#94a3b8',
+] as const;
