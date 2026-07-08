@@ -24,10 +24,14 @@ celda. Marco: **Caplan & Kennedy (2011)**. Esto es lo correcto ante escasez de m
 | **Temporal (hora/día)** | noche/madrugada, fines de semana | ↑ riesgo | **INMLCF – Forensis** (patrón horario de homicidios en Colombia) ← *conseguir y citar* | Forensis (Medicina Legal) |
 
 ### A.3 Índice y calibración
-- Índice = Σ wᵢ · norm(Fᵢ), pesos **editables por CLI** (`rebuild_risk_full.py --w-…`); hoy densidad
-  0.40 / actividad 0.25 / periferia 0.35. Se añadirán iluminación, POIs de riesgo, distancia a policía.
+- Índice = Σ wᵢ · pctl(Fᵢ) sobre los factores **activos**. Pesos reales hoy (fuente de verdad
+  `rebuild_risk_full.py`): **densidad 0.35 / periferia 0.30 / actividad 0.20 / lejanía policía 0.15**
+  (Σ=1). Iluminación, POIs de riesgo y socioeconómico están **definidos pero deshabilitados** en
+  Tumaco (sin dato apto / homogeneidad) — ver `MODELO_RIESGO.md` §3.
 - **Normalización por percentil espacial** (evita que todo se vea rojo) + modulación temporal.
-- **Análisis de sensibilidad** (ya) para robustez del ranking.
+- **Análisis de sensibilidad** (ya) para robustez del ranking (ρ≈0,99).
+- **Framework configurable:** cada factor `{enabled, weight}` por ciudad (renormaliza a Σ=1 sobre los
+  activos); el panel de admin lo edita sin tocar código. Tumaco y Cali = dos configuraciones.
 
 ### A.4 Curva temporal (pendiente clave)
 Hoy es **supuesto**. Acciones: (a) obtener el patrón horario/diario de **Forensis (INMLCF)** o un
