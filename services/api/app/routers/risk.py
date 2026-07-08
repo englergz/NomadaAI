@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Header, Query
 
 from app import state
+from app.core.auth import verify_bearer
+from app.data import incidents
 from app.data.risk import RiskStore
 from app.models.schemas import IncidentReport, IncidentResponse
 from app.state import get_risk
@@ -32,10 +36,17 @@ def risk_zones(
 
 
 @router.post("/incidents/report", response_model=IncidentResponse)
-def report_incident(report: IncidentReport) -> IncidentResponse:
-    """Reporte ciudadano (cimiento de 'tiempo real') — stub: aún no persiste."""
-    return IncidentResponse(
-        accepted=False,
-        id=None,
-        note="Stub: la persistencia de reportes se habilita con la tabla incidents (OE2).",
-    )
+def report_incident(
+    report: IncidentReport, authorization: Optional[str] = Header(None)
+) -> IncidentResponse:
+    """Reporte ciudadano (OE2, participativo): persiste con rate-limit y sin exponer crudos.
+
+    La identidad la manda el token cuando existe (usuario autenticado); si no, 'anon'.
+    """
+    try:
+        data = report.model_dump()
+        data["user_id"] = verify_bearer(authorization) or "anon"
+        r = incidents.report(data)
+        return IncidentResponse(accepted=r["accepted"], id=r.get("id"), note=r.get("note"))
+    except Exception as e:  # noqa: BLE001 — el reporte nunca debe tumbar la app
+        return IncidentResponse(accepted=False, note=f"Error al guardar: {e}")

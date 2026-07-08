@@ -6,7 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { baseStyle, CITIES, DEFAULT_CITY, HEAT_PALETTES, riskFillColor } from '@/constants/map';
-import { ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
+import { POI_CIRCLE_COLOR, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
 
 // Carga perezosa: si el módulo nativo no está (Expo Go), no reventamos el bundle.
 let ML: typeof import('@maplibre/maplibre-react-native') | null = null;
@@ -17,9 +17,9 @@ try {
   ML = null;
 }
 
-export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination, riskStyle }: RiskMapProps) {
+export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination, riskStyle, satellite, poisData, poisOn }: RiskMapProps) {
   const c = Colors[dark ? 'dark' : 'light'];
-  const style = useMemo(() => baseStyle(dark), [dark]);
+  const style = useMemo(() => baseStyle(dark, satellite), [dark, satellite]);
   const city = CITIES[DEFAULT_CITY];
 
   if (!ML) {
@@ -56,6 +56,20 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
             id="risk-line"
             type="line"
             paint={{ 'line-color': HEAT_PALETTES[riskStyle?.palette ?? 'calor'].line, 'line-width': 0.5 }}
+          />
+        </GeoJSONSource>
+      )}
+      {poisData && poisOn && (
+        <GeoJSONSource id="pois" data={poisData as never}>
+          <Layer
+            id="pois"
+            type="circle"
+            paint={{
+              'circle-radius': 5,
+              'circle-color': POI_CIRCLE_COLOR as never,
+              'circle-stroke-width': 1.2,
+              'circle-stroke-color': '#ffffff',
+            }}
           />
         </GeoJSONSource>
       )}

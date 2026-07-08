@@ -2,16 +2,26 @@
 export const cartoTiles = (name: string) =>
   ['a', 'b', 'c', 'd'].map((s) => `https://${s}.basemaps.cartocdn.com/${name}/{z}/{x}/{y}.png`);
 
-// Estilo MapLibre (JSON) con base clara u oscura según el tema — sin API key.
-export function baseStyle(dark: boolean) {
+// Tiles satelitales (ESRI World Imagery), como en el panel de escritorio.
+export const SATELLITE_TILES = [
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+];
+
+// Tiles de la base según tema/satélite (compartido web y nativo).
+export function baseTiles(dark: boolean, satellite = false): string[] {
+  return satellite ? SATELLITE_TILES : cartoTiles(dark ? 'dark_all' : 'light_all');
+}
+
+// Estilo MapLibre (JSON) con base clara/oscura/satelital — sin API key.
+export function baseStyle(dark: boolean, satellite = false) {
   return {
     version: 8 as const,
     sources: {
       base: {
         type: 'raster' as const,
-        tiles: cartoTiles(dark ? 'dark_all' : 'light_all'),
+        tiles: baseTiles(dark, satellite),
         tileSize: 256,
-        attribution: '© OpenStreetMap · © CARTO',
+        attribution: satellite ? 'Imagery © Esri' : '© OpenStreetMap · © CARTO',
       },
     },
     layers: [{ id: 'base', type: 'raster' as const, source: 'base' }],

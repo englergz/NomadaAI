@@ -84,10 +84,11 @@ export class NomadaApi {
     });
   }
 
-  reportIncident(body: IncidentReport) {
+  reportIncident(body: IncidentReport, token?: string | null) {
     return this.req<IncidentResponse>("/incidents/report", {
       method: "POST",
       body: JSON.stringify(body),
+      ...(token ? { headers: { "content-type": "application/json", Authorization: `Bearer ${token}` } } : {}),
     });
   }
 }

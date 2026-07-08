@@ -12,6 +12,10 @@ export interface Settings {
   palette: HeatPalette;   // paleta del mapa de calor
   intensity: number;      // 0–1: cuánto “se enciende” el heatmap a igual riesgo
   opacity: number;        // 0–1: transparencia global de la capa
+  // Capas y mapa (paridad con el menú del panel de escritorio)
+  riskOn: boolean;        // capa de riesgo
+  satellite: boolean;     // base satelital
+  poisOn: boolean;        // lugares (POIs)
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -19,6 +23,9 @@ export const DEFAULT_SETTINGS: Settings = {
   palette: 'calor',
   intensity: 0.5,
   opacity: 0.7,
+  riskOn: true,
+  satellite: false,
+  poisOn: false,
 };
 
 const KEY = 'nomadaai_settings_v1';

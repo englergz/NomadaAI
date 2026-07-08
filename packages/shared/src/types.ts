@@ -125,6 +125,8 @@ export interface IncidentReport {
   lat: number;
   category: string;
   description?: string;
+  city?: string;
+  hour?: number;
 }
 
 export interface IncidentResponse {
