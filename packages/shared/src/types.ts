@@ -89,6 +89,37 @@ export interface RouteResponse {
   note?: string;
 }
 
+// --- Predicción en streaming (OE1+OE3): prefijo en vivo → destino probable + alerta anticipada ---
+export interface OnlineRequest {
+  points: TrajectoryPoint[]; // ubicaciones acumuladas hasta ahora (mín. 2)
+  type?: string;
+  hour?: number;
+  day?: number;              // 0=lun … 6=dom
+  t_seconds?: number;        // segundos desde medianoche en la posición actual
+  threshold?: number;        // umbral de alerta sobre risk_norm
+  speed_mps?: number;
+  exclude_id?: string;
+  topk?: number;
+}
+
+export interface RiskAlert {
+  lon: number;
+  lat: number;
+  cell_id: string;
+  risk: number;
+  risk_norm: number;
+  distance_m: number;
+  eta_s?: number | null;
+  hour: number;
+  arrival_min: number;
+  is_high: boolean;
+}
+
+export interface OnlineResponse {
+  candidates: PredictionCandidate[];
+  alert?: RiskAlert | null;
+}
+
 // --- Ruteo real sobre la red vial (usado por web y móvil) ---
 export interface BuildRouteRequest {
   origin: Coordinate; // [lon, lat] — dónde estoy

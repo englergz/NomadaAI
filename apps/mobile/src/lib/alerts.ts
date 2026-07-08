@@ -88,4 +88,11 @@ export class ProximityTracker {
     this.seen.add(hit.cellId);
     return { ...hit, ...ALERT_MESSAGES[hit.level] };
   }
+
+  // Dedupe genérico (misma regla una-vez-por-zona) para alertas anticipadas del modelo.
+  seenOnce(id: string): boolean {
+    if (this.seen.has(id)) return false;
+    this.seen.add(id);
+    return true;
+  }
 }

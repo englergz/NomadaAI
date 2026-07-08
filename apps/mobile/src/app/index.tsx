@@ -7,8 +7,12 @@ import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import type { HealthResponse } from '@nomadaai/shared';
 
+import * as Location from 'expo-location';
+
+import { CITIES, DEFAULT_CITY } from '@/constants/map';
 import { Colors } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { coverageCity } from '@/lib/geocode';
 import { useResolvedScheme } from '@/lib/settings';
 
 export default function Home() {
@@ -16,12 +20,29 @@ export default function Home() {
   const c = Colors[scheme];
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [city, setCity] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
     api.health()
       .then((h) => { if (alive) setHealth(h); })
       .catch((e) => { if (alive) setError(String(e?.message ?? e)); });
+    // Ciudad detectada SIN pedir permiso aquí (los permisos van en contexto): solo si ya
+    // fue concedido usamos la última posición conocida; si no, la ciudad por defecto.
+    (async () => {
+      try {
+        const perm = await Location.getForegroundPermissionsAsync();
+        if (perm.granted) {
+          const pos = await Location.getLastKnownPositionAsync();
+          if (pos) {
+            const cov = coverageCity([pos.coords.longitude, pos.coords.latitude]);
+            if (alive && cov) { setCity(CITIES[cov].label); return; }
+            if (alive) { setCity(null); return; } // fuera de cobertura: se dirá en el mapa
+          }
+        }
+      } catch { /* sin señal usamos la ciudad por defecto */ }
+      if (alive) setCity(CITIES[DEFAULT_CITY].label);
+    })();
     return () => { alive = false; };
   }, []);
 
@@ -40,9 +61,10 @@ export default function Home() {
         {health ? (
           <>
             <View style={[styles.dot, { backgroundColor: c.ok }]} />
-            <Text style={[styles.cardText, { color: c.text }]}>
-              Conectado · {health.n_trajectories.toLocaleString()} trayectorias
+            <Text style={[styles.cardText, { color: c.text, fontWeight: '700', letterSpacing: 0.6 }]}>
+              {(city ?? CITIES[DEFAULT_CITY].label).toUpperCase()}
             </Text>
+            <Text style={[styles.cardText, { color: c.textSecondary }]}>· servicio en línea</Text>
           </>
         ) : error ? (
           <>
@@ -68,7 +90,7 @@ export default function Home() {
           <Text style={styles.ctaText}>Ir seguro</Text>
         </Pressable>
         <Text style={[styles.hint, { color: c.textSecondary }]}>
-          El mapa en vivo y la ruta segura llegan en la siguiente fase.
+          Elige a dónde vas o inicia un recorrido libre: te avisamos antes del riesgo.
         </Text>
       </View>
     </SafeAreaView>

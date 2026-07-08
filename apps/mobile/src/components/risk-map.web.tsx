@@ -25,6 +25,12 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
       zoom: city.zoom,
       attributionControl: { compact: true } as never,
     });
+    // Al cambiar la base (tema/satélite) MapLibre aborta los tiles en vuelo y emite
+    // AbortError: es esperado y benigno; solo se registran los errores reales.
+    map.on('error', (e) => {
+      const msg = String(e?.error?.message ?? e?.error ?? '');
+      if (!msg.includes('AbortError') && !msg.includes('aborted')) console.error('map:', e.error);
+    });
     map.on('load', () => {
       map.addSource('risk', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
@@ -78,12 +84,16 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Tema/satélite: cambia la base sin perder cámara ni capas.
+  // Tema/satélite: cambia la base sin perder cámara ni capas. Si el mapa aún no terminó
+  // de cargar (p. ej. los ajustes persistidos llegan antes del primer frame), se difiere.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !loadedRef.current) return;
-    const src = map.getSource('base') as maplibregl.RasterTileSource | undefined;
-    if (src?.setTiles) src.setTiles(baseTiles(dark, satellite));
+    if (!map) return;
+    const apply = () => {
+      const src = map.getSource('base') as maplibregl.RasterTileSource | undefined;
+      if (src?.setTiles) src.setTiles(baseTiles(dark, satellite));
+    };
+    if (loadedRef.current) apply(); else map.once('load', apply);
   }, [dark, satellite]);
 
   // Capa Lugares (POIs): datos + visibilidad.

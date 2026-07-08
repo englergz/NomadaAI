@@ -3,6 +3,8 @@ import type {
   BuildRouteRequest,
   BuildRouteResponse,
   HealthResponse,
+  OnlineRequest,
+  OnlineResponse,
   PredictRequest,
   PredictResponse,
   FeatureCollection,
@@ -63,6 +65,13 @@ export class NomadaApi {
   riskZones(bbox?: [number, number, number, number]) {
     const q = bbox ? `?bbox=${bbox.join(",")}` : "";
     return this.req<RiskZonesResponse>(`/risk/zones${q}`);
+  }
+
+  predictOnline(body: OnlineRequest) {
+    return this.req<OnlineResponse>("/predict/online", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   }
 
   buildRoute(body: BuildRouteRequest) {
