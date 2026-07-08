@@ -7,10 +7,12 @@ sdk: docker
 app_port: 7860
 pinned: false
 license: other
+license_name: PolyForm Noncommercial 1.0.0
+license_link: LICENSE
 ---
 
 <p align="center">
-  <img src="apps/web/public/icon-192.png" alt="Nómada.AI" width="88" /><br/>
+  <img src="apps/web/public/icon-192.png" alt="Nómada.AI" width="140" /><br/><br/>
   <strong>Nómada.AI</strong><br/>
   <em>Rutas urbanas más seguras a partir de datos, donde el dato escasea.</em>
 </p>
@@ -18,6 +20,7 @@ license: other
 <p align="center">
   <a href="https://englergz-nomadaai.hf.space"><strong>▶ Demo en vivo</strong></a> ·
   <a href="docs/METODOLOGIA.md">Metodología</a> ·
+  <a href="docs/MODELO_PREDICCION.md">Modelo de predicción</a> ·
   <a href="docs/MODELO_RIESGO.md">Modelo de riesgo</a> ·
   <a href="docs/ARCHITECTURE.md">Arquitectura</a>
 </p>
