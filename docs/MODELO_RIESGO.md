@@ -133,10 +133,17 @@ activos**; habilitar/deshabilitar o repesar **no requiere tocar código** (panel
 config por ciudad). Onboarding de una ciudad = elegir sus factores y pesos + correr el pipeline
 (`rebuild_risk_city.py`). **Tumaco y Cali son dos configuraciones del mismo framework.**
 
-> **Estado de implementación:** hoy los pesos de los 4 factores activos viven fijos en
-> `rebuild_risk_full.py`. Externalizarlos a una **configuración editable** (`risk_config.<city>.json`)
-> y exponerlos en el **panel de admin** (habilitar/deshabilitar + peso + vista previa del mapa) es la
-> tarea de producto pendiente — ver `PLAN_PRODUCTO.md` y el handoff de la sesión de código.
+> **Estado de implementación:** los factores viven en `risk_config.<city>.json` y el pipeline los
+> consume (golden test en `scripts/GOLDEN.md`); falta exponer su edición en el **panel de admin**
+> (habilitar/deshabilitar + peso + vista previa) — ver `PLAN_PRODUCTO.md` B.9.
+
+![Comparativa de configuraciones del framework](img/riesgo_config_comparativa.png)
+*Figura 4.1 — El framework en acción: la **configuración anterior** (2 factores: densidad 0,65 ·
+actividad 0,35) deja el corredor periférico del sur en riesgo bajo; la **configuración actual**
+(4 factores RTM: densidad 0,35 · periferia 0,30 · actividad 0,20 · policía 0,15) lo captura vía
+periferia/aislamiento. Cambiar la configuración cambia el ranking espacial (ρ entre ambas ≈ 0,47).
+No confundir con la Fig. 5 (índice degenerado inicial vs. multifactor): aquí se comparan **dos
+configuraciones válidas del mismo framework**.*
 
 ---
 

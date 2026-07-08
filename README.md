@@ -46,6 +46,11 @@ para cualquier ciudad.
   <img src="docs/img/tumaco_riesgo_rtm.png" alt="Superficie de riesgo de Tumaco (RTM)" width="360" />
 </p>
 
+<p align="center">
+  <img src="docs/img/riesgo_config_comparativa.png" alt="Comparativa: configuración anterior (2 factores) vs. actual (4 factores RTM)" width="640" /><br/>
+  <em>El framework configurable en acción: dos configuraciones de factores, dos superficies de riesgo (rótulos con los factores activos de cada una).</em>
+</p>
+
 ## Resultados clave
 
 | Objetivo | Resultado |
