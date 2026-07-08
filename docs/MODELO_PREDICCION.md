@@ -1,7 +1,7 @@
 # Modelo de Predicción de Destino (OE1)
 
 > **NómadaAI** · Trabajo de Grado, MGTIC, Facultad de Ingeniería, Universidad de Nariño. Autor:
-> Engler González Prado. Director: PhD. Andrés Oswaldo Calderón Romero.
+> Engler González Prado. Director: PhD. Manuel Ernesto Bolaños Gonzáles.
 > La aplicación lo expone en `services/api` (`/predict/online`, `/predict/destination`,
 > `/trajectories/evaluate`).
 

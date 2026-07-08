@@ -9,26 +9,49 @@
 
 ## 1. Críticas científico-analíticas (las que más duelen)
 
-1. **El modelo de riesgo NO está validado contra verdad-terreno.** Es un índice teórico-compuesto;
-   no hay precisión/recall contra incidentes reales (no hay microdato georreferenciado). El análisis
-   de sensibilidad prueba que el *ranking* es **robusto**, no que sea **correcto**. Es la debilidad #1.
-2. **Los pesos de los factores son fijados a mano** (0,35/0,30/0,20/0,15). "Editables por CLI" no los
-   hace correctos: los hace **suposiciones parametrizadas**. No hay ajuste guiado por datos.
-3. **La hipótesis "periferia = más riesgo" no está validada** y podría estar invertida. Pasamos de
-   "densidad" a "periferia" por teoría + intuición local, pero **ambas son hipótesis sin probar**.
-   Elegimos entre teorías rivales sin dato que arbitre.
+1. **El modelo de riesgo NO está validado contra verdad-terreno** a nivel punto-a-punto. Es un índice
+   teórico-compuesto; el análisis de sensibilidad prueba que el *ranking* es **robusto**, no que sea
+   **correcto**. 🟡 **VÍAS DE VALIDACIÓN (no depende solo de la DIJIN):** (a) **temporal** —el patrón
+   noche/fin de semana coincide con evidencia nacional independiente [CEJ]—; (b) **dirección de
+   factores** —55,2 % de homicidios en zona rural/periférica corrobora periferia→riesgo—; (c)
+   **convergente** con percepción CEDRE; (d) **patrón de puntos con ACLED** (eventos georreferenciados,
+   PAI); (e) **calibración plena** con reporte ciudadano o DIJIN. Ver `VALIDACION_RIESGO.md` §5.
+2. **Los pesos de los factores son fijados a mano** (densidad 0,35 / periferia 0,30 / actividad 0,20 /
+   policía 0,15 sobre los factores **activos** de Tumaco). Son **suposiciones parametrizadas**, sin
+   ajuste guiado por datos. 🟡 **REENCUADRADO (no es solo debilidad):** el IRU es un **framework
+   configurable** — cada factor se habilita/pesa **por contexto** (ciudad/zona), y esa adaptabilidad
+   *es* el aporte de replicabilidad (Tumaco y Cali = dos configuraciones). Los pesos actuales son
+   **cold-start informado por teoría**; su **ranking es robusto** (ρ≈0,99); la **calibración por datos**
+   y los **pesos locales por celda (GWR)** son la evolución, y **no dependen solo de la DIJIN**: el
+   **reporte ciudadano** genera el dato de resultado que los habilita (ver `MODELO_RIESGO.md` §3–§4,
+   §6). Falta: externalizar los pesos a config editable + panel de admin (sesión de código).
+3. **La hipótesis "periferia = más riesgo".** Se temía que estuviera invertida. ✅ **ARBITRADA (dato
+   independiente):** con los homicidios de la Policía, **el 55,2 % ocurre en zona RURAL/periférica** vs.
+   44,8 % urbana, aun cuando la población se concentra en el núcleo → la **dirección del factor es la
+   correcta** (periferia/aislamiento → más violencia dirigida, coherente con corredores de economías
+   ilegales y baja presencia estatal), **no invertida**. Pendiente: la magnitud intra-urbana exacta
+   (microdato). Ver `VALIDACION_RIESGO.md` §5(b).
 4. **El 90% de OE1 está probablemente inflado** (sobre SUMO limpio). ✅ **MEDIDO:** prueba de robustez
    con ruido GPS gaussiano (`/trajectories/evaluate?noise_m=σ`): 90,0% (0 m) → **81,9% (5 m)** →
    **71,2% (10 m)** → 60,6% (20 m). Es decir, el rendimiento esperado en calle es **~72–82%**, no 90%
    — honesto y aún sólido. Deja de ser una debilidad especulativa: es un **resultado cuantificado**.
 5. **Casi todo deriva de un solo dataset sintético (SUMO).** La predicción, el grafo de rutas y el
-   factor "actividad" del riesgo salen de las mismas trayectorias. Hay **circularidad**: se evalúa el
-   sistema con el mundo que el propio dataset define.
-6. **El patrón horario es nacional, transferido a Tumaco.** El día sí es local (dato propio), pero la
-   curva por hora asume que Tumaco sigue el promedio colombiano — la violencia de conflicto armado
-   puede tener otra dinámica horaria que el homicidio nacional (riñas, etc.).
-7. **OE4 (−7,0%) es un proxy de un proxy.** Mide reducción de exposición contra una superficie de
-   riesgo **no validada**. Es internamente consistente, no externamente válido.
+   factor "actividad" del riesgo salen de las mismas trayectorias. Hay **circularidad**. 🟡 **ACOTADA:**
+   (i) los datos simulados son el **alcance aprobado** del anteproyecto, no un atajo; (ii) SUMO corre
+   sobre la **red vial real** de Tumaco con OD realista → valida el **método**, no las cifras exactas de
+   la ciudad; (iii) la circularidad es **parcial**: el riesgo usa datos **independientes** (DANE,
+   homicidios Policía, OSM) y **solo el factor "actividad" (0,20)** viene de SUMO — el 80 % del índice
+   no depende del dataset sintético. El cierre pleno = GPS real (fase de app).
+6. **El patrón horario es nacional, transferido a Tumaco.** ✅ **JUSTIFICADO (dato + mecanismo):** el
+   pico **nocturno (20:00, +83 % sobre el promedio) y de fin de semana (+54 %)** con **76,8 % arma de
+   fuego** [CEJ, Reloj de la Criminalidad] es **coherente con la modalidad de Tumaco** (85,8 % arma de
+   fuego, 56,6 % sicariato): el sicariato es violencia armada nocturna, no de riña diurna. Deja de ser
+   "transferido a ciegas": es un **prior informado y consistente** con el mecanismo local. Pendiente:
+   curva horaria propia de Tumaco (microdato). Ver `VALIDACION_RIESGO.md` §5(a).
+7. **OE4 (−7,0%) es un proxy de un proxy.** Mide reducción de exposición sobre la superficie de riesgo,
+   no una baja observada del delito. 🟡 Su validez externa **crece con la validación #1** (c/d:
+   convergente CEDRE + patrón de puntos ACLED): a mayor validación de la superficie, mayor grado el
+   proxy. Internamente es consistente y preciso (IC estrecho); externamente, supeditado a #1.
 8. ~~Sin estadística inferencial.~~ ✅ **RESUELTO:** intervalos de confianza 95% por bootstrap en OE1
    (90% [85–94]) y OE4 (7,0% [6,4–7,6]).
 9. ~~Una sola ciudad.~~ ✅ **MITIGADO:** replicado a **Cali** (mapa de riesgo); allí el factor
@@ -38,9 +61,12 @@
 11. **El tiempo solo cambia la INTENSIDAD, no los lugares.** `riesgo = percentil_espacial × hora × día`:
     la hora/día escalan el riesgo de forma **uniforme**; el *ranking espacial* es constante. En la
     realidad los hotspots **se desplazan** por hora (zona de bares peligrosa de noche, no a mediodía).
-    Capturar esa **interacción espacio-temporal** requiere dato espacio-temporal de delito (DIJIN con
-    hora). Mejora futura defendible: modular la **periferia/aislamiento al alza de noche** (menos
-    vigilancia) — declarado, no implementado sin dato.
+    Capturar esa **interacción espacio-temporal** requiere dato espacio-temporal de delito. 🟡
+    **SOLUCIÓN DE DISEÑO (implementable):** hacer la modulación temporal **específica por factor** en
+    vez de global — p. ej., subir el peso de **periferia/aislamiento de noche** (menos vigilancia) y de
+    los **POIs de vida nocturna** en su franja. Así el *ranking* espacial cambia con la hora sin
+    necesitar el microdato. Queda especificado en el framework (`MODELO_RIESGO.md` §7); su
+    implementación va a la sesión de código.
 
 ## 2. Críticas como producto comercial
 
