@@ -14,9 +14,11 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import type { BuildRouteResponse, Coordinate, RiskZonesResponse } from '@nomadaai/shared';
 
+import ProtectionSheet from '@/components/protection-sheet';
 import ReportSheet from '@/components/report-sheet';
 import RiskMap from '@/components/risk-map';
-import SettingsSheet from '@/components/settings-sheet';
+import SettingsSheet, { VEHICLES } from '@/components/settings-sheet';
+import { logTrip } from '@/lib/history';
 import type { RouteLines } from '@/components/risk-map.types';
 import { useResolvedScheme, useSettings } from '@/lib/settings';
 import { CITIES, DEFAULT_CITY } from '@/constants/map';
@@ -40,6 +42,12 @@ export default function MapScreen() {
   const { settings, set, hydrated } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showProtection, setShowProtection] = useState(false);
+
+  // Vehículo del viaje: por defecto el del perfil (Ajustes), cambiable en cada viaje (B.6.1).
+  // undefined = usar el predeterminado · null = «sin vehículo» explícito para este viaje.
+  const [tripVehicle, setTripVehicle] = useState<string | null | undefined>(undefined);
+  const effVehicle = tripVehicle === undefined ? settings.vehicle : tripVehicle;
 
   const riskOn = settings.riskOn; // capa de riesgo: vive en Ajustes (con acceso rápido aquí)
   const [riskData, setRiskData] = useState<RiskZonesResponse | null>(null);
@@ -158,6 +166,7 @@ export default function MapScreen() {
           dest: dest.coord,
           hour: new Date().getHours(),
           risk_weight: PRIORITIES[prioIdx].w,
+          type: effVehicle ?? undefined, // calles según el vehículo (opcional)
         }),
         45000, // el Space gratuito puede tardar en despertar
         'ruta',
@@ -172,6 +181,11 @@ export default function MapScreen() {
         return hit ? levelFor(hit.riskNorm) : 'despejado';
       });
       setRoutes({ safe: r.coords, direct: r.direct_coords, safeLevels });
+      comparisonRef.current = r.comparison ?? null;
+      distancesRef.current = {
+        safe: r.comparison?.safe_distance_m ?? r.distance_m,
+        direct: r.comparison?.direct_distance_m ?? null,
+      };
       const red = r.comparison?.exposure_reduction_pct ?? 0;
       const km = (r.distance_m / 1000).toFixed(1);
       const prio = PRIORITIES[prioIdx].label;
@@ -209,6 +223,9 @@ export default function MapScreen() {
   // Prefijo del recorrido para el modelo de predicción (OE1): puntos [lon,lat,t].
   const tripPtsRef = useRef<{ lon: number; lat: number; t: number }[]>([]);
   const lastPredictRef = useRef(0);
+  const alertsRef = useRef(0); // alertas emitidas a tiempo en este viaje (para «Tu protección»)
+  const comparisonRef = useRef<BuildRouteResponse['comparison'] | null>(null);
+  const distancesRef = useRef<{ safe: number | null; direct: number | null }>({ safe: null, direct: null });
 
   // Movimiento real → modelo: con velocidad sostenida (~≥15 km/h) el prefijo se envía a
   // /predict/online, que predice el destino y devuelve la ALERTA ANTICIPADA de riesgo.
@@ -222,14 +239,16 @@ export default function MapScreen() {
       const d = new Date();
       const r = await api.predictOnline({
         points: pts,
+        type: effVehicle ?? undefined,
         t_seconds: d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds(),
         day: (d.getDay() + 6) % 7, // JS 0=dom → API 0=lun
         speed_mps: Math.min(Math.max(speedMps, 1), 39),
-        threshold: 0.7,
+        threshold: settings.threshold,
       });
       const a = r.alert;
       // Alerta anticipada: llega ANTES de entrar a la zona; misma regla una-vez-por-zona.
       if (a?.is_high && trackerRef.current.seenOnce(`pre:${a.cell_id}`)) {
+        alertsRef.current += 1;
         const lvl = levelFor(a.risk_norm);
         const eta = a.arrival_min > 0 ? ` en ~${a.arrival_min} min` : ' más adelante';
         const title = lvl === 'atencion' ? 'Atención' : 'Precaución';
@@ -247,6 +266,7 @@ export default function MapScreen() {
     setTripLevel(hit?.level ?? 'despejado');
     const alert = trackerRef.current.check(riskRef.current, pos);
     if (alert) {
+      alertsRef.current += 1;
       setBanner({ text: `${alert.title}: ${alert.body}`, tone: alert.level === 'atencion' ? 'coral' : 'warn' });
       notifyLocal(alert.title, alert.body);
     }
@@ -280,6 +300,7 @@ export default function MapScreen() {
     trackerRef.current.reset();
     tripPtsRef.current = [];
     lastPredictRef.current = 0;
+    alertsRef.current = 0;
     setTripLevel('despejado');
     setOnTrip(true);
     setBanner({ text: 'Recorrido iniciado. Te avisaremos solo cuando haga falta.', tone: 'info' });
@@ -292,12 +313,59 @@ export default function MapScreen() {
   function stopTrip() {
     watchRef.current?.remove();
     watchRef.current = null;
-    if (onTrip) setBanner(null);
+    if (onTrip) {
+      setBanner(null);
+      // Registra el viaje real en «Tu protección» (mode: mobile — BI lo separa del simulador).
+      const comp = comparisonRef.current;
+      logTrip({
+        vehicle: effVehicle,
+        hour: new Date().getHours(),
+        alerts: alertsRef.current,
+        exposure_reduction_pct: comp?.exposure_reduction_pct ?? null,
+        safe_exposure: comp?.safe_exposure ?? null,
+        direct_exposure: comp?.direct_exposure ?? null,
+        safe_dist_m: distancesRef.current.safe,
+        direct_dist_m: distancesRef.current.direct,
+      });
+    }
     setOnTrip(false);
     setTripLevel('despejado');
   }
 
   useEffect(() => () => { watchRef.current?.remove(); }, []);
+
+  // Recorrido libre AUTOMÁTICO (Ajustes): vigilancia ligera SOLO si el permiso ya fue
+  // concedido; al detectar movimiento sostenido (~≥15 km/h) el recorrido arranca solo.
+  const onTripRef = useRef(onTrip);
+  useEffect(() => { onTripRef.current = onTrip; }, [onTrip]);
+  useEffect(() => {
+    if (!settings.autoTrip || onTrip) return;
+    let sub: Location.LocationSubscription | null = null;
+    let prev: { lon: number; lat: number; t: number } | null = null;
+    let cancelled = false;
+    (async () => {
+      const perm = await Location.getForegroundPermissionsAsync().catch(() => null);
+      if (!perm?.granted || cancelled) return; // el permiso se pide en contexto, no aquí
+      sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, timeInterval: 8000, distanceInterval: 30 },
+        (p) => {
+          const cur = { lon: p.coords.longitude, lat: p.coords.latitude, t: Date.now() / 1000 };
+          if (prev && !onTripRef.current) {
+            const dt = cur.t - prev.t;
+            const speed = dt > 0 ? distM([prev.lon, prev.lat], [cur.lon, cur.lat]) / dt : 0;
+            if (speed >= 4) {
+              sub?.remove(); sub = null;
+              startTrip();
+              setBanner({ text: 'Detectamos que vas en camino: protección activada automáticamente.', tone: 'info' });
+            }
+          }
+          prev = cur;
+        },
+      );
+    })();
+    return () => { cancelled = true; sub?.remove(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.autoTrip, onTrip]);
 
   // Sonda de desarrollo: permite inyectar posiciones para verificar alertas sin GPS.
   if (__DEV__ && Platform.OS === 'web') {
@@ -339,7 +407,7 @@ export default function MapScreen() {
       {/* Pila flotante derecha: perfil · ajustes · reportar */}
       <View style={[styles.rightStack, { top: insets.top + 12 }]}>
         <Pressable
-          onPress={() => setBanner({ text: 'Tu perfil llega con el inicio de sesión (próxima fase).', tone: 'info' })}
+          onPress={() => setShowProtection(true)}
           style={[styles.fab, styles.inStack, { backgroundColor: c.backgroundElement, borderColor: c.border }]}
         >
           <Ionicons name="person-circle-outline" size={23} color={c.text} />
@@ -410,6 +478,25 @@ export default function MapScreen() {
           )}
         </View>
 
+        {/* Vehículo del viaje (opcional, mejora la predicción) + prioridad de seguridad */}
+        <View style={styles.metaRow}>
+          <Text style={[styles.metaLbl, { color: c.textSecondary }]}>Vehículo</Text>
+          <View style={styles.vehRow}>
+            {VEHICLES.map((v) => {
+              const on = effVehicle === v.key;
+              return (
+                <Pressable
+                  key={v.key}
+                  onPress={() => setTripVehicle(on ? null : v.key)}
+                  style={[styles.veh, { borderColor: on ? c.accent : c.border, backgroundColor: on ? c.backgroundSelected : 'transparent' }]}
+                >
+                  <Text style={{ fontSize: 14 }}>{v.icon}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+        <Text style={[styles.metaLbl, { color: c.textSecondary }]}>Prioridad de seguridad</Text>
         <View style={styles.prioRow}>
           {PRIORITIES.map((p, i) => (
             <Pressable
@@ -491,6 +578,7 @@ export default function MapScreen() {
 
       <SettingsSheet visible={showSettings} onClose={() => setShowSettings(false)} />
       <ReportSheet visible={showReport} onClose={() => setShowReport(false)} location={userLoc} />
+      <ProtectionSheet visible={showProtection} onClose={() => setShowProtection(false)} />
     </View>
   );
 }
@@ -514,17 +602,22 @@ const styles = StyleSheet.create({
   },
   results: { maxHeight: 200, borderBottomWidth: 1, marginBottom: 2 },
   resultRow: { paddingVertical: 9, paddingHorizontal: 6, gap: 2, borderRadius: 8 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12 },
+  // Radios coherentes: todo control interactivo es píldora (999), como los FAB redondos.
+  inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 999, paddingHorizontal: 16 },
   input: { flex: 1, paddingVertical: 12, fontSize: 15 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  metaLbl: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
+  vehRow: { flexDirection: 'row', gap: 6 },
+  veh: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   prioRow: { flexDirection: 'row', gap: 8 },
   prio: { flex: 1, borderWidth: 1, borderRadius: 999, paddingVertical: 8, alignItems: 'center' },
-  cta: { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
+  cta: { borderRadius: 999, paddingVertical: 15, alignItems: 'center' },
   ctaGhost: { backgroundColor: 'transparent', borderWidth: 1.5 },
   ctaText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   tripRow: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
   levelChip: {
     flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderRadius: 14,
+    borderWidth: 1.5, borderRadius: 999,
   },
   levelDot: { width: 10, height: 10, borderRadius: 5 },
   tripStop: { flex: 1, backgroundColor: 'transparent', borderWidth: 1.5 },

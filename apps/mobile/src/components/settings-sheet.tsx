@@ -1,7 +1,7 @@
 // Hoja de Ajustes: tema (Sistema/Claro/Oscuro), paleta del mapa de calor,
 // intensidad y transparencia. Paridad con el menú del panel de escritorio.
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import SliderImpl from '@react-native-community/slider';
 
 // Los tipos del slider aún no están alineados con React 19; el runtime es correcto.
@@ -17,6 +17,14 @@ const THEMES: { key: ThemePref; label: string }[] = [
   { key: 'dark', label: 'Oscuro' },
 ];
 
+// Vehículos con datos en el modelo (B.6.1): opcional y cambiable por viaje.
+export const VEHICLES = [
+  { key: 'moto', label: 'Moto', icon: '🏍' },
+  { key: 'car', label: 'Carro', icon: '🚗' },
+  { key: 'bus', label: 'Bus', icon: '🚌' },
+  { key: 'truck', label: 'Camión', icon: '🚚' },
+] as const;
+
 export default function SettingsSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
@@ -28,6 +36,7 @@ export default function SettingsSheet({ visible, onClose }: { visible: boolean; 
       <View style={[styles.sheet, { backgroundColor: c.backgroundElement, borderColor: c.border }]}>
         <View style={[styles.handle, { backgroundColor: c.border }]} />
         <Text style={[styles.title, { color: c.text }]}>Ajustes</Text>
+        <ScrollView style={styles.scroll} contentContainerStyle={{ gap: 10 }} showsVerticalScrollIndicator={false}>
 
         <Text style={[styles.sec, { color: c.textSecondary }]}>TEMA</Text>
         <View style={styles.row}>
@@ -46,6 +55,57 @@ export default function SettingsSheet({ visible, onClose }: { visible: boolean; 
               </Text>
             </Pressable>
           ))}
+        </View>
+
+        <Text style={[styles.sec, { color: c.textSecondary }]}>TU VEHÍCULO</Text>
+        <View style={styles.row}>
+          {VEHICLES.map((v) => {
+            const on = settings.vehicle === v.key;
+            return (
+              <Pressable
+                key={v.key}
+                onPress={() => set('vehicle', on ? null : v.key)}
+                style={[
+                  styles.opt,
+                  { borderColor: on ? c.accent : c.border, backgroundColor: on ? c.backgroundSelected : 'transparent' },
+                ]}
+              >
+                <Text style={{ fontSize: 16 }}>{v.icon}</Text>
+                <Text style={{ color: on ? c.accent : c.text, fontSize: 11, fontWeight: '600' }}>{v.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={{ color: c.textSecondary, fontSize: 11, lineHeight: 15 }}>
+          Opcional: indicar tu vehículo mejora la precisión (calles según el tipo). Se puede
+          cambiar en cada viaje.
+        </Text>
+
+        <Text style={[styles.sec, { color: c.textSecondary }]}>RECORRIDO Y ALERTAS</Text>
+        <Pressable onPress={() => set('autoTrip', !settings.autoTrip)} style={[styles.switchRow, { borderColor: c.border }]}>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={{ color: c.text, fontSize: 14 }}>Recorrido libre automático</Text>
+            <Text style={{ color: c.textSecondary, fontSize: 11 }}>
+              Al detectar que te mueves (~15 km/h), la protección se activa sola.
+            </Text>
+          </View>
+          <View style={[styles.sw, { backgroundColor: settings.autoTrip ? c.accent : c.backgroundSelected, borderColor: settings.autoTrip ? c.accent : c.border }]}>
+            <Text style={{ color: settings.autoTrip ? '#fff' : c.textSecondary, fontSize: 10, fontWeight: '800' }}>
+              {settings.autoTrip ? 'ON' : 'OFF'}
+            </Text>
+          </View>
+        </Pressable>
+        <View style={styles.sliderRow}>
+          <Text style={[styles.sliderLbl, { color: c.textSecondary }]}>
+            Umbral de alerta · {Math.round(settings.threshold * 100)}%
+          </Text>
+          <Slider
+            style={styles.slider}
+            minimumValue={0.3} maximumValue={0.95} step={0.05}
+            value={settings.threshold}
+            onValueChange={(v: number) => set('threshold', v)}
+            minimumTrackTintColor={c.accent} maximumTrackTintColor={c.border} thumbTintColor={c.accent}
+          />
         </View>
 
         <Text style={[styles.sec, { color: c.textSecondary }]}>MAPA Y CAPAS</Text>
@@ -119,6 +179,7 @@ export default function SettingsSheet({ visible, onClose }: { visible: boolean; 
           />
         </View>
 
+        </ScrollView>
         <Pressable
           onPress={onClose}
           style={({ pressed }) => [styles.close, { backgroundColor: c.accent, opacity: pressed ? 0.85 : 1 }]}
@@ -138,6 +199,7 @@ const styles = StyleSheet.create({
   },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
   title: { fontSize: 17, fontWeight: '800' },
+  scroll: { maxHeight: 460 },
   sec: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginTop: 6 },
   row: { flexDirection: 'row', gap: 8 },
   opt: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 10, alignItems: 'center', gap: 5 },
