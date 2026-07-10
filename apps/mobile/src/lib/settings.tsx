@@ -1,14 +1,16 @@
 // Ajustes del usuario (persistentes): tema, paleta del mapa de calor, intensidad y
 // transparencia. Un solo sistema de personalización para toda la app.
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
+import { Appearance, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ThemePref = 'system' | 'light' | 'dark';
+export type LangPref = 'system' | 'es' | 'en';
 export type HeatPalette = 'calor' | 'semaforo' | 'frio';
 
 export interface Settings {
   theme: ThemePref;
+  lang: LangPref;       // idioma de la UI: sistema / español / inglés (U2)
   palette: HeatPalette;   // paleta del mapa de calor
   intensity: number;      // 0–1: cuánto “se enciende” el heatmap a igual riesgo
   opacity: number;        // 0–1: transparencia global de la capa
@@ -24,6 +26,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
+  lang: 'system',
   palette: 'calor',
   intensity: 0.5,
   opacity: 0.7,
@@ -75,10 +78,31 @@ export function useSettings() {
   return useContext(SettingsContext);
 }
 
+// Tema del SO EN VIVO: useColorScheme de RN-web no siempre reacciona al cambio del
+// sistema sin recargar, así que se escucha Appearance y, en web, matchMedia directo.
+function useSystemScheme(): 'light' | 'dark' {
+  const [scheme, setScheme] = useState<'light' | 'dark'>(
+    Appearance.getColorScheme() === 'dark' ? 'dark' : 'light',
+  );
+  useEffect(() => {
+    const sub = Appearance.addChangeListener(({ colorScheme }) =>
+      setScheme(colorScheme === 'dark' ? 'dark' : 'light'));
+    let mq: MediaQueryList | null = null;
+    const onMq = (e: MediaQueryListEvent) => setScheme(e.matches ? 'dark' : 'light');
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.matchMedia) {
+      mq = window.matchMedia('(prefers-color-scheme: dark)');
+      setScheme(mq.matches ? 'dark' : 'light');
+      mq.addEventListener('change', onMq);
+    }
+    return () => { sub.remove(); mq?.removeEventListener('change', onMq); };
+  }, []);
+  return scheme;
+}
+
 // Tema resuelto: 'system' sigue al SO (y reacciona a sus cambios); claro/oscuro fijos.
 export function useResolvedScheme(): 'light' | 'dark' {
-  const os = useColorScheme();
+  const os = useSystemScheme();
   const { settings } = useSettings();
-  if (settings.theme === 'system') return os === 'dark' ? 'dark' : 'light';
+  if (settings.theme === 'system') return os;
   return settings.theme;
 }

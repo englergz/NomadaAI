@@ -17,7 +17,25 @@ try {
   ML = null;
 }
 
-export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination, riskStyle, satellite, poisData, poisOn }: RiskMapProps) {
+// Vehículo cenital nativo (Views, sin dependencias): cuerpo redondeado + parabrisas
+// claro al frente. La cámara ya rota al rumbo, así que el sprite apunta ARRIBA.
+function VehicleSprite({ type }: { type: string | null }) {
+  const moto = (type ?? '') === 'moto';
+  return (
+    <View
+      style={{
+        width: moto ? 14 : 22, height: moto ? 30 : 34, borderRadius: moto ? 7 : 9,
+        backgroundColor: moto ? '#f97316' : '#1f2937', borderWidth: 1.5, borderColor: '#fff',
+        alignItems: 'center', paddingTop: 5,
+        shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 3, shadowOffset: { width: 0, height: 1 },
+      }}
+    >
+      <View style={{ width: moto ? 7 : 12, height: 7, borderRadius: 3, backgroundColor: moto ? '#111827' : '#9cd2ff' }} />
+    </View>
+  );
+}
+
+export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination, riskStyle, satellite, poisData, poisOn, focus, nav }: RiskMapProps) {
   const c = Colors[dark ? 'dark' : 'light'];
   const style = useMemo(() => baseStyle(dark, satellite), [dark, satellite]);
   const city = CITIES[DEFAULT_CITY];
@@ -34,13 +52,16 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     );
   }
 
-  const { Map, Camera, GeoJSONSource, Layer } = ML;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { Map, Camera, GeoJSONSource, Layer, MarkerView } = ML as typeof ML & { MarkerView?: any };
+  const navOn = !!nav?.active && !!userLocation;
   return (
     <Map style={styles.map} mapStyle={style as never}>
       <Camera
         initialViewState={{ center: city.center, zoom: city.zoom } as never}
-        center={userLocation ?? undefined}
-        zoom={userLocation ? 15 : undefined}
+        center={userLocation ?? focus?.center ?? undefined}
+        zoom={navOn ? 16.5 : userLocation ? 15 : focus?.zoom}
+        {...({ pitch: navOn ? 50 : 0, heading: navOn ? nav?.heading ?? 0 : 0 } as Record<string, number>)}
       />
       {riskData && riskOn && (
         <GeoJSONSource id="risk" data={riskData as never}>
@@ -119,7 +140,13 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
           />
         </GeoJSONSource>
       )}
-      {userLocation && (
+      {/* En navegación: vehículo cenital (si MarkerView existe); si no, punto azul */}
+      {navOn && MarkerView ? (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        <MarkerView {...({ coordinate: userLocation } as any)}>
+          <VehicleSprite type={nav?.vehicle ?? null} />
+        </MarkerView>
+      ) : userLocation ? (
         <GeoJSONSource
           id="me"
           data={{ type: 'Feature', geometry: { type: 'Point', coordinates: userLocation }, properties: {} } as never}
@@ -135,7 +162,7 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
             }}
           />
         </GeoJSONSource>
-      )}
+      ) : null}
     </Map>
   );
 }

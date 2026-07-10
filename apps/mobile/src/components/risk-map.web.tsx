@@ -6,14 +6,67 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { baseStyle, baseTiles, CITIES, DEFAULT_CITY, HEAT_PALETTES, RISK_FILL_COLOR, RISK_LINE_COLOR, riskFillColor } from '@/constants/map';
-import { POI_CIRCLE_COLOR, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
+// Glyphmap oficial de MaterialCommunityIcons (nombre → codepoint): iconos literales
+// por categoría (gas-station, hospital-box, church…), nada de emojis.
+import MCIGlyphs from '@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/MaterialCommunityIcons.json';
+import MCI from '@expo/vector-icons/MaterialCommunityIcons';
+import * as Font from 'expo-font';
 
-export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination, riskStyle, satellite, poisData, poisOn }: RiskMapProps) {
+import { POI_ICON_DEFS, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, vehicleTopSvg, type RiskMapProps } from './risk-map.types';
+
+// B4: rasteriza cada glyph a una imagen PNG del mapa — SIN fondo (nada de círculo
+// blanco): icono coloreado por categoría con halo blanco fino para que sea legible
+// sobre el heatmap y el satelital.
+async function addPoiIcons(map: maplibregl.Map) {
+  const family = Object.keys(MCI.font)[0]; // 'material-community'
+  try {
+    await Font.loadAsync(MCI.font);
+    await document.fonts.load(`44px ${family}`);
+  } catch { /* si no carga, igual intentamos */ }
+  const size = 56;
+  const glyphs = MCIGlyphs as Record<string, number>;
+  for (const [key, def] of Object.entries(POI_ICON_DEFS)) {
+    const code = glyphs[def.glyph] ?? glyphs['map-marker'];
+    if (!code) continue;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) continue;
+    const ch = String.fromCodePoint(code);
+    ctx.font = `44px ${family}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4.5;
+    ctx.strokeText(ch, size / 2, size / 2);
+    ctx.fillStyle = def.color;
+    ctx.fillText(ch, size / 2, size / 2);
+    if (!map.hasImage(`poi-${key}`)) {
+      map.addImage(`poi-${key}`, ctx.getImageData(0, 0, size, size), { pixelRatio: 2 });
+    }
+  }
+}
+
+// Expresión icon-image: match por categoría → poi-<cat>, con poi-default de respaldo.
+const POI_ICON_IMAGE = [
+  'match', ['get', 'category'],
+  ...Object.keys(POI_ICON_DEFS).filter((k) => k !== 'default').flatMap((k) => [k, `poi-${k}`]),
+  'poi-default',
+] as const;
+
+// Tamaño del icono según zoom: crece al acercarse (no se queda diminuto al hacer zoom).
+const POI_ICON_SIZE = ['interpolate', ['linear'], ['zoom'], 12, 0.65, 15, 0.95, 18, 1.35] as const;
+
+export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination, riskStyle, satellite, poisData, poisOn, poiCategoryLabel, focus, nav }: RiskMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
+  const vehMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const vehTypeRef = useRef<string | null>(null);
   const destMarkerRef = useRef<maplibregl.Marker | null>(null);
   const loadedRef = useRef(false);
+  // El handler de click se registra una vez; el rótulo traducido llega por ref.
+  const poiLabelRef = useRef(poiCategoryLabel);
+  useEffect(() => { poiLabelRef.current = poiCategoryLabel; }, [poiCategoryLabel]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -41,18 +94,36 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
         id: 'risk-line', type: 'line', source: 'risk',
         paint: { 'line-color': RISK_LINE_COLOR, 'line-width': 0.5 },
       });
-      // Lugares (POIs): puntos coloreados por categoría.
+      // Lugares (POIs): iconos por categoría (B4). Las imágenes se rasterizan async;
+      // al terminar se fuerza un repaint para que la capa las tome.
       const empty = { type: 'FeatureCollection', features: [] } as never;
+      addPoiIcons(map).then(() => map.triggerRepaint()).catch(() => { /* capa sin iconos */ });
       map.addSource('pois', { type: 'geojson', data: empty });
       map.addLayer({
-        id: 'pois', type: 'circle', source: 'pois',
-        paint: {
-          'circle-radius': 5,
-          'circle-color': POI_CIRCLE_COLOR as never,
-          'circle-stroke-width': 1.2,
-          'circle-stroke-color': '#ffffff',
+        id: 'pois', type: 'symbol', source: 'pois',
+        layout: {
+          'icon-image': POI_ICON_IMAGE as never,
+          'icon-size': POI_ICON_SIZE as never, // crece con el zoom, no queda diminuto
+          'icon-allow-overlap': false,
         },
       });
+      // Tocar un icono → popup con nombre y categoría (rótulo traducido vía prop).
+      map.on('click', 'pois', (e) => {
+        const f = e.features?.[0];
+        if (!f) return;
+        const p = f.properties as { name?: string; category?: string };
+        const cat = String(p.category ?? 'default');
+        const label = poiLabelRef.current?.(cat) ?? cat;
+        new maplibregl.Popup({ closeButton: false, offset: 14, maxWidth: '240px' })
+          .setLngLat(e.lngLat)
+          .setHTML(
+            `<div style="font: 600 13px system-ui; color:#17212c">${String(p.name ?? label)}</div>` +
+            `<div style="font: 12px system-ui; color:#5b6773">${label}</div>`,
+          )
+          .addTo(map);
+      });
+      map.on('mouseenter', 'pois', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'pois', () => { map.getCanvas().style.cursor = ''; });
       // Rutas: directa (gris discontinua) debajo, segura (azul de marca) encima.
       map.addSource('route-direct', { type: 'geojson', data: empty });
       map.addSource('route-safe', { type: 'geojson', data: empty });
@@ -158,6 +229,13 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     if (loadedRef.current) apply(); else map.once('load', apply);
   }, [routes]);
 
+  // Encuadre externo (U3): vuela a la ciudad seleccionada.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focus) return;
+    map.flyTo({ center: focus.center, zoom: focus.zoom, duration: 1600 });
+  }, [focus]);
+
   // Marcador de destino.
   useEffect(() => {
     const map = mapRef.current;
@@ -174,10 +252,43 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     }
   }, [destination]);
 
-  // Ubicación del usuario: marcador + flyTo la primera vez.
+  // Modo NAVEGACIÓN (recorrido activo): vehículo cenital rotado al rumbo y cámara
+  // inclinada que sigue (estilo navegador). Al terminar, vuelve la vista plana.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !userLocation) return;
+    if (!map) return;
+    if (nav?.active && userLocation) {
+      markerRef.current?.remove(); markerRef.current = null; // el punto azul cede al vehículo
+      if (!vehMarkerRef.current || vehTypeRef.current !== (nav.vehicle ?? 'car')) {
+        vehMarkerRef.current?.remove();
+        const el = document.createElement('div');
+        el.innerHTML = vehicleTopSvg(nav.vehicle);
+        vehTypeRef.current = nav.vehicle ?? 'car';
+        // pitchAlignment 'map': el sprite se ACUESTA sobre el plano del mapa — con
+        // la cámara inclinada se ve en perspectiva (efecto 3D estilo Uber).
+        vehMarkerRef.current = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' })
+          .setLngLat(userLocation).addTo(map);
+      } else {
+        vehMarkerRef.current.setLngLat(userLocation);
+      }
+      if (nav.heading != null) vehMarkerRef.current.setRotation(nav.heading);
+      map.easeTo({
+        center: userLocation,
+        bearing: nav.heading ?? map.getBearing(),
+        pitch: 55,
+        zoom: Math.max(map.getZoom(), 16.5),
+        duration: 450,
+      });
+    } else if (vehMarkerRef.current) {
+      vehMarkerRef.current.remove(); vehMarkerRef.current = null; vehTypeRef.current = null;
+      map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
+    }
+  }, [nav?.active, nav?.heading, nav?.vehicle, userLocation]);
+
+  // Ubicación del usuario: marcador + flyTo la primera vez (fuera de navegación).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !userLocation || nav?.active) return;
     if (!markerRef.current) {
       const el = document.createElement('div');
       el.style.cssText =
@@ -187,7 +298,8 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     } else {
       markerRef.current.setLngLat(userLocation);
     }
-  }, [userLocation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocation, nav?.active]);
 
   return (
     <View style={{ flex: 1 }}>

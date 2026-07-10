@@ -40,6 +40,7 @@ enfoque aporta más. Su valor no es un modelo atado a Tumaco, sino un **marco re
 para cualquier ciudad.
 
 > **Autor:** Engler González Prado · `englergonzalez@udenar.edu.co`
+>
 > **Director:** PhD. Manuel Ernesto Bolaños Gonzáles
 
 <p align="center">
