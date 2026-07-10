@@ -93,7 +93,33 @@
   (SVG en web, sprite de Views en nativo con MarkerView).
 - APK: prebuild + gradle assembleRelease local (SDK en ~/Library/Android/sdk).
 
-### U2 · IDIOMA (pendiente previo) — ✅ HECHO (2026-07-08)
+### U7 · PLAN pruebas reales Android (feedback 2026-07-10) — EN CURSO, prioridad
+Hecho en esta pasada: banners con auto-descarte por categoría (info 6s / warn 10s /
+alerta 15s) y ✕ manual; guard «sin fix GPS no hay viaje» + estado «Obteniendo tu
+ubicación…»; wordmark recortado en APK (no pintar hasta cargar Sora); punto del
+wordmark redondo; flyTo de ciudad en NATIVO (focus le gana al GPS en cámara).
+Pendiente (orden):
+1. Sistema de notificaciones in-app formal: categorías (error / actividad-de-fondo /
+   alerta precaución-atención), cola, duraciones propias — extraer hook useBanner.
+2. GPS robusto: reintentos con backoff + accuracy progresiva («No se pudo obtener tu
+   ubicación» recurrente en APK), estados de actividad visibles siempre.
+3. OTA: expo-updates (canal producción) — novedades JS/asset SIN reinstalar APK;
+   vista «Novedades» estilo changelog al abrir tras actualizar; NUNCA aplicar
+   update durante un viaje (checkear solo en frío).
+4. Resiliencia: sin internet (cache de /risk/zones y POIs en AsyncStorage + cola de
+   escrituras), cerrar/reabrir la app restaurando viaje en curso, ubicación en
+   segundo plano durante viaje (foreground service + notificación persistente).
+5. Refactor de arquitectura (mantenibilidad): extraer de map.tsx los hooks
+   useTrip / useCity / useBanner / useHealth; BaseSheet común para las 6 hojas
+   modales (hoy duplican backdrop/estilos); servicios en lib/ sin lógica en vistas;
+   revisar peso del APK (151 MB → recortar ABIs/assets, enable proguard/shrink).
+6. Splash: calibrar waypoints del punto sobre el PNG real (hoy se desvía en el lazo).
+7. Vehículo 3D real EN ESTE PROYECTO (custom layer con modelo — web three.js,
+   nativo por evaluar); el sprite acostado actual es el paso intermedio.
+8. Salida de navegación: «Finalizar» ya restaura cámara (pitch/bearing 0) — validar
+   en APK; si no, forzar reset imperativo en nativo.
+9. U5 escritorio (tesis): «.AI» azul + Sora + Menú→Ajustes completo — SIGUE PENDIENTE.
+10. iOS: correr en simulador tras estabilizar Android.
 - ✅ expo-localization instalado; `lib/i18n.tsx` con diccionario es/en completo (home, mapa,
   banners, alertas por acción, Ajustes, reporte, «Tu protección») y `t()` con interpolación.
 - ✅ Ajuste `lang: system|es|en` persistente + sección IDIOMA en Ajustes (cambio en caliente).

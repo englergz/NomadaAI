@@ -167,6 +167,6 @@ const styles = StyleSheet.create({
   },
   wordRow: { flexDirection: 'row', alignItems: 'baseline' },
   word: { fontFamily: BRAND_FONT, fontSize: 32, letterSpacing: 0.3 },
-  dotSlot: { width: 12, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 3 },
-  slotDot: { width: 7, height: 7, borderRadius: 4 },
+  dotSlot: { width: 13, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 4 },
+  slotDot: { width: 8, height: 8, borderRadius: 999 }, // redondo, como el punto del mapa
 });
