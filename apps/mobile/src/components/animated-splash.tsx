@@ -9,7 +9,7 @@ import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native
 // `collapsable` evita que Android optimice la vista y rompa measureInWindow;
 // en web no existe como atributo DOM y React se queja — solo se pasa en nativo.
 const NO_COLLAPSE = Platform.OS === 'web' ? {} : { collapsable: false as const };
-import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
+import Svg, { Line } from 'react-native-svg';
 
 import { BRAND_FONT } from '@/components/brand';
 import { Colors } from '@/constants/theme';
@@ -19,14 +19,9 @@ import { useResolvedScheme } from '@/lib/settings';
 // y el Path de react-native-svg en web lo pasa al DOM (warning de React).
 // El trazo se anima con un listener del progreso → estado.
 
-// EL LOGO REAL de Nómada.AI («app/logo app.png», viewBox 243×243): una N de un
-// solo trazo cuyo brazo derecho se enrosca en el pin de ubicación. La ruta que se
-// dibuja ES el logo — no una forma inventada.
-const PATH_D =
-  'M 57 214 L 57 150 C 57 133 73 128 84 140 L 155 199 C 165 207 173 202 173 190 ' +
-  'L 173 118 C 173 85 158 40 124 40 C 88 40 74 68 74 96 C 74 122 96 132 114 130 ' +
-  'C 132 128 146 116 152 104';
-// Waypoints (aprox. lineal del trazo) para el recorrido del punto.
+// EL LOGO REAL: se renderiza el PNG ORIGINAL («logo app.png», silueta blanca)
+// tintado según el tema — silueta pixel-idéntica, sin re-trazar nada. El logo
+// se revela mientras el punto azul recorre su contorno (waypoints medidos).
 const PTS: [number, number][] = [
   [57, 214], [57, 150], [70, 133], [84, 140], [155, 199], [170, 203], [173, 190],
   [173, 118], [168, 62], [124, 40], [82, 62], [74, 96], [90, 125], [114, 130], [140, 120], [152, 104],
@@ -38,8 +33,6 @@ function segLen(a: [number, number], b: [number, number]) {
   return Math.hypot(b[0] - a[0], b[1] - a[1]);
 }
 const TOTAL = PTS.slice(1).reduce((s, p, i) => s + segLen(PTS[i], p), 0);
-// El path real (con curvas) es más largo que la poligonal: margen para que cierre.
-const DASH = TOTAL * 1.35;
 // Fracciones acumuladas → inputRange del interpolado del punto.
 const FRACS = PTS.map((_, i) =>
   PTS.slice(1, i + 1).reduce((s, p, j) => s + segLen(PTS[j], p), 0) / TOTAL);
@@ -52,7 +45,6 @@ export default function AnimatedSplash({ onDone }: { onDone: () => void }) {
   const flight = useRef(new Animated.Value(0)).current;    // punto → «.» del nombre
   const fade = useRef(new Animated.Value(1)).current;      // salida del splash
   const [slot, setSlot] = useState<{ x: number; y: number } | null>(null);
-  const [dashOffset, setDashOffset] = useState(DASH);
   const grid = useRef(new Animated.Value(1)).current; // la retícula se va al final
   const [gridOp, setGridOp] = useState(1);
   const slotRef = useRef<View>(null);
@@ -60,7 +52,6 @@ export default function AnimatedSplash({ onDone }: { onDone: () => void }) {
   doneRef.current = onDone;
 
   useEffect(() => {
-    const sub = progress.addListener(({ value }) => setDashOffset(DASH * (1 - value)));
     const gsub = grid.addListener(({ value }) => setGridOp(value));
     Animated.sequence([
       Animated.timing(progress, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.cubic), useNativeDriver: false }),
@@ -77,7 +68,7 @@ export default function AnimatedSplash({ onDone }: { onDone: () => void }) {
     const t = setTimeout(() => {
       slotRef.current?.measureInWindow((x, y) => setSlot({ x, y }));
     }, 900);
-    return () => { clearTimeout(t); progress.removeListener(sub); };
+    return () => { clearTimeout(t); grid.removeListener(gsub); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -89,13 +80,6 @@ export default function AnimatedSplash({ onDone }: { onDone: () => void }) {
     <Animated.View style={[styles.overlay, { backgroundColor: c.background, opacity: fade, pointerEvents: 'none' }]}>
       <View style={{ width: SIZE.w, height: SIZE.h }}>
         <Svg width={SIZE.w} height={SIZE.h} viewBox="0 0 243 243">
-          <Defs>
-            {/* Oscuro: degradado claro intenso; claro: el logo luce oscuro/negro. */}
-            <LinearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={scheme === 'dark' ? '#e8edf3' : '#17212c'} />
-              <Stop offset="1" stopColor={scheme === 'dark' ? '#7fb2ff' : '#0b1220'} />
-            </LinearGradient>
-          </Defs>
           {/* retícula tenue: la ciudad de fondo (desaparece al final) */}
           {[45, 95, 145, 195].map((y) => (
             <Line key={`h${y}`} x1="14" y1={y} x2="229" y2={y} stroke={c.border} strokeWidth="1" opacity={0.5 * gridOp} />
@@ -103,18 +87,19 @@ export default function AnimatedSplash({ onDone }: { onDone: () => void }) {
           {[45, 105, 165, 220].map((x) => (
             <Line key={`v${x}`} x1={x} y1="20" x2={x} y2="225" stroke={c.border} strokeWidth="1" opacity={0.5 * gridOp} />
           ))}
-          {/* la ruta que se dibuja ES el logo de Nómada.AI */}
-          <Path
-            d={PATH_D}
-            stroke="url(#logoGrad)"
-            strokeWidth="13"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-            strokeDasharray={`${DASH}`}
-            strokeDashoffset={dashOffset}
-          />
         </Svg>
+        {/* EL LOGO ORIGINAL, pixel-idéntico (PNG tintado): se revela con el recorrido.
+            Oscuro → claro; claro → negro. */}
+        <Animated.Image
+          source={require('@/assets/images/logo-wordless.png')}
+          style={[StyleSheet.absoluteFill, {
+            width: SIZE.w, height: SIZE.h,
+            tintColor: scheme === 'dark' ? '#e8edf3' : '#10161f',
+            opacity: progress,
+            transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) as unknown as number }],
+          }]}
+          resizeMode="contain"
+        />
         {/* punto azul del usuario recorriendo la ruta; al final vuela al «.» */}
         <TravelDot routeX={routeX} routeY={routeY} flight={flight} slot={slot} size={SIZE} accent={c.accent} />
       </View>

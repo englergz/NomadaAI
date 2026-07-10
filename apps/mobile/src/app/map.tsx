@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Image, Keyboard, Linking, Platform, Pressable, StyleSheet, Text,
-  TextInput, View,
+  TextInput, useWindowDimensions, View,
 } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -89,6 +89,12 @@ export default function MapScreen() {
   const [userLoc, setUserLoc] = useState<[number, number] | null>(null);
   const [outOfCoverage, setOutOfCoverage] = useState(false);
   const [banner, setBanner] = useState<{ text: string; tone: 'ok' | 'warn' | 'info' | 'coral' } | null>(null);
+
+  // Centro REAL del área visible del mapa (entre el tope y la barra inferior):
+  // ahí se centra la columna de FABs.
+  const { height: winH } = useWindowDimensions();
+  const [sheetH, setSheetH] = useState(320);
+  const stackTop = Math.max(insets.top + 96, (winH - sheetH) / 2 - 135);
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Place[]>([]);
@@ -552,8 +558,9 @@ export default function MapScreen() {
         <Ionicons name="chevron-down" size={13} color={c.textSecondary} />
       </Pressable>
 
-      {/* Pila derecha CENTRADA verticalmente: perfil · ajustes · reportar · centrar */}
-      <View style={styles.rightStack}>
+      {/* Pila derecha centrada en el ÁREA DEL MAPA: perfil · ajustes · reportar ·
+          notificaciones · centrar */}
+      <View style={[styles.rightStack, { top: stackTop }]}>
         <Pressable
           onPress={() => setShowProtection(true)}
           style={[styles.fab, styles.inStack, { backgroundColor: c.backgroundElement, borderColor: c.border }]}
@@ -623,7 +630,10 @@ export default function MapScreen() {
       )}
 
       {/* Barra inferior: destino + prioridad + Ir seguro */}
-      <View style={[styles.sheet, { bottom: 0, paddingBottom: insets.bottom + 14, backgroundColor: c.backgroundElement, borderColor: c.border }]}>
+      <View
+        onLayout={(e) => setSheetH(e.nativeEvent.layout.height)}
+        style={[styles.sheet, { bottom: 0, paddingBottom: insets.bottom + 14, backgroundColor: c.backgroundElement, borderColor: c.border }]}
+      >
         {cityFull && results.length > 0 && !dest && (
           <FlatList
             data={results}
@@ -793,11 +803,8 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
-  // Columna derecha centrada verticalmente (mitad del lateral).
-  rightStack: {
-    position: 'absolute', right: 16, top: '50%', gap: 10,
-    transform: [{ translateY: '-50%' }],
-  },
+  // Columna derecha; su `top` se calcula con la altura real de la barra inferior.
+  rightStack: { position: 'absolute', right: 16, gap: 10 },
   inStack: { position: 'relative' },
   // Banner arriba, bajo el chip de ciudad.
   banner: { position: 'absolute', left: 24, right: 24, borderWidth: 1, borderRadius: 16, paddingVertical: 8, paddingHorizontal: 14 },

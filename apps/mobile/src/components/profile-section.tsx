@@ -2,8 +2,8 @@
 // clave de Clerk. Sin sesión: botón de Google + nota de invitado. Con sesión: foto,
 // nombre/correo, cerrar sesión y los campos PROPIOS del perfil (fecha de nacimiento
 // y nacionalidad) con consentimiento explícito (Ley 1581) → BI agregada.
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { useAuth, useSSO, useUser } from '@clerk/clerk-expo';
@@ -42,9 +42,9 @@ export default function ProfileSection() {
   const [year, setYear] = useState<string | null>(null);
   const [nationality, setNationality] = useState<string | null>(null);
   const [picker, setPicker] = useState<'day' | 'month' | 'year' | 'country' | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const months = MONTHS[lang];
+  // Último valor persistido: evita guardar en la carga inicial y repetidos.
+  const savedRef = useRef<string | null>(null);
 
   // Carga los campos propios desde el perfil Clerk (unsafeMetadata) al abrir sesión.
   useEffect(() => {
@@ -54,6 +54,7 @@ export default function ProfileSection() {
     setMonth(mo ? String(Number(mo)) : null);
     setDay(d ? String(Number(d)) : null);
     setNationality(m.nationality ?? null);
+    savedRef.current = `${m.dob ?? ''}|${m.nationality ?? ''}`;
   }, [user?.id, user?.unsafeMetadata]);
 
   // Días válidos según mes/año (bisiestos incluidos); si el día elegido deja de
@@ -80,20 +81,24 @@ export default function ProfileSection() {
     } catch { setErr(true); }
   }
 
-  async function saveProfile() {
-    if (!user || saving) return;
-    setSaving(true); setSavedMsg(null);
-    try {
-      await user.update({
+  // Guardado AUTOMÁTICO al elegir (sin botón propio): «Listo» solo cierra, como
+  // en el resto de hojas. Silencioso; si falla se reintenta en el próximo cambio.
+  useEffect(() => {
+    if (!user || savedRef.current === null) return;
+    const cur = `${dob ?? ''}|${nationality ?? ''}`;
+    if (cur === savedRef.current) return;
+    const t2 = setTimeout(() => {
+      user.update({
         unsafeMetadata: {
           ...(user.unsafeMetadata ?? {}),
           dob: dob ?? undefined,
           nationality: nationality ?? undefined,
         },
-      });
-      setSavedMsg(t('auth.saved'));
-    } catch { setSavedMsg(t('auth.saveError')); } finally { setSaving(false); }
-  }
+      }).then(() => { savedRef.current = cur; }).catch(() => { /* reintento al próximo cambio */ });
+    }, 500);
+    return () => clearTimeout(t2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dob, nationality, user?.id]);
 
   return (
     <View style={{ gap: 8 }}>
@@ -176,16 +181,6 @@ export default function ProfileSection() {
             searchable searchPlaceholder={t('auth.searchCountry')}
           />
           <Text style={{ color: c.textSecondary, fontSize: 10.5, lineHeight: 14 }}>{t('auth.consent')}</Text>
-          <Pressable
-            onPress={saveProfile}
-            disabled={saving}
-            style={({ pressed }) => [styles.btn, { borderColor: c.border, opacity: saving ? 0.5 : pressed ? 0.8 : 1 }]}
-          >
-            {saving
-              ? <ActivityIndicator size="small" color={c.accent} />
-              : <Text style={{ color: c.text, fontSize: 13, fontWeight: '600' }}>{t('auth.save')}</Text>}
-          </Pressable>
-          {savedMsg && <Text style={{ color: c.textSecondary, fontSize: 11.5, textAlign: 'center' }}>{savedMsg}</Text>}
         </>
       )}
     </View>
