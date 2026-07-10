@@ -89,6 +89,15 @@ export default function MapScreen() {
   const [userLoc, setUserLoc] = useState<[number, number] | null>(null);
   const [outOfCoverage, setOutOfCoverage] = useState(false);
   const [banner, setBanner] = useState<{ text: string; tone: 'ok' | 'warn' | 'info' | 'coral' } | null>(null);
+  // Los banners NO se quedan pegados: se auto-descartan según su categoría
+  // (info/ok breve, advertencias más tiempo, coral=alerta persiste un poco más)
+  // y siempre traen ✕ para cerrarlos a mano.
+  useEffect(() => {
+    if (!banner) return;
+    const ms = banner.tone === 'coral' ? 15000 : banner.tone === 'warn' ? 10000 : 6000;
+    const t2 = setTimeout(() => setBanner(null), ms);
+    return () => clearTimeout(t2);
+  }, [banner]);
 
   // Centro REAL del área visible del mapa (entre el tope y la barra inferior):
   // ahí se centra la columna de FABs.
@@ -415,6 +424,13 @@ export default function MapScreen() {
       setBanner({ text: t('map.banner.tripNeedsLocation'), tone: 'warn' });
       return;
     }
+    // SIN posición no hay viaje: se informa lo que pasa de fondo y se exige un
+    // fix real antes de arrancar (lo que prometemos es tiempo real).
+    if (!userLoc) {
+      setBanner({ text: t('map.banner.locating'), tone: 'info' });
+      const loc = await locate();
+      if (!loc) return; // locate() ya explicó el porqué
+    }
     // Notificaciones: permiso EN CONTEXTO, justo cuando empieza el primer recorrido.
     if (Platform.OS !== 'web') {
       try {
@@ -625,7 +641,10 @@ export default function MapScreen() {
           si la tarjeta de ciudad está visible, ella tiene prioridad. */}
       {banner && !citySuggest && (
         <View style={[styles.banner, { top: insets.top + 94, backgroundColor: c.backgroundElement, borderColor: toneColor[banner.tone] }]}>
-          <Text style={{ color: c.text, fontSize: 12.5, textAlign: 'center' }}>{banner.text}</Text>
+          <Text style={{ color: c.text, fontSize: 12.5, flex: 1 }}>{banner.text}</Text>
+          <Pressable onPress={() => setBanner(null)} hitSlop={10}>
+            <Ionicons name="close" size={15} color={c.textSecondary} />
+          </Pressable>
         </View>
       )}
 
@@ -807,7 +826,10 @@ const styles = StyleSheet.create({
   rightStack: { position: 'absolute', right: 16, gap: 10 },
   inStack: { position: 'relative' },
   // Banner arriba, bajo el chip de ciudad.
-  banner: { position: 'absolute', left: 24, right: 24, borderWidth: 1, borderRadius: 16, paddingVertical: 8, paddingHorizontal: 14 },
+  banner: {
+    position: 'absolute', left: 24, right: 24, borderWidth: 1, borderRadius: 16,
+    paddingVertical: 8, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 8,
+  },
   healthDot: { width: 7, height: 7, borderRadius: 4 },
   unreadDot: {
     position: 'absolute', top: 6, right: 7, width: 10, height: 10, borderRadius: 5, borderWidth: 2,

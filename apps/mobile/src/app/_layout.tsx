@@ -78,6 +78,10 @@ export default function RootLayout() {
   // Tipografía de marca (wordmark Nómada.AI); la UI sigue con la fuente del sistema.
   const [fontsLoaded] = useFonts({ Sora_700Bold });
   useEffect(() => { if (fontsLoaded) SplashScreen.hideAsync(); }, [fontsLoaded]);
+  // En nativo, pintar ANTES de tener la Sora deja el wordmark mal medido y
+  // recortado («Nóma .A»): no se renderiza nada hasta que la fuente esté lista
+  // (el splash nativo del sistema sigue en pantalla, no hay parpadeo).
+  if (!fontsLoaded) return null;
   return (
     <MaybeClerk>
       <SettingsProvider>

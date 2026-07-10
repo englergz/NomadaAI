@@ -57,10 +57,12 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
   const navOn = !!nav?.active && !!userLocation;
   return (
     <Map style={styles.map} mapStyle={style as never}>
+      {/* En nativo el flyTo de ciudad debe GANARLE a la ubicación del usuario
+          (si no, con GPS activo el cambio de ciudad no movía la cámara). */}
       <Camera
         initialViewState={{ center: city.center, zoom: city.zoom } as never}
-        center={userLocation ?? focus?.center ?? undefined}
-        zoom={navOn ? 16.5 : userLocation ? 15 : focus?.zoom}
+        center={navOn ? userLocation : (focus?.center ?? userLocation ?? undefined)}
+        zoom={navOn ? 16.5 : focus?.zoom ?? (userLocation ? 15 : undefined)}
         {...({ pitch: navOn ? 50 : 0, heading: navOn ? nav?.heading ?? 0 : 0 } as Record<string, number>)}
       />
       {riskData && riskOn && (
