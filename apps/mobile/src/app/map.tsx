@@ -4,37 +4,55 @@
 // Regla de ruteo: EVITAR cuando hay alternativa; AVISAR cuando el riesgo es inevitable.
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Keyboard, Platform, Pressable, StyleSheet, Text, TextInput,
-  View,
+  ActivityIndicator, FlatList, Image, Keyboard, Linking, Platform, Pressable, StyleSheet, Text,
+  TextInput, View,
 } from 'react-native';
+import { useUser } from '@clerk/clerk-expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import type { BuildRouteResponse, Coordinate, RiskZonesResponse } from '@nomadaai/shared';
 
+import BrandWordmark from '@/components/brand';
+import CitySheet from '@/components/city-sheet';
+import { CLERK_ENABLED } from '@/lib/auth';
 import ProtectionSheet from '@/components/protection-sheet';
 import ReportSheet from '@/components/report-sheet';
 import RiskMap from '@/components/risk-map';
 import SettingsSheet, { VEHICLES } from '@/components/settings-sheet';
+import NotificationsSheet from '@/components/notifications-sheet';
+import { hasUnseenAlerts, logAlert } from '@/lib/alert-log';
 import { logTrip } from '@/lib/history';
 import type { RouteLines } from '@/components/risk-map.types';
+import { useT, type TKey } from '@/lib/i18n';
 import { useResolvedScheme, useSettings } from '@/lib/settings';
-import { CITIES, DEFAULT_CITY } from '@/constants/map';
+import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
 import { Colors } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { levelFor, ProximityTracker, zoneAt, type AlertLevel } from '@/lib/alerts';
-import { coverageCity, distM, searchPlaces, type Place } from '@/lib/geocode';
+import { bearingDeg, coverageCity, distM, searchPlaces, type Place } from '@/lib/geocode';
 
-// Prioridad de seguridad → λ (risk_weight) del backend.
+// Nivel de protección → λ (risk_weight) del backend. Naming de producto: habla del
+// valor (protegerte), no de la geometría de la ruta; empata con «Tu protección».
 const PRIORITIES = [
-  { label: 'Rápida', w: 0.3 },
-  { label: 'Equilibrada', w: 1.0 },
-  { label: 'Segura', w: 2.5 },
+  { key: 'map.prio.min', w: 0.3 },
+  { key: 'map.prio.balanced', w: 1.0 },
+  { key: 'map.prio.max', w: 2.5 },
 ] as const;
 
+// Foto del usuario en el FAB de perfil (U4). Solo se monta con Clerk habilitado;
+// sin sesión (o sin foto) mantiene el icono de siempre.
+function ProfileFabIcon({ color }: { color: string }) {
+  const { user } = useUser();
+  if (user?.imageUrl) {
+    return <Image source={{ uri: user.imageUrl }} style={{ width: 30, height: 30, borderRadius: 15 }} />;
+  }
+  return <Ionicons name="person-circle-outline" size={23} color={color} />;
+}
+
 export default function MapScreen() {
+  const t = useT();
   const scheme = useResolvedScheme();
   const dark = scheme === 'dark';
   const c = Colors[scheme];
@@ -43,11 +61,27 @@ export default function MapScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showProtection, setShowProtection] = useState(false);
+  // Notificaciones (historial de alertas) con puntico de «sin leer».
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [unread, setUnread] = useState(false);
+  useEffect(() => { hasUnseenAlerts().then(setUnread); }, []);
+
+  // U3 · Ciudad activa: el mapa, la capa de riesgo y el buscador giran alrededor de ella.
+  // Hoy solo Tumaco tiene pipeline completo (predicción + rutas); el resto, capa de riesgo.
+  const [city, setCity] = useState<CityKey>(DEFAULT_CITY);
+  const [showCity, setShowCity] = useState(false);
+  const [citySuggest, setCitySuggest] = useState<CityKey | null>(null); // «¿Estás en X?»
+  const [focus, setFocus] = useState<{ center: [number, number]; zoom: number } | null>(null);
+  const cityFull = city === DEFAULT_CITY;
 
   // Vehículo del viaje: por defecto el del perfil (Ajustes), cambiable en cada viaje (B.6.1).
   // undefined = usar el predeterminado · null = «sin vehículo» explícito para este viaje.
   const [tripVehicle, setTripVehicle] = useState<string | null | undefined>(undefined);
   const effVehicle = tripVehicle === undefined ? settings.vehicle : tripVehicle;
+  // Ref para los callbacks de GPS (se registran una vez y no ven re-renders):
+  // el consejo de la alerta usa el vehículo EFECTIVO del viaje, no uno congelado.
+  const effVehicleRef = useRef(effVehicle);
+  useEffect(() => { effVehicleRef.current = effVehicle; }, [effVehicle]);
 
   const riskOn = settings.riskOn; // capa de riesgo: vive en Ajustes (con acceso rápido aquí)
   const [riskData, setRiskData] = useState<RiskZonesResponse | null>(null);
@@ -67,29 +101,78 @@ export default function MapScreen() {
 
   // Recorrido (Fase 3): seguimiento + alertas de proximidad una-vez-por-zona.
   const [onTrip, setOnTrip] = useState(false);
+  // Rumbo para el modo navegación: brújula del teléfono en nativo; en web se
+  // estima con el movimiento (bearing entre posiciones consecutivas).
+  const [heading, setHeading] = useState<number | null>(null);
+  const headingSubRef = useRef<Location.LocationSubscription | null>(null);
   const [tripLevel, setTripLevel] = useState<AlertLevel>('despejado');
   const trackerRef = useRef(new ProximityTracker());
   const watchRef = useRef<Location.LocationSubscription | null>(null);
   const riskRef = useRef<RiskZonesResponse | null>(null);
   useEffect(() => { riskRef.current = riskData; }, [riskData]);
 
+  // Estado del servicio: comprobación REAL de /health, repetida cada 60 s. Alimenta
+  // el punto verde/coral del chip de ciudad; si cae, además avisa con un banner.
+  const [healthOk, setHealthOk] = useState<boolean | null>(null);
   useEffect(() => {
     let alive = true;
-    api.riskZones()
-      .then((d) => { if (alive) setRiskData(d); })
-      .catch(() => { /* sin riesgo no bloqueamos el mapa */ });
-    return () => { alive = false; };
+    const check = () => api.health()
+      .then(() => { if (alive) setHealthOk(true); })
+      .catch(() => {
+        if (!alive) return;
+        setHealthOk((prev) => {
+          if (prev !== false) setBanner({ text: t('home.offline'), tone: 'warn' });
+          return false;
+        });
+      });
+    check();
+    const iv = setInterval(check, 60000);
+    return () => { alive = false; clearInterval(iv); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Capa Lugares: se carga la primera vez que se activa en Ajustes.
+  // Ubicación por defecto al abrir: se pide con el DIÁLOGO NATIVO directamente
+  // (cero fricción — nunca mandar al usuario a buscar el ajuste a mano).
   useEffect(() => {
-    if (!settings.poisOn || poisData) return;
+    locate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Capa de riesgo POR CIUDAD (U3): al cambiar de ciudad se recarga la malla.
+  useEffect(() => {
+    let alive = true;
+    api.riskZones(undefined, city)
+      .then((d) => { if (alive) setRiskData(d); })
+      .catch(() => {
+        // Sin riesgo no bloqueamos el mapa, pero el usuario debe saberlo (estado de error).
+        if (alive) setBanner({ text: t('map.banner.riskLoadError'), tone: 'warn' });
+      });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [city]);
+
+  // Capa Lugares: se carga la primera vez que se activa en Ajustes.
+  // Los POIs del backend son de Tumaco; en otras ciudades la capa no aplica.
+  useEffect(() => {
+    if (!settings.poisOn || poisData || city !== DEFAULT_CITY) return;
     let alive = true;
     api.pois(500)
       .then((d) => { if (alive) setPoisData(d as RiskZonesResponse); })
       .catch(() => { /* sin POIs la capa queda vacía */ });
     return () => { alive = false; };
-  }, [settings.poisOn, poisData]);
+  }, [settings.poisOn, poisData, city]);
+
+  // Cambio de ciudad: encuadra, limpia el viaje en curso y es honesto con lo disponible.
+  function switchCity(k: CityKey) {
+    if (k === city) return;
+    stopTrip();
+    setDest(null); setRoutes(null); setQuery(''); setResults([]);
+    setCity(k);
+    setCitySuggest(null);
+    setFocus({ center: CITIES[k].center, zoom: CITIES[k].zoom });
+    // La nota fija de la barra inferior ya explica lo disponible; sin banner duplicado.
+    setBanner(null);
+  }
 
   // Búsqueda con debounce; se descartan respuestas viejas.
   useEffect(() => {
@@ -97,12 +180,13 @@ export default function MapScreen() {
     if (query.trim().length < 2) { setResults([]); setSearching(false); return; }
     setSearching(true);
     const t = setTimeout(() => {
-      searchPlaces(query, DEFAULT_CITY)
+      searchPlaces(query, city)
         .then((r) => { if (searchSeq.current === seq) { setResults(r); setSearching(false); } })
         .catch(() => { if (searchSeq.current === seq) setSearching(false); });
     }, 350);
     return () => clearTimeout(t);
-  }, [query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, city]);
 
   // Timeout duro: en web el diálogo de geolocalización puede quedar sin respuesta
   // y getCurrentPositionAsync no resuelve nunca — no podemos colgar el flujo por eso.
@@ -115,11 +199,17 @@ export default function MapScreen() {
 
   async function locate(): Promise<[number, number] | null> {
     try {
-      const { status } = await withTimeout(
+      // requestForegroundPermissionsAsync ABRE el diálogo nativo del sistema.
+      // Solo si el usuario lo negó de forma permanente (el SO ya no deja volver a
+      // preguntar) se le lleva DIRECTO a los ajustes de la app — nada manual.
+      const perm = await withTimeout(
         Location.requestForegroundPermissionsAsync(), 20000, 'permiso',
       );
-      if (status !== 'granted') {
-        setBanner({ text: 'Sin permiso de ubicación. Actívalo en Ajustes.', tone: 'warn' });
+      if (perm.status !== 'granted') {
+        if (!perm.canAskAgain && Platform.OS !== 'web') {
+          Linking.openSettings().catch(() => { /* último recurso */ });
+        }
+        setBanner({ text: t('map.banner.noPermission'), tone: 'warn' });
         return null;
       }
       const pos = await withTimeout(
@@ -127,18 +217,23 @@ export default function MapScreen() {
       );
       const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
       setUserLoc(loc);
+      // Centrar SIEMPRE al ubicar (antes solo volaba la primera vez).
+      setFocus({ center: loc, zoom: 16 });
       // Cobertura: si está lejos de toda ciudad soportada, avisamos con honestidad.
       const cov = coverageCity(loc as Coordinate);
       setOutOfCoverage(!cov);
       if (!cov) {
         setBanner({
-          text: `Aún no hay cobertura en tu zona. Te mostramos ${CITIES[DEFAULT_CITY].label} como demostración.`,
+          text: t('map.banner.noCoverage', { city: CITIES[DEFAULT_CITY].label }),
           tone: 'info',
         });
+      } else if (cov !== city) {
+        // U3: detectamos otra ciudad soportada — se PREGUNTA antes de cambiar, no se impone.
+        setCitySuggest(cov);
       }
       return loc;
     } catch {
-      setBanner({ text: 'No se pudo obtener tu ubicación.', tone: 'warn' });
+      setBanner({ text: t('map.banner.noLocation'), tone: 'warn' });
       return null;
     }
   }
@@ -149,7 +244,7 @@ export default function MapScreen() {
     if (!dest || routing) return;
     Keyboard.dismiss();
     setRouting(true);
-    setBanner({ text: 'Generando ruta segura…', tone: 'info' });
+    setBanner({ text: t('map.banner.routing'), tone: 'info' });
     try {
       // Origen: tu ubicación si está en cobertura; si no (o si el GPS no responde
       // a tiempo), el centro de la ciudad demo — el flujo nunca se queda colgado.
@@ -157,7 +252,7 @@ export default function MapScreen() {
       let origin = (userLoc && !outOfCoverage ? userLoc : null) ?? lastOriginRef.current;
       if (!origin) {
         const loc = await locate().catch(() => null);
-        origin = loc && coverageCity(loc as Coordinate) ? loc : CITIES[DEFAULT_CITY].center;
+        origin = loc && coverageCity(loc as Coordinate) ? loc : CITIES[city].center;
       }
       lastOriginRef.current = origin;
       const r: BuildRouteResponse = await withTimeout(
@@ -188,19 +283,16 @@ export default function MapScreen() {
       };
       const red = r.comparison?.exposure_reduction_pct ?? 0;
       const km = (r.distance_m / 1000).toFixed(1);
-      const prio = PRIORITIES[prioIdx].label;
+      const prio = t(PRIORITIES[prioIdx].key);
       // EVITAR vs AVISAR: si el desvío no reduce exposición, no fingimos un desvío útil.
       // Siempre se muestran km y % para que se VEA el recálculo aunque el trazo coincida.
       if (red >= 2) {
-        setBanner({ text: `Ruta ${prio.toLowerCase()}: ${km} km · −${red.toFixed(1)}% de exposición vs. la directa.`, tone: 'ok' });
+        setBanner({ text: t('map.banner.routeOk', { prio: prio.toLowerCase(), km, red: red.toFixed(1) }), tone: 'ok' });
       } else {
-        setBanner({
-          text: `Sin alternativa más segura para este viaje (${km} km · −${red.toFixed(1)}%): el tramo de riesgo es inevitable, mantente atento.`,
-          tone: 'warn',
-        });
+        setBanner({ text: t('map.banner.routeNoAlt', { km, red: red.toFixed(1) }), tone: 'warn' });
       }
     } catch {
-      setBanner({ text: 'No se pudo trazar la ruta (¿destino fuera de la red vial?).', tone: 'warn' });
+      setBanner({ text: t('map.banner.routeError'), tone: 'warn' });
     } finally {
       setRouting(false);
     }
@@ -250,11 +342,18 @@ export default function MapScreen() {
       if (a?.is_high && trackerRef.current.seenOnce(`pre:${a.cell_id}`)) {
         alertsRef.current += 1;
         const lvl = levelFor(a.risk_norm);
-        const eta = a.arrival_min > 0 ? ` en ~${a.arrival_min} min` : ' más adelante';
-        const title = lvl === 'atencion' ? 'Atención' : 'Precaución';
-        const body = `Tu camino pasa por un tramo de riesgo${eta}. Puedes ajustar la ruta o extremar cuidado.`;
+        const eta = a.arrival_min > 0 ? t('map.pre.etaMin', { min: a.arrival_min }) : t('map.pre.etaAhead');
+        const title = lvl === 'atencion' ? t('map.pre.title.attention') : t('map.pre.title.caution');
+        const body = t('map.pre.body', { eta });
         setBanner({ text: `${title}: ${body}`, tone: lvl === 'atencion' ? 'coral' : 'warn' });
-        notifyLocal(`${title}: riesgo${eta}`, body);
+        notifyLocal(t('map.pre.notifTitle', { title, eta }), body);
+        logAlert({
+          zone: String(a.cell_id),
+          level: lvl === 'atencion' ? 'atencion' : 'precaucion',
+          action: body,
+          kind: 'anticipada',
+        });
+        setUnread(true);
       }
     } catch { /* sin red no interrumpimos el recorrido */ }
   }
@@ -267,17 +366,37 @@ export default function MapScreen() {
     const alert = trackerRef.current.check(riskRef.current, pos);
     if (alert) {
       alertsRef.current += 1;
-      setBanner({ text: `${alert.title}: ${alert.body}`, tone: alert.level === 'atencion' ? 'coral' : 'warn' });
-      notifyLocal(alert.title, alert.body);
+      // Mensajes por acción desde el diccionario (U2): mismo texto en banner y notificación.
+      // En «Atención», el consejo se adapta al vehículo efectivo del viaje: carro →
+      // ventanas arriba; moto → casco; otro/ninguno → genérico.
+      const veh = effVehicleRef.current;
+      const attBody = veh === 'car' ? t('alert.attention.body.car')
+        : veh === 'moto' ? t('alert.attention.body.moto')
+        : t('alert.attention.body');
+      const title = alert.level === 'atencion' ? t('alert.attention.title') : t('alert.caution.title');
+      const body = alert.level === 'atencion' ? attBody : t('alert.caution.body');
+      setBanner({ text: `${title}: ${body}`, tone: alert.level === 'atencion' ? 'coral' : 'warn' });
+      notifyLocal(title, body);
+      logAlert({
+        zone: alert.cellId,
+        level: alert.level === 'atencion' ? 'atencion' : 'precaucion',
+        action: body,
+        kind: 'proximidad',
+      });
+      setUnread(true);
     }
     // Acumula el prefijo y estima velocidad entre las dos últimas posiciones.
-    const t = Date.now() / 1000;
+    const now = Date.now() / 1000;
     const pts = tripPtsRef.current;
     const prev = pts[pts.length - 1];
-    pts.push({ lon: pos[0], lat: pos[1], t });
+    pts.push({ lon: pos[0], lat: pos[1], t: now });
     if (pts.length > 120) pts.splice(0, pts.length - 120);
+    // Rumbo estimado por movimiento (fallback web y respaldo si no hay brújula).
+    if (prev && Platform.OS === 'web' && distM([prev.lon, prev.lat], pos) > 3) {
+      setHeading(bearingDeg([prev.lon, prev.lat], pos));
+    }
     if (prev) {
-      const dt = t - prev.t;
+      const dt = now - prev.t;
       const speed = dt > 0 ? distM([prev.lon, prev.lat], pos) / dt : 0;
       if (speed >= 4) feedModel(speed); // ~15 km/h: hay desplazamiento real (moto/carro/bus)
     }
@@ -287,7 +406,7 @@ export default function MapScreen() {
     if (onTrip) return;
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      setBanner({ text: 'El recorrido necesita tu ubicación. Actívala en Ajustes.', tone: 'warn' });
+      setBanner({ text: t('map.banner.tripNeedsLocation'), tone: 'warn' });
       return;
     }
     // Notificaciones: permiso EN CONTEXTO, justo cuando empieza el primer recorrido.
@@ -303,16 +422,28 @@ export default function MapScreen() {
     alertsRef.current = 0;
     setTripLevel('despejado');
     setOnTrip(true);
-    setBanner({ text: 'Recorrido iniciado. Te avisaremos solo cuando haga falta.', tone: 'info' });
+    setBanner({ text: t('map.banner.tripStarted'), tone: 'info' });
     watchRef.current = await Location.watchPositionAsync(
       { accuracy: Location.Accuracy.Balanced, timeInterval: 4000, distanceInterval: 15 },
       (p) => handlePosition([p.coords.longitude, p.coords.latitude]),
     );
+    // Brújula (nativo): el mapa/vehículo se orientan a donde apunta el teléfono.
+    if (Platform.OS !== 'web') {
+      try {
+        headingSubRef.current = await Location.watchHeadingAsync((h) => {
+          const deg = h.trueHeading >= 0 ? h.trueHeading : h.magHeading;
+          if (deg >= 0) setHeading(deg);
+        });
+      } catch { /* sin brújula: rumbo por movimiento */ }
+    }
   }
 
   function stopTrip() {
     watchRef.current?.remove();
     watchRef.current = null;
+    headingSubRef.current?.remove();
+    headingSubRef.current = null;
+    setHeading(null);
     if (onTrip) {
       setBanner(null);
       // Registra el viaje real en «Tu protección» (mode: mobile — BI lo separa del simulador).
@@ -332,14 +463,14 @@ export default function MapScreen() {
     setTripLevel('despejado');
   }
 
-  useEffect(() => () => { watchRef.current?.remove(); }, []);
+  useEffect(() => () => { watchRef.current?.remove(); headingSubRef.current?.remove(); }, []);
 
   // Recorrido libre AUTOMÁTICO (Ajustes): vigilancia ligera SOLO si el permiso ya fue
   // concedido; al detectar movimiento sostenido (~≥15 km/h) el recorrido arranca solo.
   const onTripRef = useRef(onTrip);
   useEffect(() => { onTripRef.current = onTrip; }, [onTrip]);
   useEffect(() => {
-    if (!settings.autoTrip || onTrip) return;
+    if (!settings.autoTrip || onTrip || !cityFull) return; // sin pipeline no hay recorrido
     let sub: Location.LocationSubscription | null = null;
     let prev: { lon: number; lat: number; t: number } | null = null;
     let cancelled = false;
@@ -356,7 +487,7 @@ export default function MapScreen() {
             if (speed >= 4) {
               sub?.remove(); sub = null;
               startTrip();
-              setBanner({ text: 'Detectamos que vas en camino: protección activada automáticamente.', tone: 'info' });
+              setBanner({ text: t('map.banner.autoTrip'), tone: 'info' });
             }
           }
           prev = cur;
@@ -365,7 +496,7 @@ export default function MapScreen() {
     })();
     return () => { cancelled = true; sub?.remove(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.autoTrip, onTrip]);
+  }, [settings.autoTrip, onTrip, cityFull]);
 
   // Sonda de desarrollo: permite inyectar posiciones para verificar alertas sin GPS.
   if (__DEV__ && Platform.OS === 'web') {
@@ -376,9 +507,9 @@ export default function MapScreen() {
   const toneColor = { ok: c.ok, warn: c.amber, info: c.accent, coral: c.coral } as const;
   // Paleta de alertas por acción: azul → ámbar → coral (nunca rojo puro en UI).
   const levelUi: Record<AlertLevel, { label: string; color: string }> = {
-    despejado: { label: 'Despejado', color: c.accent },
-    precaucion: { label: 'Precaución', color: c.amber },
-    atencion: { label: 'Atención', color: c.coral },
+    despejado: { label: t('map.level.clear'), color: c.accent },
+    precaucion: { label: t('map.level.caution'), color: c.amber },
+    atencion: { label: t('map.level.attention'), color: c.coral },
   };
 
   return (
@@ -391,26 +522,45 @@ export default function MapScreen() {
           dark={dark} riskOn={riskOn} riskData={riskData}
           userLocation={userLoc} routes={routes} destination={dest?.coord ?? null}
           riskStyle={{ palette: settings.palette, intensity: settings.intensity, opacity: settings.opacity }}
-          satellite={settings.satellite} poisData={poisData} poisOn={settings.poisOn}
+          satellite={settings.satellite} poisData={poisData} poisOn={settings.poisOn && cityFull}
+          poiCategoryLabel={(cat) => t(`poi.cat.${cat}` as TKey) === `poi.cat.${cat}` ? t('poi.cat.default') : t(`poi.cat.${cat}` as TKey)}
+          focus={focus}
+          nav={{ active: onTrip, heading, vehicle: effVehicle ?? null }}
         />
       )}
 
-      {/* Volver: chip circular clásico «‹» */}
+      {/* B2: marca flotante arriba-centro SIN relleno — flota sobre el mapa con un halo
+          suave que garantiza contraste en base clara, oscura y satelital */}
+      <View style={[styles.brand, { top: insets.top + 14, pointerEvents: 'none' }]}>
+        <BrandWordmark
+          size={17} color={c.text} withLogo
+          halo={dark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.95)'}
+        />
+      </View>
+
+      {/* U3: chip de ciudad (estilo inDrive) — toca para cambiar */}
       <Pressable
-        onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-        style={[styles.fab, { top: insets.top + 12, left: 16, backgroundColor: c.backgroundElement, borderColor: c.border }]}
-        hitSlop={6}
+        onPress={() => setShowCity(true)}
+        style={[styles.cityChip, { top: insets.top + 52, backgroundColor: c.backgroundElement, borderColor: c.border }]}
       >
-        <Ionicons name="chevron-back" size={22} color={c.text} />
+        <Ionicons name="location-outline" size={14} color={c.accent} />
+        <Text style={{ color: c.text, fontSize: 12.5, fontWeight: '700' }}>{CITIES[city].label}</Text>
+        {/* Estado REAL del servicio (/health cada 60 s): verde en línea, coral caído */}
+        {healthOk !== null && (
+          <View style={[styles.healthDot, { backgroundColor: healthOk ? c.ok : c.coral }]} />
+        )}
+        <Ionicons name="chevron-down" size={13} color={c.textSecondary} />
       </Pressable>
 
-      {/* Pila flotante derecha: perfil · ajustes · reportar */}
-      <View style={[styles.rightStack, { top: insets.top + 12 }]}>
+      {/* Pila derecha CENTRADA verticalmente: perfil · ajustes · reportar · centrar */}
+      <View style={styles.rightStack}>
         <Pressable
           onPress={() => setShowProtection(true)}
           style={[styles.fab, styles.inStack, { backgroundColor: c.backgroundElement, borderColor: c.border }]}
         >
-          <Ionicons name="person-circle-outline" size={23} color={c.text} />
+          {CLERK_ENABLED
+            ? <ProfileFabIcon color={c.text} />
+            : <Ionicons name="person-circle-outline" size={23} color={c.text} />}
         </Pressable>
         <Pressable
           onPress={() => setShowSettings(true)}
@@ -418,32 +568,63 @@ export default function MapScreen() {
         >
           <Ionicons name="settings-outline" size={21} color={c.text} />
         </Pressable>
+        {/* Reportar: relleno coral con icono blanco — el FAB con más peso visual */}
         <Pressable
           onPress={() => setShowReport(true)}
-          style={[styles.fab, styles.inStack, { backgroundColor: c.backgroundElement, borderColor: c.coral }]}
+          style={[styles.fab, styles.inStack, { backgroundColor: c.coral, borderColor: c.coral }]}
         >
-          <Ionicons name="alert-circle-outline" size={22} color={c.coral} />
+          <Ionicons name="megaphone-outline" size={20} color="#fff" />
+        </Pressable>
+        {/* Notificaciones: puntico clásico de «sin leer» hasta abrirlas */}
+        <Pressable
+          onPress={() => { setShowNotifs(true); setUnread(false); }}
+          style={[styles.fab, styles.inStack, { backgroundColor: c.backgroundElement, borderColor: c.border }]}
+        >
+          <Ionicons name="notifications-outline" size={21} color={c.text} />
+          {unread && <View style={[styles.unreadDot, { backgroundColor: c.coral, borderColor: c.backgroundElement }]} />}
+        </Pressable>
+        <Pressable
+          onPress={locate}
+          style={[styles.fab, styles.inStack, { backgroundColor: c.backgroundElement, borderColor: userLoc ? c.accent : c.border }]}
+        >
+          <Ionicons name="locate-outline" size={21} color={userLoc ? c.accent : c.text} />
         </Pressable>
       </View>
 
-      {/* Mi ubicación: FAB clásico abajo a la derecha, sobre la barra inferior */}
-      <Pressable
-        onPress={locate}
-        style={[styles.fab, styles.locFab, { bottom: insets.bottom + 244, backgroundColor: c.backgroundElement, borderColor: userLoc ? c.accent : c.border }]}
-      >
-        <Ionicons name="locate-outline" size={21} color={userLoc ? c.accent : c.text} />
-      </Pressable>
+      {/* U3: «¿Estás en X?» — arriba, bajo el chip de ciudad; se pregunta, no se impone */}
+      {citySuggest && (
+        <View style={[styles.citySuggest, { top: insets.top + 94, backgroundColor: c.backgroundElement, borderColor: c.accent }]}>
+          <Text style={{ color: c.text, fontSize: 12.5, textAlign: 'center' }}>
+            {t('city.areYouIn', { city: CITIES[citySuggest].label })}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable
+              onPress={() => switchCity(citySuggest)}
+              style={[styles.citySuggestBtn, { backgroundColor: c.accent }]}
+            >
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('city.switch')}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setCitySuggest(null)}
+              style={[styles.citySuggestBtn, { borderWidth: 1, borderColor: c.border }]}
+            >
+              <Text style={{ color: c.textSecondary, fontSize: 12, fontWeight: '600' }}>{t('city.stay')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
-      {/* Banner de estado (in-app, no intrusivo) */}
-      {banner && (
-        <View style={[styles.banner, { top: insets.top + 60, backgroundColor: c.backgroundElement, borderColor: toneColor[banner.tone] }]}>
+      {/* Banner de estado ARRIBA, bajo el chip de ciudad (no tapa marca ni ubicación);
+          si la tarjeta de ciudad está visible, ella tiene prioridad. */}
+      {banner && !citySuggest && (
+        <View style={[styles.banner, { top: insets.top + 94, backgroundColor: c.backgroundElement, borderColor: toneColor[banner.tone] }]}>
           <Text style={{ color: c.text, fontSize: 12.5, textAlign: 'center' }}>{banner.text}</Text>
         </View>
       )}
 
       {/* Barra inferior: destino + prioridad + Ir seguro */}
       <View style={[styles.sheet, { bottom: 0, paddingBottom: insets.bottom + 14, backgroundColor: c.backgroundElement, borderColor: c.border }]}>
-        {results.length > 0 && !dest && (
+        {cityFull && results.length > 0 && !dest && (
           <FlatList
             data={results}
             keyboardShouldPersistTaps="handled"
@@ -461,11 +642,18 @@ export default function MapScreen() {
           />
         )}
 
+        {/* Estado vacío del buscador: hubo consulta y no hubo resultados */}
+        {cityFull && !searching && !dest && query.trim().length >= 2 && results.length === 0 && (
+          <Text style={{ color: c.textSecondary, fontSize: 12, textAlign: 'center' }}>{t('map.noResults')}</Text>
+        )}
+
+        {/* U3: buscador/vehículo/protección solo donde hay pipeline completo */}
+        {cityFull && (<>
         <View style={[styles.inputRow, { backgroundColor: c.backgroundSelected, borderColor: c.border }]}>
           <TextInput
             value={query}
             onChangeText={(t) => { setQuery(t); if (dest) { setDest(null); setRoutes(null); } }}
-            placeholder="¿A dónde vas?"
+            placeholder={t('map.searchPlaceholder')}
             placeholderTextColor={c.textSecondary}
             style={[styles.input, { color: c.text }]}
             returnKeyType="search"
@@ -480,7 +668,7 @@ export default function MapScreen() {
 
         {/* Vehículo del viaje (opcional, mejora la predicción) + prioridad de seguridad */}
         <View style={styles.metaRow}>
-          <Text style={[styles.metaLbl, { color: c.textSecondary }]}>Vehículo</Text>
+          <Text style={[styles.metaLbl, { color: c.textSecondary }]}>{t('map.vehicle')}</Text>
           <View style={styles.vehRow}>
             {VEHICLES.map((v) => {
               const on = effVehicle === v.key;
@@ -488,6 +676,7 @@ export default function MapScreen() {
                 <Pressable
                   key={v.key}
                   onPress={() => setTripVehicle(on ? null : v.key)}
+                  hitSlop={4} // 36pt visual + 4pt por lado = área táctil ≥44pt (accesibilidad)
                   style={[styles.veh, { borderColor: on ? c.accent : c.border, backgroundColor: on ? c.backgroundSelected : 'transparent' }]}
                 >
                   <Text style={{ fontSize: 14 }}>{v.icon}</Text>
@@ -496,11 +685,13 @@ export default function MapScreen() {
             })}
           </View>
         </View>
-        <Text style={[styles.metaLbl, { color: c.textSecondary }]}>Prioridad de seguridad</Text>
-        <View style={styles.prioRow}>
+        {/* Mismo patrón que Vehículo: rótulo al frente de sus opciones (coherencia) */}
+        <View style={styles.metaRow}>
+          <Text style={[styles.metaLbl, { color: c.textSecondary }]}>{t('map.priority')}</Text>
+          <View style={styles.prioRow}>
           {PRIORITIES.map((p, i) => (
             <Pressable
-              key={p.label}
+              key={p.key}
               onPress={() => {
                 setPriority(i);
                 // Con ruta en pantalla, cambiar la prioridad RECALCULA de inmediato.
@@ -511,14 +702,21 @@ export default function MapScreen() {
                 { borderColor: i === priority ? c.accent : c.border, backgroundColor: i === priority ? c.backgroundSelected : 'transparent' },
               ]}
             >
-              <Text style={{ color: i === priority ? c.accent : c.textSecondary, fontSize: 12, fontWeight: '600' }}>
-                {p.label}
+              <Text style={{ color: i === priority ? c.accent : c.textSecondary, fontSize: 11.5, fontWeight: '600' }}>
+                {t(p.key)}
               </Text>
             </Pressable>
           ))}
+          </View>
         </View>
+        </>)}
 
-        {onTrip ? (
+        {!cityFull ? (
+          // Honestidad U3: en esta ciudad hoy solo hay capa de riesgo.
+          <Text style={{ color: c.textSecondary, fontSize: 12.5, lineHeight: 18, textAlign: 'center', paddingVertical: 6 }}>
+            {t('city.riskOnly', { city: CITIES[city].label })}
+          </Text>
+        ) : onTrip ? (
           <View style={styles.tripRow}>
             <View style={[styles.levelChip, { borderColor: levelUi[tripLevel].color }]}>
               <View style={[styles.levelDot, { backgroundColor: levelUi[tripLevel].color }]} />
@@ -533,7 +731,7 @@ export default function MapScreen() {
                 { borderColor: c.coral, opacity: pressed ? 0.8 : 1 },
               ]}
             >
-              <Text style={[styles.ctaText, { color: c.coral }]}>Finalizar</Text>
+              <Text style={[styles.ctaText, { color: c.coral }]}>{t('map.cta.endTrip')}</Text>
             </Pressable>
           </View>
         ) : routes ? (
@@ -541,7 +739,7 @@ export default function MapScreen() {
             onPress={startTrip}
             style={({ pressed }) => [styles.cta, { backgroundColor: c.accent, opacity: pressed ? 0.85 : 1 }]}
           >
-            <Text style={styles.ctaText}>Iniciar recorrido</Text>
+            <Text style={styles.ctaText}>{t('map.cta.startTrip')}</Text>
           </Pressable>
         ) : dest ? (
           <Pressable
@@ -554,7 +752,7 @@ export default function MapScreen() {
           >
             {routing
               ? <ActivityIndicator size="small" color="#fff" />
-              : <Text style={styles.ctaText}>Ir seguro</Text>}
+              : <Text style={styles.ctaText}>{t('map.cta.go')}</Text>}
           </Pressable>
         ) : (
           // Sin destino también te cuidamos: el modelo PREDICE a dónde vas por cómo te
@@ -566,19 +764,23 @@ export default function MapScreen() {
               { borderColor: c.accent, opacity: pressed ? 0.8 : 1 },
             ]}
           >
-            <Text style={[styles.ctaText, { color: c.accent }]}>Recorrido libre</Text>
+            <Text style={[styles.ctaText, { color: c.accent }]}>{t('map.cta.freeTrip')}</Text>
           </Pressable>
         )}
+        {/* Descargo ético: visible siempre que hay ruta o recorrido activo */}
+        {(routes || onTrip) && (
+          <Text style={[styles.hintWeb, { color: c.textSecondary }]}>{t('map.disclaimer')}</Text>
+        )}
         {Platform.OS === 'web' && (
-          <Text style={[styles.hintWeb, { color: c.textSecondary }]}>
-            En el navegador la ubicación usa el diálogo del propio navegador.
-          </Text>
+          <Text style={[styles.hintWeb, { color: c.textSecondary }]}>{t('map.webHint')}</Text>
         )}
       </View>
 
       <SettingsSheet visible={showSettings} onClose={() => setShowSettings(false)} />
-      <ReportSheet visible={showReport} onClose={() => setShowReport(false)} location={userLoc} />
+      <ReportSheet visible={showReport} onClose={() => setShowReport(false)} location={userLoc} city={city} />
       <ProtectionSheet visible={showProtection} onClose={() => setShowProtection(false)} />
+      <CitySheet visible={showCity} current={city} onSelect={switchCity} onClose={() => setShowCity(false)} />
+      <NotificationsSheet visible={showNotifs} onClose={() => setShowNotifs(false)} />
     </View>
   );
 }
@@ -591,10 +793,33 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
-  rightStack: { position: 'absolute', right: 16, gap: 10 },
+  // Columna derecha centrada verticalmente (mitad del lateral).
+  rightStack: {
+    position: 'absolute', right: 16, top: '50%', gap: 10,
+    transform: [{ translateY: '-50%' }],
+  },
   inStack: { position: 'relative' },
-  locFab: { right: 16 },
-  banner: { position: 'absolute', left: 24, right: 24, borderWidth: 1, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 16 },
+  // Banner arriba, bajo el chip de ciudad.
+  banner: { position: 'absolute', left: 24, right: 24, borderWidth: 1, borderRadius: 16, paddingVertical: 8, paddingHorizontal: 14 },
+  healthDot: { width: 7, height: 7, borderRadius: 4 },
+  unreadDot: {
+    position: 'absolute', top: 6, right: 7, width: 10, height: 10, borderRadius: 5, borderWidth: 2,
+  },
+  brand: { position: 'absolute', alignSelf: 'center' },
+  // U3: chip de ciudad bajo la marca, alineado al centro (estilo inDrive)
+  cityChip: {
+    position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1, borderRadius: 999, paddingVertical: 5, paddingHorizontal: 12,
+    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  citySuggest: {
+    position: 'absolute', left: 24, right: 24, gap: 8,
+    borderWidth: 1.5, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14,
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  citySuggestBtn: { flex: 1, borderRadius: 999, paddingVertical: 8, alignItems: 'center' },
   sheet: {
     position: 'absolute', left: 0, right: 0, gap: 10,
     borderTopWidth: 1, borderTopLeftRadius: 20, borderTopRightRadius: 20,
@@ -609,7 +834,7 @@ const styles = StyleSheet.create({
   metaLbl: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
   vehRow: { flexDirection: 'row', gap: 6 },
   veh: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  prioRow: { flexDirection: 'row', gap: 8 },
+  prioRow: { flex: 1, flexDirection: 'row', gap: 6, marginLeft: 12 },
   prio: { flex: 1, borderWidth: 1, borderRadius: 999, paddingVertical: 8, alignItems: 'center' },
   cta: { borderRadius: 999, paddingVertical: 15, alignItems: 'center' },
   ctaGhost: { backgroundColor: 'transparent', borderWidth: 1.5 },

@@ -6,28 +6,28 @@ import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { CITIES, DEFAULT_CITY } from '@/constants/map';
-import { Colors } from '@/constants/theme';
+import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
+import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { authToken } from '@/lib/auth';
+import { useT } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
 
-const CATEGORIES = [
-  { key: 'robo', label: 'Robo' },
-  { key: 'riña', label: 'Riña' },
-  { key: 'iluminación dañada', label: 'Iluminación dañada' },
-  { key: 'presencia sospechosa', label: 'Presencia sospechosa' },
-] as const;
+// La clave viaja a la API en español (categorías del modelo); solo el rótulo se traduce.
+const CATEGORIES = ['robo', 'riña', 'iluminación dañada', 'presencia sospechosa'] as const;
 
 const COOLDOWN_MS = 3 * 60 * 1000; // 3 min entre reportes desde este dispositivo
 const LAST_KEY = 'nomadaai_last_report';
 
 export default function ReportSheet({
-  visible, onClose, location,
+  visible, onClose, location, city = DEFAULT_CITY,
 }: {
   visible: boolean;
   onClose: () => void;
   location: [number, number] | null; // [lon, lat] del usuario (o null → centro ciudad)
+  city?: CityKey;                    // ciudad activa (U3): el reporte se asocia a ella
 }) {
+  const t = useT();
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
   const [category, setCategory] = useState<string | null>(null);
@@ -42,25 +42,26 @@ export default function ReportSheet({
     try {
       const last = Number((await AsyncStorage.getItem(LAST_KEY)) ?? 0);
       if (Date.now() - last < COOLDOWN_MS) {
-        setMsg({ text: 'Acabas de enviar un reporte. Espera unos minutos.', ok: false });
+        setMsg({ text: t('report.cooldown'), ok: false });
         return;
       }
-      const [lon, lat] = location ?? CITIES[DEFAULT_CITY].center;
+      const [lon, lat] = location ?? CITIES[city].center;
+      // U4: con sesión, el reporte viaja firmado (el backend verifica el token).
       const r = await api.reportIncident({
         lon, lat, category,
         description: description.trim() || undefined,
-        city: DEFAULT_CITY,
+        city,
         hour: new Date().getHours(),
-      });
+      }, await authToken());
       if (r.accepted) {
         await AsyncStorage.setItem(LAST_KEY, String(Date.now()));
-        setMsg({ text: 'Reporte recibido. Gracias: tu aporte mejora el mapa de todos.', ok: true });
+        setMsg({ text: t('report.ok'), ok: true });
         setCategory(null); setDescription('');
       } else {
-        setMsg({ text: r.note ?? 'El reporte no fue aceptado.', ok: false });
+        setMsg({ text: r.note ?? t('report.rejected'), ok: false });
       }
     } catch {
-      setMsg({ text: 'Sin conexión con el servicio. Intenta de nuevo.', ok: false });
+      setMsg({ text: t('report.offline'), ok: false });
     } finally {
       setSending(false);
     }
@@ -71,26 +72,23 @@ export default function ReportSheet({
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={[styles.sheet, { backgroundColor: c.backgroundElement, borderColor: c.border }]}>
         <View style={[styles.handle, { backgroundColor: c.border }]} />
-        <Text style={[styles.title, { color: c.text }]}>Reportar incidente</Text>
-        <Text style={{ color: c.textSecondary, fontSize: 12, lineHeight: 17 }}>
-          Se envía de forma anónima con tu ubicación actual y la hora. Los reportes se agregan
-          al modelo; nunca se publican individualmente.
-        </Text>
+        <Text style={[styles.title, { color: c.text }]}>{t('report.title')}</Text>
+        <Text style={{ color: c.textSecondary, fontSize: 12, lineHeight: 17 }}>{t('report.intro')}</Text>
 
         <View style={styles.grid}>
           {CATEGORIES.map((cat) => {
-            const on = category === cat.key;
+            const on = category === cat;
             return (
               <Pressable
-                key={cat.key}
-                onPress={() => setCategory(on ? null : cat.key)}
+                key={cat}
+                onPress={() => setCategory(on ? null : cat)}
                 style={[
                   styles.cat,
                   { borderColor: on ? c.accent : c.border, backgroundColor: on ? c.backgroundSelected : 'transparent' },
                 ]}
               >
                 <Text style={{ color: on ? c.accent : c.text, fontSize: 13, fontWeight: '600', textAlign: 'center' }}>
-                  {cat.label}
+                  {t(`report.cat.${cat}`)}
                 </Text>
               </Pressable>
             );
@@ -100,7 +98,7 @@ export default function ReportSheet({
         <TextInput
           value={description}
           onChangeText={setDescription}
-          placeholder="Descripción (opcional, máx. 500)"
+          placeholder={t('report.placeholder')}
           placeholderTextColor={c.textSecondary}
           maxLength={500}
           multiline
@@ -121,7 +119,7 @@ export default function ReportSheet({
         >
           {sending
             ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Enviar reporte</Text>}
+            : <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>{t('report.send')}</Text>}
         </Pressable>
       </View>
     </Modal>
@@ -129,15 +127,18 @@ export default function ReportSheet({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
+  // B3: backdrop a pantalla completa (también detrás de las esquinas curvas de la hoja).
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet: {
-    borderTopWidth: 1, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28, gap: 12,
+    marginTop: 'auto',
+    borderWidth: 1, borderBottomWidth: 0, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    overflow: 'hidden', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28, gap: 12,
   },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
   title: { fontSize: 17, fontWeight: '800' },
+  // Radios del sistema (Radii): controles 14, campo multilínea 14, botón píldora.
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  cat: { flexBasis: '48%', flexGrow: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  input: { borderWidth: 1, borderRadius: 12, padding: 12, fontSize: 14, minHeight: 64, textAlignVertical: 'top' },
-  cta: { borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  cat: { flexBasis: '48%', flexGrow: 1, borderWidth: 1, borderRadius: Radii.control, paddingVertical: 12, alignItems: 'center' },
+  input: { borderWidth: 1, borderRadius: Radii.control, padding: 12, fontSize: 14, minHeight: 64, textAlignVertical: 'top' },
+  cta: { borderRadius: Radii.pill, paddingVertical: 13, alignItems: 'center' },
 });

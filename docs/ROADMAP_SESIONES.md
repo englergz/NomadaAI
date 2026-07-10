@@ -39,29 +39,92 @@
 - `F_report(z,t)` con decay/verificación/anonimización como factor del registro (OFF hasta volumen).
 - A5 calibración/GWR: especificado (§4.2), se activa con dato de resultado.
 
-### U1 · UI app de usuario (brief Parte B + pendientes previos)
-- B1 overlaps: pila Perfil/Ajustes/Reportar ARRIBA del FAB ubicación; banners abajo-centro (no tapan).
-- B2 nombre «Nómada.AI» flotante arriba-centro. B3 seam de modales (overflow/borde). 
-- B4 Lugares con ICONOS por categoría (no puntos). B5 naming: «Directa» (no «Rápida»).
-- B6 HISTORIAL DE ALERTAS (hora/zona/acción, persistente, en hoja de perfil).
-- B8 Ajustes reordenado: VEHÍCULO / RECORRIDO Y ALERTAS / TEMA / MAPA Y CAPAS / RIESGO (categoría
-  propia: toggle + heatmap dentro, deshabilitado si capa OFF). Sin taxi ✓.
-- Descargo ético visible en ruta/alerta («índice de referencia relativo, no garantía de seguridad»).
-- Estados vacíos/carga/errores API; accesibilidad (touch ≥44pt, contraste, paridad tokens).
+### U1 · UI app de usuario (brief Parte B + pendientes previos) — ✅ HECHO (2026-07-08)
+- ✅ B1: pila Perfil/Ajustes/Reportar sobre el FAB ubicación (columna derecha, anclada con onLayout
+  a la altura REAL de la barra inferior); banner abajo-centro (left 16 / right 72, no tapa FABs).
+- ✅ B2 marca «Nómada.AI» flotante arriba-centro (pointerEvents none). ✅ B3 seam: borde completo +
+  overflow hidden en las 3 hojas modales.
+- ✅ B4 Lugares con iconos por categoría (emoji rasterizado a imagen del mapa en web; NATIVO queda
+  con círculos de color hasta tener assets PNG — pendiente menor). ✅ B5 «Directa».
+- ✅ B6 historial de alertas (hora/zona/acción/tipo, AsyncStorage cap 100, en «Tu protección»);
+  registra proximidad y anticipadas (lib/alert-log.ts).
+- ✅ B8 Ajustes: VEHÍCULO / RECORRIDO Y ALERTAS / TEMA / MAPA Y CAPAS / RIESGO (toggle + heatmap
+  dentro, deshabilitado si capa OFF). Sin taxi ✓.
+- ✅ Descargo ético bajo la barra cuando hay ruta o recorrido activo.
+- ✅ Estados: buscador sin resultados, error al cargar capa de riesgo; hitSlop ≥44pt en vehículos.
+- Verificado en Expo web claro/oscuro; typecheck limpio. Pendiente U1: iconos POI en mapa NATIVO.
+- ✅ Ronda de feedback (2026-07-09): B3 real (backdrop a pantalla completa, sin línea recta tras
+  las esquinas); POIs con MaterialCommunityIcons rasterizados (PNG sin círculo blanco, tamaño
+  crece con zoom, tap → popup nombre+categoría traducida); naming «Protección: Mínima/Equilibrada/
+  Máxima»; alerta de Atención adaptada al vehículo efectivo (carro→ventanas, moto→casco, genérico);
+  tema Sistema reactivo en vivo (Appearance+matchMedia); idioma Sistema no soportado → aviso
+  honesto (fallback es); perfil: «Reiniciar historial» como enlace discreto con confirmación,
+  «Limpiar» alertas con confirmación y filtros Todas/En zona/Anticipadas; wordmark Nómada.AI con
+  logo + tipografía Sora (OFL) y «.AI» siempre azul (componente BrandWordmark).
 
-### U2 · IDIOMA (pendiente previo)
-- expo-localization: detectar idioma del dispositivo; diccionario es/en; selector en Ajustes.
+### U1c · Coherencia visual + onboarding (feedback 2026-07-09) — ✅ HECHO
+- ✅ Tokens `Radii` en theme.ts (pill 999 controles/botones · control 14 · card 16 · sheet 20)
+  aplicados en todas las hojas (Ajustes, Reporte, Protección, Ciudad).
+- ✅ Marca flotante SIN relleno: wordmark con halo adaptativo (blanco en claro, negro en oscuro)
+  sobre el mapa; chip de ciudad debajo.
+- ✅ «Protección» con el mismo patrón que «Vehículo»: rótulo al frente de sus opciones.
+- ✅ Onboarding primera vez (/welcome): 4 slides deslizables con iconos, puntos de progreso,
+  Omitir, «Siguiente»→«Comenzar»; persistido en AsyncStorage. Ahí se ubicará el login (U4):
+  Google + invitado al final del recorrido (NO se simula mientras no haya claves Clerk).
+- ✅ El MAPA es la pantalla principal (/): index redirige a /welcome solo la primera vez;
+  se retiró la portada vieja y el FAB «volver»; /health ahora avisa en el mapa SOLO si falla.
+- Verificado en Expo web claro/oscuro; typecheck limpio.
 
-### U3 · CIUDAD estilo inDrive (pendiente previo)
-- Selector de ciudad (/risk/cities) con flyTo + recarga por `city`; detección automática de ciudad
-  y, si cambió, preguntar «¿Estás en Cali?» antes de cambiar. Honesto: en Cali hoy solo capa de
-  riesgo (sin predicción ni ruteo hasta pipeline de esa ciudad).
+### U1d · Ronda de pruebas pre-APK (feedback 2026-07-10) — ✅ HECHO
+- ✅ Welcome: bug del primer render (slides apiladas — ancho ahora medido con onLayout),
+  contenido más abajo; login Google/invitado intacto.
+- ✅ Splash animado de arranque (~3 s, components/animated-splash.tsx): retícula de calles,
+  la ruta dibuja una «N» (strokeDashoffset), el punto azul la recorre y aterriza como el «.»
+  de Nómada.AI; solo en arranque en frío, la app carga detrás.
+- ✅ Perfil: nacionalidad con LISTA de países (constants/countries.ts, es/en, buscador) y
+  fecha de nacimiento con selectores día/mes/año (components/picker-sheet.tsx genérico).
+- ✅ Ubicación: el FAB centrar SIEMPRE vuela a la posición; al abrir, si el permiso ya está
+  concedido, la ubicación se carga sola (sin diálogo — permisos en contexto).
+- ✅ Banners/alertas arriba (bajo el chip de ciudad); punto verde/coral REAL en el chip
+  (/health cada 60 s); FABs perfil/ajustes/reportar/centrar centrados en el lateral derecho;
+  botón reportar con relleno coral + megáfono.
+- ✅ Modo navegación en recorrido: cámara inclinada (pitch 50-55°) orientada al RUMBO del
+  teléfono (brújula en nativo, movimiento en web) y vehículo cenital según el tipo
+  (SVG en web, sprite de Views en nativo con MarkerView).
+- APK: prebuild + gradle assembleRelease local (SDK en ~/Library/Android/sdk).
 
-### U4 · LOGIN (pendiente previo + B7)
-- Clerk en el HOME (no pantalla previa): Google (nombre/correo/foto) + «continuar como invitado»;
-  fecha de nacimiento y nacionalidad como campos de perfil propios (consentimiento, Ley 1581) → BI.
-- Token en escrituras (reportes/históricos); vehículo y tema al perfil; foto en el FAB de perfil.
-- Foto en reportes (Storage) cuando haya login.
+### U2 · IDIOMA (pendiente previo) — ✅ HECHO (2026-07-08)
+- ✅ expo-localization instalado; `lib/i18n.tsx` con diccionario es/en completo (home, mapa,
+  banners, alertas por acción, Ajustes, reporte, «Tu protección») y `t()` con interpolación.
+- ✅ Ajuste `lang: system|es|en` persistente + sección IDIOMA en Ajustes (cambio en caliente).
+- ✅ 'system' sigue el idioma del dispositivo (en → inglés; resto → español, público objetivo).
+- ✅ Fechas con locale según idioma (es-CO / en-US). Categorías de reporte: la CLAVE viaja a la
+  API en español (modelo); solo el rótulo se traduce. Verificado en Expo web; typecheck limpio.
+
+### U3 · CIUDAD estilo inDrive (pendiente previo) — ✅ HECHO (2026-07-09)
+- ✅ Chip de ciudad bajo la marca (arriba-centro) → hoja selectora (`city-sheet.tsx`) que lista
+  /risk/cities ∩ ciudades con coordenadas conocidas, con capacidades honestas por fila
+  («Riesgo, predicción y rutas» vs. «Solo mapa de riesgo»).
+- ✅ Cambio de ciudad: flyTo (prop `focus` del mapa, web+nativo) + recarga `/risk/zones?city=` +
+  limpieza del viaje. Cliente compartido: `riskZones(bbox, city)` y `riskCities()`.
+- ✅ Detección: al ubicar, si la ciudad soportada más cercana ≠ activa, tarjeta «¿Estás en X?»
+  con Sí/No — se pregunta, no se impone.
+- ✅ Honestidad en ciudad parcial (Cali): se ocultan buscador/vehículo/protección/CTAs y POIs;
+  nota fija explica que hoy solo hay mapa de riesgo; autoTrip y predicción deshabilitados.
+- Verificado en Expo web (Tumaco↔Cali con superficie real de Cali del Space); typecheck limpio.
+
+### U4 · LOGIN (pendiente previo + B7) — ✅ HECHO en app móvil (2026-07-09)
+- ✅ @clerk/clerk-expo (misma clave publicable del escritorio, en apps/mobile/.env) con
+  tokenCache seguro; sin clave la app es 100% invitado (igual que el escritorio).
+- ✅ Login al FINAL del onboarding: «Continuar con Google» (SSO real, verificado hasta
+  /v1/client/sign_ins) + «Continuar como invitado». Y en la hoja de perfil para invitados.
+- ✅ Perfil en «Tu protección»: foto/nombre/correo, cerrar sesión; fecha de nacimiento y
+  nacionalidad en unsafeMetadata con consentimiento explícito Ley 1581 → BI.
+- ✅ Token Bearer en TODAS las escrituras (history trip/reset, reportes) vía puente
+  lib/auth.ts; user_id efectivo = Clerk id con sesión, uid anónimo sin ella.
+- ✅ Foto del usuario en el FAB de perfil.
+- Pendiente U4: configurar CLERK_ISSUER en el Space (para que el backend VERIFIQUE los
+  tokens); sincronizar vehículo/tema al perfil; foto en reportes cuando exista Storage.
 
 ### U5 · ESCRITORIO (brief Parte C)
 - «Menú» → «Ajustes» con TODO lo de la app (tema/vehículo predeterminado/heatmap/umbral) sin quitar

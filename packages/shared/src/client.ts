@@ -62,9 +62,17 @@ export class NomadaApi {
     return this.req<FeatureCollection>(`/corridors${qs ? `?${qs}` : ""}`);
   }
 
-  riskZones(bbox?: [number, number, number, number]) {
-    const q = bbox ? `?bbox=${bbox.join(",")}` : "";
-    return this.req<RiskZonesResponse>(`/risk/zones${q}`);
+  riskZones(bbox?: [number, number, number, number], city?: string) {
+    const q = new URLSearchParams();
+    if (bbox) q.set("bbox", bbox.join(","));
+    if (city) q.set("city", city);
+    const qs = q.toString();
+    return this.req<RiskZonesResponse>(`/risk/zones${qs ? `?${qs}` : ""}`);
+  }
+
+  // Ciudades con superficie de riesgo disponible (U3).
+  riskCities() {
+    return this.req<{ cities: string[] }>("/risk/cities");
   }
 
   predictOnline(body: OnlineRequest) {

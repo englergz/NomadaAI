@@ -39,6 +39,17 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
+// Radios del sistema — lenguaje circular coherente en TODA la app:
+// pill (999) = todo control interactivo (botones, chips, inputs de una línea, FABs);
+// control (14) = tarjetas pequeñas seleccionables y campos multilínea;
+// card (16) = tarjetas/contendores informativos; sheet (20) = hojas modales.
+export const Radii = {
+  pill: 999,
+  control: 14,
+  card: 16,
+  sheet: 20,
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

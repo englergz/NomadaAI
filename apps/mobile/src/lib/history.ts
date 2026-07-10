@@ -2,7 +2,20 @@
 // Registra viajes del móvil (mode: 'mobile' → BI puede separar simulador vs. calle)
 // y consulta agregados por usuario y de toda la comunidad.
 import { baseUrl } from '@/lib/api';
+import { authToken, authUserId } from '@/lib/auth';
 import { getUid } from '@/lib/uid';
+
+// Usuario efectivo (U4): id de Clerk con sesión; si no, el uid anónimo del dispositivo.
+async function effUid(): Promise<string> {
+  return authUserId() ?? (await getUid());
+}
+
+// Cabeceras de escritura: el token de sesión viaja cuando existe (el backend lo
+// verifica con CLERK_ISSUER; sin token sigue valiendo como invitado).
+async function authHeaders(): Promise<Record<string, string>> {
+  const t = await authToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
 
 export interface HistorySummary {
   available: boolean;
@@ -32,17 +45,17 @@ export interface TripLog {
 
 export async function logTrip(rec: TripLog): Promise<void> {
   try {
-    const user_id = await getUid();
+    const user_id = await effUid();
     await fetch(`${baseUrl}/history/trip`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(await authHeaders()) },
       body: JSON.stringify({ user_id, mode: 'mobile', ...rec }),
     });
   } catch { /* el viaje nunca depende de la DB */ }
 }
 
 export async function fetchSummaries(city = 'tumaco'): Promise<{ mine: HistorySummary | null; all: HistorySummary | null }> {
-  const user_id = await getUid();
+  const user_id = await effUid();
   const get = async (qs: string) => {
     try {
       const r = await fetch(`${baseUrl}/history/summary?city=${city}${qs}`);
@@ -55,7 +68,10 @@ export async function fetchSummaries(city = 'tumaco'): Promise<{ mine: HistorySu
 
 export async function resetHistory(): Promise<void> {
   try {
-    const user_id = await getUid();
-    await fetch(`${baseUrl}/history?user_id=${encodeURIComponent(user_id)}`, { method: 'DELETE' });
+    const user_id = await effUid();
+    await fetch(`${baseUrl}/history?user_id=${encodeURIComponent(user_id)}`, {
+      method: 'DELETE',
+      headers: await authHeaders(),
+    });
   } catch { /* ignore */ }
 }

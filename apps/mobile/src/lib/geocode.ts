@@ -79,6 +79,16 @@ export async function searchPlaces(query: string, city: CityKey): Promise<Place[
   return [...pois, ...osm.filter((p) => !seen.has(norm(p.name)))].slice(0, 8);
 }
 
+// Rumbo geográfico a→b en grados (0 = norte, horario).
+export function bearingDeg(a: Coordinate, b: Coordinate): number {
+  const rad = Math.PI / 180;
+  const dLon = (b[0] - a[0]) * rad;
+  const y = Math.sin(dLon) * Math.cos(b[1] * rad);
+  const x = Math.cos(a[1] * rad) * Math.sin(b[1] * rad)
+    - Math.sin(a[1] * rad) * Math.cos(b[1] * rad) * Math.cos(dLon);
+  return (Math.atan2(y, x) / rad + 360) % 360;
+}
+
 // Distancia haversine (m).
 export function distM(a: Coordinate, b: Coordinate): number {
   const R = 6371000, rad = Math.PI / 180;
