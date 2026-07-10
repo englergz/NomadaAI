@@ -31,13 +31,27 @@ export default function BrandWordmark({
           }}
         />
       )}
-      <Text style={[{ fontFamily: BRAND_FONT, fontSize: size, color, letterSpacing: 0.2 }, haloStyle]}>
-        Nómada<Text style={{ color: Brand.accent }}>.AI</Text>
-      </Text>
+      {/* El «.» es un punto REDONDO real (View), no el glifo cuadrado de la fuente —
+          el mismo punto del mapa y del splash: consistencia en toda la marca. */}
+      <View style={styles.wordRow}>
+        <Text style={[{ fontFamily: BRAND_FONT, fontSize: size, color, letterSpacing: 0.2 }, haloStyle]}>
+          Nómada
+        </Text>
+        <View
+          style={{
+            width: size * 0.24, height: size * 0.24, borderRadius: 999,
+            backgroundColor: Brand.accent, marginHorizontal: size * 0.14, marginBottom: size * 0.12,
+          }}
+        />
+        <Text style={[{ fontFamily: BRAND_FONT, fontSize: size, color: Brand.accent, letterSpacing: 0.2 }, haloStyle]}>
+          AI
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  wordRow: { flexDirection: 'row', alignItems: 'baseline' },
 });

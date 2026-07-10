@@ -2,7 +2,7 @@
 // app, puntos de progreso y botón «Siguiente» que se convierte en «Comenzar».
 // Al terminar (o al omitir) se persiste la marca y el mapa pasa a ser la pantalla
 // principal. Aquí vivirá también el login (U4): Google + «continuar como invitado».
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -24,6 +24,14 @@ WebBrowser.maybeCompleteAuthSession();
 
 export const ONBOARDED_KEY = 'nomadaai_onboarded_v1';
 
+// Si la app vuelve del OAuth ya con sesión (el deep link puede relanzarla y perder
+// el estado en memoria), el welcome NO se repite: directo al mapa.
+function AutoEnterIfSignedIn({ onDone }: { onDone: () => void }) {
+  const { isSignedIn } = useAuth();
+  useEffect(() => { if (isSignedIn) onDone(); }, [isSignedIn, onDone]);
+  return null;
+}
+
 // U4 · Login al FINAL del recorrido (no bloquea la entrada): Google real vía Clerk
 // o «continuar como invitado». Solo se monta cuando hay clave de Clerk.
 function WelcomeAuth({ onDone }: { onDone: () => void }) {
@@ -39,13 +47,15 @@ function WelcomeAuth({ onDone }: { onDone: () => void }) {
     if (busy) return;
     setBusy(true); setErr(false);
     try {
+      // scheme EXPLÍCITO: en la APK release makeRedirectUri() sin argumentos no
+      // resuelve el deep link de vuelta y el login «no se pudo iniciar sesión».
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy: 'oauth_google',
-        redirectUrl: AuthSession.makeRedirectUri(),
+        redirectUrl: AuthSession.makeRedirectUri({ scheme: 'nomadaai', path: 'sso-callback' }),
       });
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
-        onDone();
+        onDone(); // sesión activa → directo al mapa, nada de volver al welcome
       } else {
         setErr(true); // flujo incompleto (p. ej. cerró el diálogo)
       }
@@ -119,6 +129,7 @@ export default function Welcome() {
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
 
+      {CLERK_ENABLED && <AutoEnterIfSignedIn onDone={finish} />}
       {/* Marca centrada (mismo lugar que en el mapa) + «✕» sutil para omitir:
           el login no debe ser barrera — siempre queda disponible en el perfil. */}
       <View style={styles.top}>

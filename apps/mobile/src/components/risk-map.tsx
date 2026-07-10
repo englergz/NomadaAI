@@ -63,7 +63,14 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
         initialViewState={{ center: city.center, zoom: city.zoom } as never}
         center={navOn ? userLocation : (focus?.center ?? userLocation ?? undefined)}
         zoom={navOn ? 16.5 : focus?.zoom ?? (userLocation ? 15 : undefined)}
-        {...({ pitch: navOn ? 50 : 0, heading: navOn ? nav?.heading ?? 0 : 0 } as Record<string, number>)}
+        {...({
+          pitch: navOn ? 50 : 0,
+          heading: navOn ? nav?.heading ?? 0 : 0,
+          // Animar SIEMPRE los cambios de cámara (flyTo de ciudad, centrar, salir
+          // de navegación) — en nativo sin esto el salto era seco o no se veía.
+          animationMode: 'flyTo',
+          animationDuration: 1200,
+        } as Record<string, number | string>)}
       />
       {riskData && riskOn && (
         <GeoJSONSource id="risk" data={riskData as never}>
