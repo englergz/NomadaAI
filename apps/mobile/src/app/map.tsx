@@ -466,6 +466,9 @@ export default function MapScreen() {
     headingSubRef.current?.remove();
     headingSubRef.current = null;
     setHeading(null);
+    // Salida GARANTIZADA del modo navegación: además del reset de pitch/rumbo,
+    // se fuerza un encuadre normal sobre la última posición conocida.
+    if (userLoc) setFocus({ center: userLoc, zoom: 15 });
     if (onTrip) {
       setBanner(null);
       // Registra el viaje real en «Tu protección» (mode: mobile — BI lo separa del simulador).

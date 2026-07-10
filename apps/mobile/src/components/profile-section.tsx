@@ -74,7 +74,7 @@ export default function ProfileSection() {
     try {
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy: 'oauth_google',
-        redirectUrl: AuthSession.makeRedirectUri(),
+        redirectUrl: AuthSession.makeRedirectUri({ scheme: 'nomadaai', path: 'sso-callback' }),
       });
       if (createdSessionId && setActive) await setActive({ session: createdSessionId });
       else setErr(true);
