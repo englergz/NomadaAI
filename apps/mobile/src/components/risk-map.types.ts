@@ -89,6 +89,14 @@ export const POI_ICON_DEFS: Record<string, { glyph: string; color: string }> = {
   default: { glyph: 'map-marker', color: '#94a3b8' },
 };
 
+// Emoji por categoría para el mapa NATIVO (text-field de un SymbolLayer): no hay
+// canvas para rasterizar iconos, así que se usa el glifo de emoji sobre un círculo.
+export const POI_EMOJI_FIELD = [
+  'match', ['get', 'category'],
+  'seguridad', '🛡️', 'salud', '🏥', 'educación', '🎓', 'combustible', '⛽',
+  'banco', '🏦', 'transporte', '🚌', 'comercio', '🛒', 'culto', '⛪', '📍',
+] as const;
+
 // Colores de POIs por categoría (mismos del panel de escritorio).
 export const POI_CIRCLE_COLOR = [
   'match', ['get', 'category'],

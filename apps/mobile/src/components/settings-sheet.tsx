@@ -2,7 +2,8 @@
 // (categoría propia: toggle de capa + heatmap dentro, deshabilitado si la capa está OFF).
 // Paridad con el menú del panel de escritorio.
 import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import SliderImpl from '@react-native-community/slider';
 
@@ -41,14 +42,18 @@ export default function SettingsSheet({ visible, onClose }: { visible: boolean; 
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
   const { settings, set } = useSettings();
+  const insets = useSafeAreaInsets();
+  const { height: winH } = useWindowDimensions();
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: c.backgroundElement, borderColor: c.border }]}>
+      {/* Altura acotada a la pantalla: el contenido scrollea y «Listo» SIEMPRE
+          queda visible (antes se tapaba en pantallas cortas). */}
+      <View style={[styles.sheet, { maxHeight: winH * 0.9, paddingBottom: insets.bottom + 16, backgroundColor: c.backgroundElement, borderColor: c.border }]}>
         <View style={[styles.handle, { backgroundColor: c.border }]} />
         <Text style={[styles.title, { color: c.text }]}>{t('settings.title')}</Text>
-        <ScrollView style={styles.scroll} contentContainerStyle={{ gap: 10 }} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.scroll} contentContainerStyle={{ gap: 10, paddingBottom: 8 }} showsVerticalScrollIndicator={false}>
 
         <Text style={[styles.sec, { color: c.textSecondary }]}>{t('settings.vehicle')}</Text>
         <View style={styles.row}>
@@ -247,7 +252,7 @@ const styles = StyleSheet.create({
   },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
   title: { fontSize: 17, fontWeight: '800' },
-  scroll: { maxHeight: 460 },
+  scroll: { flexShrink: 1 },
   sec: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginTop: 6 },
   row: { flexDirection: 'row', gap: 8 },
   // Radios del sistema (Radii): controles seleccionables 14, botones píldora.

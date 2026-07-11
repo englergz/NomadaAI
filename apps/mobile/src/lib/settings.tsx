@@ -27,9 +27,9 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   lang: 'system',
-  palette: 'calor',
+  palette: 'semaforo', // por defecto acordado
   intensity: 0.5,
-  opacity: 0.7,
+  opacity: 0.25,
   riskOn: true,
   satellite: false,
   poisOn: false,
