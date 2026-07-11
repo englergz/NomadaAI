@@ -272,12 +272,15 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
         vehMarkerRef.current.setLngLat(userLocation);
       }
       if (nav.heading != null) vehMarkerRef.current.setRotation(nav.heading);
+      // Seguimiento CONTINUO: duración ≈ intervalo del GPS (~1 s) y easing lineal
+      // → el mapa fluye con el vehículo en vez de dar saltitos.
       map.easeTo({
         center: userLocation,
         bearing: nav.heading ?? map.getBearing(),
         pitch: 55,
         zoom: Math.max(map.getZoom(), 16.5),
-        duration: 450,
+        duration: 1000,
+        easing: (x) => x,
       });
     } else if (vehMarkerRef.current) {
       vehMarkerRef.current.remove(); vehMarkerRef.current = null; vehTypeRef.current = null;
