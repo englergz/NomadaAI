@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { baseStyle, baseTiles, CITIES, DEFAULT_CITY, RISK_FILL_COLOR, riskFillColor } from '@/constants/map';
+import { baseStyle, baseTiles, CITIES, DEFAULT_CITY, heatmapPaint, RISK_FILL_COLOR, riskPointsFC } from '@/constants/map';
 // Glyphmap oficial de MaterialCommunityIcons (nombre → codepoint): iconos literales
 // por categoría (gas-station, hospital-box, church…), nada de emojis.
 import MCIGlyphs from '@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/MaterialCommunityIcons.json';
@@ -86,11 +86,18 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     });
     map.on('load', () => {
       map.addSource('risk', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      // Fill INVISIBLE: se conserva solo para el click de detalle de zona; lo visible
+      // es el heatmap suave de abajo.
       map.addLayer({
         id: 'risk-fill', type: 'fill', source: 'risk',
-        paint: { 'fill-color': RISK_FILL_COLOR as never },
+        paint: { 'fill-color': RISK_FILL_COLOR as never, 'fill-opacity': 0 },
       });
-      // Sin bordes de celda: el heatmap se ve como superficie continua (pedido).
+      // HEATMAP suave (puntos = centroides pesados por risk_norm).
+      map.addSource('risk-heat', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({
+        id: 'risk-heat', type: 'heatmap', source: 'risk-heat',
+        paint: heatmapPaint('semaforo', 0.5, 0.25) as never,
+      });
       // Lugares (POIs): iconos por categoría (B4). Las imágenes se rasterizan async;
       // al terminar se fuerza un repaint para que la capa las tome.
       const empty = { type: 'FeatureCollection', features: [] } as never;
@@ -181,21 +188,24 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     const map = mapRef.current;
     if (!map || !riskStyle) return;
     const apply = () => {
-      if (!map.getLayer('risk-fill')) return;
-      map.setPaintProperty('risk-fill', 'fill-color', riskFillColor(riskStyle.palette, riskStyle.intensity) as never);
-      map.setPaintProperty('risk-fill', 'fill-opacity', riskStyle.opacity);
+      if (!map.getLayer('risk-heat')) return;
+      // El estilo (paleta/intensidad/opacidad) se aplica al HEATMAP.
+      const p = heatmapPaint(riskStyle.palette, riskStyle.intensity, riskStyle.opacity) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(p)) map.setPaintProperty('risk-heat', k, v as never);
     };
     if (loadedRef.current) apply(); else map.once('load', apply);
   }, [riskStyle]);
 
-  // Datos y visibilidad de la capa de riesgo.
+  // Datos y visibilidad de la capa de riesgo (heatmap visible + fill invisible para clicks).
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
       const src = map.getSource('risk') as maplibregl.GeoJSONSource | undefined;
       if (src && riskData) src.setData(riskData as never);
-      for (const id of ['risk-fill']) {
+      const heatSrc = map.getSource('risk-heat') as maplibregl.GeoJSONSource | undefined;
+      if (heatSrc) heatSrc.setData(riskPointsFC(riskData) as never);
+      for (const id of ['risk-fill', 'risk-heat']) {
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', riskOn ? 'visible' : 'none');
       }
     };

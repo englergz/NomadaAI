@@ -58,8 +58,30 @@ export default function ProtectionSlider({
     outputRange: [PAD, PAD + usable],
   });
   // Azul en TODOS los niveles: más protección = azul más intenso (el ámbar/rojo
-  // no representan «más seguridad»). Claro → marca → azul profundo.
-  const stopColors = ['#8fc0ff', c.accent, '#0b4fc0'];
+  // no representan «más seguridad»). Claro → marca → azul→morado en máxima.
+  const stopColors = ['#8fc0ff', c.accent, '#6d5cf5'];
+  const isMax = value === STOPS - 1;
+
+  // Protección MÁXIMA: destello que recorre la pista y parpadeo (estilo «ultracode»).
+  const shimmer = useRef(new Animated.Value(0)).current;
+  const glow = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!isMax) { shimmer.stopAnimation(); glow.stopAnimation(); return; }
+    const loop = Animated.loop(Animated.parallel([
+      Animated.sequence([
+        Animated.timing(shimmer, { toValue: 1, duration: 1100, useNativeDriver: false }),
+        Animated.timing(shimmer, { toValue: 0, duration: 0, useNativeDriver: false }),
+      ]),
+      Animated.sequence([
+        Animated.timing(glow, { toValue: 1, duration: 550, useNativeDriver: false }),
+        Animated.timing(glow, { toValue: 0.35, duration: 550, useNativeDriver: false }),
+      ]),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [isMax, shimmer, glow]);
+
+  const shimmerLeft = shimmer.interpolate({ inputRange: [0, 1], outputRange: [-40, trackW] });
 
   return (
     <View style={styles.wrap}>
@@ -76,6 +98,19 @@ export default function ProtectionSlider({
       >
         {/* relleno hasta el pulgar */}
         <Animated.View style={[styles.fill, { width: fillW, backgroundColor: stopColors[value] }]} />
+        {/* Protección máxima: parpadeo del relleno + destello que lo recorre */}
+        {isMax && (
+          <>
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.fill, { width: fillW, backgroundColor: '#8b5cf6', opacity: glow }]}
+            />
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.shimmer, { left: shimmerLeft }]}
+            />
+          </>
+        )}
         {/* topes */}
         {Array.from({ length: STOPS }).map((_, i) => {
           const left = PAD + (usable * i) / (STOPS - 1) - 3;
@@ -88,7 +123,13 @@ export default function ProtectionSlider({
             />
           );
         })}
-        {/* pulgar */}
+        {/* pulgar (en máxima, un halo morado que respira) */}
+        {isMax && (
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.thumbHalo, { left: thumbLeft, opacity: glow, transform: [{ scale: glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.5] }) }] }]}
+          />
+        )}
         <Animated.View
           pointerEvents="none"
           style={[styles.thumb, { left: thumbLeft, borderColor: stopColors[value], backgroundColor: c.backgroundElement }]}
@@ -109,6 +150,14 @@ const styles = StyleSheet.create({
     height: 30, borderRadius: Radii.pill, borderWidth: 1, justifyContent: 'center',
   },
   fill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: Radii.pill, opacity: 0.28 },
+  // Destello vertical que recorre la pista en protección máxima.
+  shimmer: {
+    position: 'absolute', top: 0, bottom: 0, width: 36, borderRadius: Radii.pill,
+    backgroundColor: '#c4b5fd', opacity: 0.5,
+  },
+  thumbHalo: {
+    position: 'absolute', width: 28, height: 28, borderRadius: 14, backgroundColor: '#8b5cf6', marginLeft: 0,
+  },
   stop: { position: 'absolute', width: 6, height: 6, borderRadius: 3 },
   thumb: {
     position: 'absolute', width: 28, height: 28, borderRadius: 14, borderWidth: 2,
