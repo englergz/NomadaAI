@@ -365,7 +365,6 @@ export default function App() {
     const v = next ? "visible" : "none";
     try {
       map.setLayoutProperty("risk-fill", "visibility", v);
-      map.setLayoutProperty("risk-line", "visibility", v);
     } catch (e) { console.error(e); }
   }
   function togglePois(next: boolean) {
@@ -415,10 +414,7 @@ export default function App() {
             0, 0.14, 0.5, 0.34, 0.9, 0.52, 1, 0.66],
         },
       } as never);
-      map.addLayer({
-        id: "risk-line", type: "line", source: "risk",
-        paint: { "line-color": "#0b0e12", "line-width": 0.4, "line-opacity": 0.3 }
-      } as never);
+      // Sin líneas divisoras de celda (coherencia con la app móvil): superficie continua.
       addLine(map, "direct", { "line-color": "#94a3b8", "line-width": 3, "line-dasharray": [2, 2], "line-opacity": 0.7 });
       addLine(map, "observed", { "line-color": "#2f81f7", "line-width": 5 });
       addLine(map, "pred", { "line-color": "#f97316", "line-width": 4, "line-dasharray": [1.5, 1] });

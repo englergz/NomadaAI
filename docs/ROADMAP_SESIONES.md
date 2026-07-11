@@ -247,6 +247,15 @@ Pendiente (orden):
 - Pendiente U4: configurar CLERK_ISSUER en el Space (para que el backend VERIFIQUE los
   tokens); sincronizar vehículo/tema al perfil; foto en reportes cuando exista Storage.
 
+### U5b · ESCRITORIO (tesis) — coherencia con la app (feedback 2026-07-11)
+- ✅ Grillas de riesgo SIN líneas divisoras (risk-line eliminado, como el móvil).
+- Pendiente: «Menú» del escritorio = misma estructura que AJUSTES de la app móvil
+  (vehículo predeterminado, tema, capas, riesgo, umbral) sin quitar lo del panel.
+- Historial de ALERTAS en escritorio: modal que sube hasta arriba dejando ver SOLO el
+  nombre de la app (como el sheet del móvil), «Listo» abajo → botón «Ir a la app móvil»
+  que abre/enlaza la app. Con sesión iniciada, muestra MI historial igual que el móvil.
+- Cada simulación debe ir cargando normal (no bloquear la vista de historial).
+
 ### U5 · ESCRITORIO (brief Parte C)
 - «Menú» → «Ajustes» con TODO lo de la app (tema/vehículo predeterminado/heatmap/umbral) sin quitar
   lo existente (satelital, seguir vehículo, trayectorias, ayuda). Vehículo elegido = predeterminado
