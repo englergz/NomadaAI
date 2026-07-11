@@ -37,7 +37,7 @@ const TOTAL = PTS.slice(1).reduce((s, p, i) => s + segLen(PTS[i], p), 0);
 const FRACS = PTS.map((_, i) =>
   PTS.slice(1, i + 1).reduce((s, p, j) => s + segLen(PTS[j], p), 0) / TOTAL);
 
-export default function AnimatedSplash({ onDone }: { onDone: () => void }) {
+export default function AnimatedSplash({ onDone, fontsReady = true }: { onDone: () => void; fontsReady?: boolean }) {
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
   const progress = useRef(new Animated.Value(0)).current;  // ruta + punto
@@ -104,14 +104,17 @@ export default function AnimatedSplash({ onDone }: { onDone: () => void }) {
         <TravelDot routeX={routeX} routeY={routeY} flight={flight} slot={slot} size={SIZE} accent={c.accent} />
       </View>
 
-      {/* Wordmark: el «.» es el hueco donde aterriza el punto */}
-      <Animated.View style={[styles.wordRow, { opacity: wordmark }]}>
-        <Text style={[styles.word, { color: c.text }]}>Nómada</Text>
-        <View ref={slotRef} {...NO_COLLAPSE} style={styles.dotSlot}>
-          <Animated.View style={[styles.slotDot, { backgroundColor: c.accent, opacity: flight }]} />
-        </View>
-        <Text style={[styles.word, { color: c.accent }]}>AI</Text>
-      </Animated.View>
+      {/* Wordmark: el «.» es el hueco donde aterriza el punto. Solo con la fuente Sora
+          lista (si no, se mediría mal y se recortaría «Nóma .A»). */}
+      {fontsReady && (
+        <Animated.View style={[styles.wordRow, { opacity: wordmark }]}>
+          <Text style={[styles.word, { color: c.text }]}>Nómada</Text>
+          <View ref={slotRef} {...NO_COLLAPSE} style={styles.dotSlot}>
+            <Animated.View style={[styles.slotDot, { backgroundColor: c.accent, opacity: flight }]} />
+          </View>
+          <Text style={[styles.word, { color: c.accent }]}>AI</Text>
+        </Animated.View>
+      )}
     </Animated.View>
   );
 }

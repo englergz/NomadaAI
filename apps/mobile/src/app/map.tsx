@@ -326,6 +326,8 @@ export default function MapScreen() {
         return hit ? levelFor(hit.riskNorm) : 'despejado';
       });
       setRoutes({ safe: r.coords, direct: r.direct_coords, safeLevels });
+      // Con la ruta lista, vuelve a TU ubicación (origen) para arrancar desde ahí.
+      if (!silent) setFocus({ center: origin as [number, number], zoom: 15 });
       comparisonRef.current = r.comparison ?? null;
       distancesRef.current = {
         safe: r.comparison?.safe_distance_m ?? r.distance_m,
@@ -748,6 +750,9 @@ export default function MapScreen() {
               <Pressable
                 onPress={() => {
                   setDest(item); setQuery(item.name); setResults([]); Keyboard.dismiss();
+                  // Vuela al lugar elegido para VER el pin y confirmar que es el sitio
+                  // correcto (como cualquier app de mapas) antes de trazar la ruta.
+                  if (!onTrip) setFocus({ center: item.coord, zoom: 16 });
                   // Elegir destino DURANTE un recorrido libre traza la ruta al vuelo
                   // desde tu posición actual (el place va directo: setDest es async).
                   if (onTrip) goSafe(priority, userLoc ?? undefined, false, item);
