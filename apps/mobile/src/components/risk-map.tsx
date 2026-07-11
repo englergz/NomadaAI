@@ -17,20 +17,28 @@ try {
   ML = null;
 }
 
-// Vehículo cenital nativo (Views, sin dependencias): cuerpo redondeado + parabrisas
-// claro al frente. La cámara ya rota al rumbo, así que el sprite apunta ARRIBA.
-function VehicleSprite({ type }: { type: string | null }) {
-  const moto = (type ?? '') === 'moto';
+// Vehículo cenital nativo (Views): cuerpo por tipo + parabrisas claro al frente.
+// Con `trackUserLocation="course"` el mapa rota, pero el marcador NO, así que lo
+// rotamos al rumbo aquí. La ligera inclinación (rotateX) le da aire 3D con el pitch.
+const VEH_STYLE: Record<string, { w: number; h: number; body: string; glass: string }> = {
+  moto: { w: 16, h: 30, body: '#f97316', glass: '#111827' },
+  car: { w: 24, h: 36, body: '#1f2937', glass: '#9cd2ff' },
+  bus: { w: 26, h: 40, body: '#2563eb', glass: '#cfe5ff' },
+  truck: { w: 26, h: 40, body: '#374151', glass: '#cbd5e1' },
+};
+function VehicleSprite({ type, heading = 0 }: { type: string | null; heading?: number }) {
+  const v = VEH_STYLE[(type ?? 'car')] ?? VEH_STYLE.car;
   return (
-    <View
-      style={{
-        width: moto ? 14 : 22, height: moto ? 30 : 34, borderRadius: moto ? 7 : 9,
-        backgroundColor: moto ? '#f97316' : '#1f2937', borderWidth: 1.5, borderColor: '#fff',
-        alignItems: 'center', paddingTop: 5,
-        shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 3, shadowOffset: { width: 0, height: 1 },
-      }}
-    >
-      <View style={{ width: moto ? 7 : 12, height: 7, borderRadius: 3, backgroundColor: moto ? '#111827' : '#9cd2ff' }} />
+    <View style={{ transform: [{ perspective: 320 }, { rotateX: '48deg' }, { rotate: `${heading}deg` }] }}>
+      <View
+        style={{
+          width: v.w, height: v.h, borderRadius: v.w * 0.42,
+          backgroundColor: v.body, borderWidth: 2, borderColor: '#fff', alignItems: 'center', paddingTop: 5,
+          shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 4, shadowOffset: { width: 0, height: 3 },
+        }}
+      >
+        <View style={{ width: v.w * 0.6, height: 7, borderRadius: 3, backgroundColor: v.glass }} />
+      </View>
     </View>
   );
 }
@@ -52,25 +60,30 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     );
   }
 
+  // v11 renombró MarkerView → Marker (por eso el vehículo nunca cargaba y caía al
+  // punto azul). Usamos Marker con prop `lngLat` y un hijo (el sprite del vehículo).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { Map, Camera, GeoJSONSource, Layer, MarkerView } = ML as typeof ML & { MarkerView?: any };
+  const { Map, Camera, GeoJSONSource, Layer, Marker } = ML as typeof ML & { Marker?: any };
   const navOn = !!nav?.active && !!userLocation;
   return (
     <Map style={styles.map} mapStyle={style as never}>
-      {/* En nativo el flyTo de ciudad debe GANARLE a la ubicación del usuario
-          (si no, con GPS activo el cambio de ciudad no movía la cámara). */}
+      {/* API v11: props `centerCoordinate`/`zoomLevel` (antes usaba `center`/`zoom`,
+          que la librería IGNORA — por eso el cambio de ciudad no movía la cámara).
+          En navegación, `trackUserLocation="course"` hace que MapLibre siga al
+          usuario y ROTE el mapa según el movimiento de forma NATIVA y fluida
+          (sin animar a mano ni cancelar teselas). minZoom evita cargar el mundo. */}
       <Camera
         initialViewState={{ center: city.center, zoom: city.zoom } as never}
-        center={navOn ? userLocation : (focus?.center ?? userLocation ?? undefined)}
-        zoom={navOn ? 16.5 : focus?.zoom ?? (userLocation ? 15 : undefined)}
-        {...({
-          pitch: navOn ? 50 : 0,
-          heading: navOn ? nav?.heading ?? 0 : 0,
-          // Animar SIEMPRE los cambios de cámara (flyTo de ciudad, centrar, salir
-          // de navegación) — en nativo sin esto el salto era seco o no se veía.
-          animationMode: 'flyTo',
-          animationDuration: 1200,
-        } as Record<string, number | string>)}
+        minZoom={9}
+        {...(navOn
+          ? ({ trackUserLocation: 'course', pitch: 50, followZoomLevel: 16.5 } as Record<string, unknown>)
+          : ({
+              centerCoordinate: focus?.center ?? userLocation ?? city.center,
+              zoomLevel: focus?.zoom ?? (userLocation ? 15 : city.zoom),
+              pitch: 0,
+              animationMode: 'flyTo',
+              animationDuration: 1400,
+            } as Record<string, unknown>))}
       />
       {riskData && riskOn && (
         <GeoJSONSource id="risk" data={riskData as never}>
@@ -156,12 +169,12 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
           />
         </GeoJSONSource>
       )}
-      {/* En navegación: vehículo cenital (si MarkerView existe); si no, punto azul */}
-      {navOn && MarkerView ? (
+      {/* En navegación: vehículo cenital (Marker con lngLat); si no, punto azul */}
+      {navOn && Marker ? (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        <MarkerView {...({ coordinate: userLocation } as any)}>
-          <VehicleSprite type={nav?.vehicle ?? null} />
-        </MarkerView>
+        <Marker {...({ lngLat: userLocation } as any)}>
+          <VehicleSprite type={nav?.vehicle ?? null} heading={nav?.heading ?? 0} />
+        </Marker>
       ) : userLocation ? (
         <GeoJSONSource
           id="me"
