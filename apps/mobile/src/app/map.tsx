@@ -4,8 +4,8 @@
 // Regla de ruteo: EVITAR cuando hay alternativa; AVISAR cuando el riesgo es inevitable.
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Image, Keyboard, Linking, Platform, Pressable, StyleSheet, Text,
-  TextInput, useWindowDimensions, View,
+  ActivityIndicator, Alert, FlatList, Image, Keyboard, Linking, Platform, Pressable, StyleSheet,
+  Text, TextInput, useWindowDimensions, View,
 } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +22,7 @@ import ReportSheet from '@/components/report-sheet';
 import RiskMap from '@/components/risk-map';
 import SettingsSheet, { VEHICLES } from '@/components/settings-sheet';
 import NotificationsSheet from '@/components/notifications-sheet';
+import ProtectionSlider from '@/components/protection-slider';
 import { hasUnseenAlerts, logAlert } from '@/lib/alert-log';
 import { logTrip } from '@/lib/history';
 import type { RouteLines } from '@/components/risk-map.types';
@@ -123,6 +124,11 @@ export default function MapScreen() {
   const [tripLevel, setTripLevel] = useState<AlertLevel>('despejado');
   const trackerRef = useRef(new ProximityTracker());
   const watchRef = useRef<Location.LocationSubscription | null>(null);
+  // Inactividad: si el usuario lleva rato quieto se pregunta si sigue en viaje;
+  // sin respuesta y sin moverse, se finaliza solo (no drena batería para siempre).
+  const lastMoveAtRef = useRef(0);
+  const idlePromptsRef = useRef(0);
+  const idleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const riskRef = useRef<RiskZonesResponse | null>(null);
   useEffect(() => { riskRef.current = riskData; }, [riskData]);
 
@@ -415,6 +421,11 @@ export default function MapScreen() {
     const prev = pts[pts.length - 1];
     pts.push({ lon: pos[0], lat: pos[1], t: now });
     if (pts.length > 120) pts.splice(0, pts.length - 120);
+    // Movimiento real (>8 m) reinicia el reloj de inactividad.
+    if (prev && distM([prev.lon, prev.lat], pos) > 8) {
+      lastMoveAtRef.current = Date.now();
+      idlePromptsRef.current = 0;
+    }
     // Rumbo estimado por movimiento (fallback web y respaldo si no hay brújula).
     if (prev && Platform.OS === 'web' && distM([prev.lon, prev.lat], pos) > 3) {
       setHeading(bearingDeg([prev.lon, prev.lat], pos));
@@ -451,6 +462,23 @@ export default function MapScreen() {
     tripPtsRef.current = [];
     lastPredictRef.current = 0;
     alertsRef.current = 0;
+    lastMoveAtRef.current = Date.now();
+    idlePromptsRef.current = 0;
+    // Vigilancia de inactividad: revisa cada 30 s cuánto llevas quieto.
+    idleTimerRef.current = setInterval(() => {
+      const idleMin = (Date.now() - lastMoveAtRef.current) / 60000;
+      if (idleMin >= 30 && idlePromptsRef.current >= 1) {
+        // Segunda vez sin moverse ni responder → se finaliza solo.
+        setBanner({ text: t('map.banner.tripAutoEnd'), tone: 'info' });
+        stopTrip();
+      } else if (idleMin >= 15 && idlePromptsRef.current < 1) {
+        idlePromptsRef.current = 1;
+        Alert.alert(t('map.idle.title'), t('map.idle.body'), [
+          { text: t('map.idle.end'), style: 'destructive', onPress: stopTrip },
+          { text: t('map.idle.continue'), onPress: () => { lastMoveAtRef.current = Date.now(); idlePromptsRef.current = 0; } },
+        ]);
+      }
+    }, 30000);
     setTripLevel('despejado');
     setOnTrip(true);
     setBanner({ text: t('map.banner.tripStarted'), tone: 'info' });
@@ -482,6 +510,7 @@ export default function MapScreen() {
     watchRef.current = null;
     headingSubRef.current?.remove();
     headingSubRef.current = null;
+    if (idleTimerRef.current) { clearInterval(idleTimerRef.current); idleTimerRef.current = null; }
     setHeading(null);
     // Salida GARANTIZADA del modo navegación: además del reset de pitch/rumbo,
     // se fuerza un encuadre normal sobre la última posición conocida.
@@ -737,30 +766,14 @@ export default function MapScreen() {
             })}
           </View>
         </View>
-        {/* Mismo patrón que Vehículo: rótulo al frente de sus opciones (coherencia) */}
-        <View style={styles.metaRow}>
-          <Text style={[styles.metaLbl, { color: c.textSecondary }]}>{t('map.priority')}</Text>
-          <View style={styles.prioRow}>
-          {PRIORITIES.map((p, i) => (
-            <Pressable
-              key={p.key}
-              onPress={() => {
-                setPriority(i);
-                // Con ruta en pantalla, cambiar la prioridad RECALCULA de inmediato.
-                if (routes && dest && !onTrip) goSafe(i);
-              }}
-              style={[
-                styles.prio,
-                { borderColor: i === priority ? c.accent : c.border, backgroundColor: i === priority ? c.backgroundSelected : 'transparent' },
-              ]}
-            >
-              <Text style={{ color: i === priority ? c.accent : c.textSecondary, fontSize: 11.5, fontWeight: '600' }}>
-                {t(p.key)}
-              </Text>
-            </Pressable>
-          ))}
-          </View>
-        </View>
+        {/* Barra de protección estilo volumen (reemplaza los chips largos) */}
+        <ProtectionSlider
+          value={priority}
+          onChange={(v) => {
+            setPriority(v);
+            if (routes && dest && !onTrip) goSafe(v); // recalcula al instante si hay ruta
+          }}
+        />
         </>)}
 
         {!cityFull ? (
