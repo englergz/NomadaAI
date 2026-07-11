@@ -285,8 +285,9 @@ body.light .banner-line.ok { color: #14532d; }
 /* U5b: el «celular» = teléfono real con la marca flotando arriba (fuera del modal),
    fondo oscurecido y una HOJA modal deslizada desde abajo (como la app móvil). */
 .phone-screen { justify-content: flex-start; }
-.phone-brand-float { display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; font-size: 14px; color: #e8edf3; background: rgba(20,26,34,0.9); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; padding: 5px 12px; margin-top: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); z-index: 2; }
-body.light .phone-brand-float { color: #17212c; background: rgba(255,255,255,0.95); border-color: rgba(0,0,0,0.06); }
+.phone-brand-float { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; z-index: 2; }
+.phone-wm { font-weight: 800; font-size: 15px; color: #e8edf3; text-shadow: 0 1px 4px rgba(0,0,0,0.55); }
+body.light .phone-wm { color: #17212c; text-shadow: 0 1px 4px rgba(255,255,255,0.85); }
 .brand-ai { color: #2f81f7; }
 .phone-sheet-head { display: flex; align-items: center; justify-content: space-between; }
 .phone-clear { background: transparent; border: none; box-shadow: none; width: auto; color: #ff6b5e; font-size: 11.5px; font-weight: 600; cursor: pointer; padding: 0; }
@@ -300,25 +301,46 @@ body.light .phone-brand-float { color: #17212c; background: rgba(255,255,255,0.9
 .alert-dot.att { background: #ff6b5e; }
 .alert-title { font-size: 12px; font-weight: 600; color: var(--text); }
 .alert-body { font-size: 11px; color: var(--muted); line-height: 1.4; margin-top: 2px; }
-.phone-livebar { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; z-index: 2; }
-.phone-veh-sm { font-size: 20px; }
+.phone-livebar { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 6px; z-index: 2; }
+.phone-veh-sm { font-size: 18px; }
 .risk-pill.sm { margin-top: 0; padding: 3px 8px; font-size: 10px; }
 /* Backdrop de modal encima del mapa del teléfono */
 .phone-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 3; }
 /* Hoja modal PEGADA a los bordes del teléfono (izq/der/abajo); solo redondea arriba.
    El overflow del .phone-screen recorta las esquinas inferiores a la curva del móvil. */
-.phone-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; background: var(--panel); border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; padding: 8px 14px 16px; display: flex; flex-direction: column; max-height: 74%; box-shadow: 0 -6px 20px rgba(0,0,0,0.35); }
+.phone-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; background: var(--panel); border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; padding: 8px 14px 14px; display: flex; flex-direction: column; height: 80%; box-shadow: 0 -6px 20px rgba(0,0,0,0.35); }
 .phone-sheet-handle { align-self: center; width: 38px; height: 4px; border-radius: 2px; background: var(--border); margin: 2px 0 8px; }
 .phone-sheet-title { font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
 .phone-empty { font-size: 11px; color: var(--muted); line-height: 1.5; padding: 6px 2px; }
 .phone-cta { display: block; margin-top: 10px; text-align: center; background: var(--accent); color: #fff; font-weight: 700; font-size: 13px; padding: 11px; border-radius: 999px; text-decoration: none; flex-shrink: 0; }
-/* Banner de alerta EN EL MAPA del escritorio (como el móvil): arriba-centro. */
-.map-banner { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 40; max-width: min(460px, 84vw); display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid #f5a524; border-radius: 14px; padding: 9px 14px; box-shadow: var(--shadow-2); }
-.map-banner.att { border-color: #ff6b5e; }
-.map-banner-txt { font-size: 12.5px; color: var(--text); line-height: 1.35; }
-.map-banner-x { background: transparent; border: none; box-shadow: none; width: auto; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0; }
+/* Líneas de alerta dentro del banner unificado (borde por nivel + ✕ para cerrar). */
+.banner-line.alert-cau, .banner-line.alert-att { display: flex; align-items: center; gap: 10px; border: 1px solid #f5a524; border-radius: 12px; padding: 7px 12px; background: var(--panel); }
+.banner-line.alert-att { border-color: #ff6b5e; }
+.banner-x { background: transparent; border: none; box-shadow: none; width: auto; color: var(--muted); cursor: pointer; font-size: 13px; padding: 0; flex-shrink: 0; }
 /* Aviso de demo: esto es simulación; el uso real es la app móvil. */
 .demo-note { font-size: 11px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 10px; }
+/* Modal de descarga (tiendas) */
+.dl-modal { position: relative; width: min(400px, 92vw); background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 26px 24px 22px; box-shadow: var(--shadow-2); text-align: center; }
+.dl-brand { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 18px; margin-bottom: 6px; }
+.dl-lead { font-size: 13px; color: var(--text); line-height: 1.5; margin: 6px 0 16px; }
+.dl-badges { display: flex; flex-direction: column; gap: 10px; }
+.dl-badge { display: flex; align-items: center; gap: 10px; justify-content: center; width: 100%; background: #1b1b1f; color: #fff; border: 1px solid #33333a; border-radius: 12px; padding: 10px 14px; cursor: not-allowed; opacity: 0.5; }
+.dl-badge-ic { font-size: 22px; line-height: 1; }
+.dl-badge span span, .dl-badge > span:last-child { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+.dl-badge small { font-size: 9px; opacity: 0.85; }
+.dl-badge b { font-size: 15px; }
+.dl-web { margin-top: 14px; width: 100%; background: transparent; border: none; box-shadow: none; color: var(--muted); font-size: 12.5px; text-decoration: underline; cursor: not-allowed; opacity: 0.6; }
+.dl-note { font-size: 10.5px; color: var(--muted); line-height: 1.5; margin: 12px 0 0; }
+/* Barra de protección del escritorio (igual que la app: Mínima/Equilibrada/Máxima) */
+.prot-slider { margin: 6px 0 2px; }
+.prot-labels { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.prot-labels span { font-size: 11px; color: var(--muted); font-weight: 600; }
+.prot-labels b { font-size: 12px; color: var(--text); letter-spacing: 0.3px; }
+.prot-track { position: relative; height: 30px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-elev, var(--panel)); }
+.prot-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; opacity: 0.28; }
+.prot-stop { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 6px; height: 6px; border-radius: 3px; border: none; padding: 0; box-shadow: none; cursor: pointer; }
+.prot-thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 26px; height: 26px; border-radius: 50%; border: 2px solid; background: var(--panel); display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.25); pointer-events: none; }
+.prot-thumb span { width: 10px; height: 10px; border-radius: 50%; }
 
 /* Panel reorganizado: propósito + secciones numeradas */
 .panel-lead { font-size: 12px; line-height: 1.5; color: var(--text); margin: 0 0 12px; }
