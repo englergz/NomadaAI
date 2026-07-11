@@ -11,6 +11,7 @@ const Slider = SliderImpl as unknown as React.ComponentType<Record<string, unkno
 
 import { HEAT_PALETTES, type HeatPaletteKey } from '@/constants/map';
 import { Colors, Radii } from '@/constants/theme';
+import IOSSwitch from '@/components/ios-switch';
 import { systemLangUnsupported, useT, type TKey } from '@/lib/i18n';
 import { useResolvedScheme, useSettings, type LangPref, type ThemePref } from '@/lib/settings';
 
@@ -71,33 +72,28 @@ export default function SettingsSheet({ visible, onClose }: { visible: boolean; 
         <Text style={{ color: c.textSecondary, fontSize: 11, lineHeight: 15 }}>{t('settings.vehicle.help')}</Text>
 
         <Text style={[styles.sec, { color: c.textSecondary }]}>{t('settings.trip')}</Text>
-        <Pressable
-          onPress={async () => {
-            const next = !settings.autoTrip;
-            if (next) {
-              // Diálogos NATIVOS aquí mismo: primero ubicación y luego «Permitir
-              // siempre» (segundo plano) — es lo que necesita la detección para
-              // funcionar de verdad; el texto de abajo explica el porqué.
-              try {
-                const fg = await Location.requestForegroundPermissionsAsync();
-                if (!fg.granted) return;
-                await Location.requestBackgroundPermissionsAsync().catch(() => { /* opcional */ });
-              } catch { return; }
-            }
-            set('autoTrip', next);
-          }}
-          style={[styles.switchRow, { borderColor: c.border }]}
-        >
-          <View style={{ flex: 1, paddingRight: 8 }}>
-            <Text style={{ color: c.text, fontSize: 14 }}>{t('settings.autoTrip')}</Text>
-            <Text style={{ color: c.textSecondary, fontSize: 11 }}>{t('settings.autoTrip.help')}</Text>
-          </View>
-          <View style={[styles.sw, { backgroundColor: settings.autoTrip ? c.accent : c.backgroundSelected, borderColor: settings.autoTrip ? c.accent : c.border }]}>
-            <Text style={{ color: settings.autoTrip ? '#fff' : c.textSecondary, fontSize: 10, fontWeight: '800' }}>
-              {settings.autoTrip ? 'ON' : 'OFF'}
-            </Text>
-          </View>
-        </Pressable>
+        <View style={[styles.switchRow, { borderColor: c.border }]}>
+          <Text style={{ color: c.text, fontSize: 14, flex: 1 }}>{t('settings.autoTrip')}</Text>
+          <IOSSwitch
+            value={settings.autoTrip}
+            onValueChange={async (next) => {
+              if (next) {
+                // Diálogos NATIVOS: ubicación y «Permitir siempre» (segundo plano),
+                // que es lo que la detección necesita para funcionar de verdad.
+                try {
+                  const fg = await Location.requestForegroundPermissionsAsync();
+                  if (!fg.granted) return;
+                  await Location.requestBackgroundPermissionsAsync().catch(() => { /* opcional */ });
+                } catch { return; }
+              }
+              set('autoTrip', next);
+            }}
+          />
+        </View>
+        {/* Explicación breve DEBAJO del control (menos texto, más claro) */}
+        <Text style={{ color: c.textSecondary, fontSize: 11, lineHeight: 15, marginTop: -2 }}>
+          {t('settings.autoTrip.help')}
+        </Text>
         <View style={styles.sliderRow}>
           <Text style={[styles.sliderLbl, { color: c.textSecondary }]}>
             {t('settings.threshold')} · {Math.round(settings.threshold * 100)}%
@@ -159,32 +155,20 @@ export default function SettingsSheet({ visible, onClose }: { visible: boolean; 
         {([[t('settings.satellite'), 'satellite'], [t('settings.pois'), 'poisOn']] as const).map(([lbl, key]) => {
           const on = settings[key];
           return (
-            <Pressable
-              key={key}
-              onPress={() => set(key, !on)}
-              style={[styles.switchRow, { borderColor: c.border }]}
-            >
-              <Text style={{ color: c.text, fontSize: 14 }}>{lbl}</Text>
-              <View style={[styles.sw, { backgroundColor: on ? c.accent : c.backgroundSelected, borderColor: on ? c.accent : c.border }]}>
-                <Text style={{ color: on ? '#fff' : c.textSecondary, fontSize: 10, fontWeight: '800' }}>
-                  {on ? 'ON' : 'OFF'}
-                </Text>
-              </View>
-            </Pressable>
+            <View key={key} style={[styles.switchRow, { borderColor: c.border }]}>
+              <Text style={{ color: c.text, fontSize: 14, flex: 1 }}>{lbl}</Text>
+              <IOSSwitch value={on} onValueChange={(v) => set(key, v)} />
+            </View>
           );
         })}
 
         {/* B8: RIESGO como categoría propia — toggle de la capa + su mapa de calor dentro;
             la personalización se deshabilita cuando la capa está OFF. */}
         <Text style={[styles.sec, { color: c.textSecondary }]}>{t('settings.risk')}</Text>
-        <Pressable onPress={() => set('riskOn', !settings.riskOn)} style={[styles.switchRow, { borderColor: c.border }]}>
-          <Text style={{ color: c.text, fontSize: 14 }}>{t('settings.riskLayer')}</Text>
-          <View style={[styles.sw, { backgroundColor: settings.riskOn ? c.accent : c.backgroundSelected, borderColor: settings.riskOn ? c.accent : c.border }]}>
-            <Text style={{ color: settings.riskOn ? '#fff' : c.textSecondary, fontSize: 10, fontWeight: '800' }}>
-              {settings.riskOn ? 'ON' : 'OFF'}
-            </Text>
-          </View>
-        </Pressable>
+        <View style={[styles.switchRow, { borderColor: c.border }]}>
+          <Text style={{ color: c.text, fontSize: 14, flex: 1 }}>{t('settings.riskLayer')}</Text>
+          <IOSSwitch value={settings.riskOn} onValueChange={(v) => set('riskOn', v)} />
+        </View>
         <View
           style={{ gap: 10, opacity: settings.riskOn ? 1 : 0.4, pointerEvents: settings.riskOn ? 'auto' : 'none' }}
         >
