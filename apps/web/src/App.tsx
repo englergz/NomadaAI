@@ -44,8 +44,6 @@ function labelForType(t?: string): string {
   }
 }
 const base = () => import.meta.env.VITE_API_URL ?? "";
-// URL de la app móvil (dominio/tienda/web-build). Cambiar al publicar.
-const MOBILE_APP_URL = import.meta.env.VITE_MOBILE_APP_URL ?? "https://englergz-nomadaai.hf.space";
 
 // Ícono cenital del vehículo (estilo Uber/Rappi). Apunta hacia ARRIBA (norte) en rotación 0;
 // el marcador se rota al rumbo. El parabrisas claro marca el frente.
@@ -202,6 +200,8 @@ export default function App() {
   const [histGlobal, setHistGlobal] = useState<any>(null);              // contexto global (BI)
   const [showHelp, setShowHelp] = useState(false);
   const [alertFilter, setAlertFilter] = useState<"all" | "proximidad" | "anticipada">("all"); // filtros del historial (como el móvil)
+  const [dismissedBannerId, setDismissedBannerId] = useState(-1); // alerta del mapa: se auto-descarta
+  const [showDownload, setShowDownload] = useState(false); // modal de descarga (tiendas)
   const [log, setLog] = useState<string[]>([]);
   const [showConsole, setShowConsole] = useState(true);
   const [finished, setFinished] = useState(false);
@@ -249,6 +249,13 @@ export default function App() {
       return () => mq.removeEventListener("change", resolve);
     }
   }, [themePref]);
+  // La alerta más reciente se muestra como banner en el mapa y se AUTO-DESCARTA a los 7 s.
+  useEffect(() => {
+    if (!notifs[0]) return;
+    const id = notifs[0].id;
+    const t = window.setTimeout(() => setDismissedBannerId(id), 7000);
+    return () => clearTimeout(t);
+  }, [notifs]);
   useEffect(() => { followRef.current = follow; }, [follow]);
   // Histórico: cargar respaldo local y traer agregados de la DB (si está configurada).
   useEffect(() => {
@@ -770,22 +777,25 @@ export default function App() {
     <>
       <div id="map" ref={containerRef} />
 
-      {/* Banner de la alerta más reciente EN EL MAPA (como el móvil): arriba-centro. */}
-      {notifs[0] && (
-        <div className={`map-banner ${notifs[0].level === "atencion" ? "att" : ""}`}>
-          <span className="map-banner-txt"><b>{notifs[0].title}.</b> {notifs[0].body}</span>
-          <button className="map-banner-x" onClick={() => setNotifs((p) => p.slice(1))} title="Cerrar">✕</button>
-        </div>
-      )}
-
-      {/* Banner informativo flotante al centro (lo que está pasando de fondo, visible). */}
-      {(busy || (mode === "draw" && !running && drawMsg) || safeMsg) && (
+      {/* Banner UNIFICADO arriba-centro: estado de ruta + alerta más reciente (que se
+          auto-descarta). Apilan verticalmente, nunca se solapan. */}
+      {(() => {
+        const alertVisible = !!notifs[0] && notifs[0].id !== dismissedBannerId;
+        if (!busy && !(mode === "draw" && !running && drawMsg) && !safeMsg && !alertVisible) return null;
+        return (
         <div className="banner">
+          {alertVisible && (
+            <div className={`banner-line ${notifs[0].level === "atencion" ? "alert-att" : "alert-cau"}`}>
+              <span><b>{notifs[0].title}.</b> {notifs[0].body}</span>
+              <button className="banner-x" onClick={() => setDismissedBannerId(notifs[0].id)} title="Cerrar">✕</button>
+            </div>
+          )}
           {busy && <div className="banner-line loading">⏳ {busy}</div>}
           {!busy && mode === "draw" && !running && drawMsg && <div className="banner-line">📍 {drawMsg}</div>}
           {safeMsg && <div className="banner-line ok">🛡️ {safeMsg}</div>}
         </div>
-      )}
+        );
+      })()}
 
       {/* Barra superior: menú de capas/vista agrupado + ayuda + sesión */}
       <div className="topbar">
@@ -848,7 +858,7 @@ export default function App() {
       <div className="panel" style={{ display: panelOpen ? undefined : "none" }}>
         <button className="panel-collapse" onClick={() => setPanelOpen(false)} title="Ocultar panel">«</button>
         <h1 className="brand"><img src="/favicon.png" alt="" className="brand-logo" /> Nómada<span className="brand-ai">.AI</span></h1>
-        <p className="demo-note">🧪 Espacio de <b>demostración</b>: aquí ves simulaciones sobre datos reales. El uso real es desde la <b>app móvil</b> (Android/iOS).</p>
+       
         <p className="subtitle">Navegación consciente del riesgo · <select className="city-sel" value={city} onChange={(e) => changeCity(e.target.value)} disabled={running}>
           {Object.entries(CITIES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select></p>
@@ -859,7 +869,7 @@ export default function App() {
           <p className="panel-lead">Mapa de riesgo de <b>{CITIES[city].label}</b>: evidencia de que el marco se
             replica. La simulación de viajes está disponible en Tumaco.</p>
         )}
-
+ <p className="demo-note">🧪 Espacio de <b>demostración</b>: aquí ves simulaciones sobre datos reales. El uso real es desde la <b>app móvil</b> (Android/iOS).</p>
         {health && (
           <>
             <div className="counts">
@@ -893,8 +903,26 @@ export default function App() {
               {DRAW_VEHICLES.map((v) => <option key={v.key} value={v.key}>{v.label}</option>)}
             </select>
             <p className="counts-cap">Opcional, pero indicar tu vehículo mejora la precisión de la predicción (calles según el tipo). Se puede cambiar en cada viaje.</p>
-            <label className="lbl">Prioridad de seguridad: <b>{riskWeight}%</b> {riskWeight === 0 ? "(ruta más corta)" : "(evita riesgo)"}</label>
-            <input className="range" type="range" min={0} max={100} step={10} value={riskWeight} onChange={(e) => setRiskWeight(Number(e.target.value))} disabled={running} />
+            {/* Barra de protección como la app: Mínima / Equilibrada / Máxima (azul→morado). */}
+            {(() => {
+              const lvl = riskWeight <= 25 ? 0 : riskWeight >= 75 ? 2 : 1; // 3 topes
+              const colors = ["#8fc0ff", "#2f81f7", "#6d5cf5"];
+              return (
+                <div className="prot-slider">
+                  <div className="prot-labels"><span>Mínima</span><b>Protección</b><span>Máxima</span></div>
+                  <div className="prot-track">
+                    <div className="prot-fill" style={{ width: `${lvl === 0 ? 12 : lvl === 1 ? 50 : 100}%`, background: colors[lvl] }} />
+                    {[0, 1, 2].map((i) => (
+                      <button key={i} className="prot-stop" style={{ left: `${i * 50}%`, background: i <= lvl ? "#fff" : "var(--border)" }}
+                        onClick={() => !running && setRiskWeight(i === 0 ? 0 : i === 1 ? 50 : 100)} disabled={running} />
+                    ))}
+                    <div className="prot-thumb" style={{ left: `${lvl === 0 ? 0 : lvl === 1 ? 50 : 100}%`, borderColor: colors[lvl] }}>
+                      <span style={{ background: colors[lvl] }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </>
         )}
 
@@ -1075,8 +1103,8 @@ export default function App() {
       <div className="phone">
         <div className="phone-notch" />
         <div className="phone-screen">
-          {/* Marca flotante ARRIBA (fuera del modal), «.AI» azul como en la app */}
-          <div className="phone-brand-float"><img src="/favicon.png" alt="" className="brand-logo" /> Nómada<span className="brand-ai">.AI</span></div>
+          {/* Marca flotante ARRIBA (fuera del modal), SIN relleno, «.AI» azul pegado */}
+          <div className="phone-brand-float"><img src="/favicon.png" alt="" className="brand-logo" /><span className="phone-wm">Nómada<span className="brand-ai">.AI</span></span></div>
           <div className="phone-livebar">
             <span className="phone-veh-sm">{vehIcon}</span>
             <span className="phone-sub">{running ? "Navegando…" : finished ? "Finalizado" : "En espera"}</span>
@@ -1117,10 +1145,11 @@ export default function App() {
                 ));
               })()}
             </div>
-            <a className="phone-cta" href={MOBILE_APP_URL} target="_blank" rel="noopener noreferrer">Ir a la app móvil</a>
+            <button className="phone-cta" onClick={() => setShowDownload(true)}>Ir a la app móvil</button>
           </div>
         </div>
       </div>
+      {showDownload && <DownloadModal onClose={() => setShowDownload(false)} />}
     </>
   );
 }
@@ -1205,6 +1234,32 @@ function HelpPanel({ onClose }: { onClose: () => void }) {
           <b> no una garantía de seguridad</b>. "Menor exposición" no significa "seguro". Usa siempre tu
           criterio y las fuentes oficiales.
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------- modal de descarga (tiendas) ----------
+// Todo DESHABILITADO hasta publicar en tiendas y tener la web en línea.
+function DownloadModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="help-overlay" onClick={onClose}>
+      <div className="dl-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="help-x" onClick={onClose} title="Cerrar">✕</button>
+        <div className="dl-brand"><img src="/favicon.png" alt="" className="brand-logo" /><span className="phone-wm" style={{ color: "var(--text)" }}>Nómada<span className="brand-ai">.AI</span></span></div>
+        <p className="dl-lead">Lleva tu protección contigo. Descarga la app en tu teléfono para el uso real en la calle.</p>
+        <div className="dl-badges">
+          <button className="dl-badge" disabled title="Próximamente">
+            <span className="dl-badge-ic"></span>
+            <span><small>Próximamente en</small><b>App Store</b></span>
+          </button>
+          <button className="dl-badge" disabled title="Próximamente">
+            <span className="dl-badge-ic">▶</span>
+            <span><small>Próximamente en</small><b>Google Play</b></span>
+          </button>
+        </div>
+        <button className="dl-web" disabled title="La web estará disponible pronto">Continuar en la web</button>
+        <p className="dl-note">Aún no publicada. Este es un espacio de demostración; las descargas y la web se habilitan al salir a producción.</p>
       </div>
     </div>
   );
