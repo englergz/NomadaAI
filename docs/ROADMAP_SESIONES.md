@@ -11,6 +11,19 @@
   (tema en caliente, capas, heatmap paletas/intensidad/opacidad, vehículo B.6.1, umbral), «Tu protección»
   (/history, mode:'mobile'), FABs coherentes, licencia PolyForm NC.
 
+## ESTADO ACTUAL (2026-07-11) — leer primero al abrir sesión
+App móvil (Expo/RN) muy avanzada y VERIFICADA en emulador Android (Pixel_8_Pro) + navegador:
+U1–U4 completos, U7 en curso. Se decidió NO migrar a Flutter (era config de GPS, no el stack).
+Flujo de trabajo montado: **development build con Metro (live reload)** — `npx expo run:android`
+deja Metro en :8081; los cambios de JS se recargan sin reinstalar. Solo cambios nativos recompilan.
+APK de campo: `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`.
+
+Verificado funcionando en NATIVO: cambio de ciudad (flyTo Tumaco↔Cali con Camera imperativa
+`flyTo` — v11 usa centerCoordinate/zoomLevel, NO center/zoom), vehículo SVG por tipo (Marker, no
+MarkerView), trackUserLocation="course" (mapa sigue+rota), ruteo + trazado, teclado que sube la
+barra, Ajustes responsive, banners auto-descarte. glyphs en el estilo (arregla «Unable to parse
+resourceUrl»). POIs nativos = círculos de color (iconos tipo web necesitan PNG con <Images/>).
+
 ## Cola de trabajo (en orden)
 
 ### R1 · Framework de riesgo configurable (brief Parte A1+A2) — SIGUIENTE
@@ -146,6 +159,26 @@ J. Consentimiento Google: pantalla dice «ir a Clerk», no «Nómada.AI» — co
   claro, minimizar datos enviados, verificar token en servidor (CLERK_ISSUER en Space),
   RLS/authz en escrituras, rate-limit, consentimiento y borrado (Ley 1581).
 - Auditar antes de publicar: /security-review sobre el diff.
+
+### U7-C · Feedback 2026-07-11 (tarde) — PENDIENTES CONCRETOS
+Hecho hoy: buscar destino → vuela al PIN para confirmar; «Ir seguro» vuelve a la ubicación del
+usuario con la ruta; teclado sube la barra; recálculo en vivo al mover la barra durante el viaje;
+splash arranca DIRECTO en la animación (se oculta el splash nativo de una vez; el wordmark espera
+Sora); escritorio: el «celular» = modal REAL igual al móvil (marca .AI azul fuera del modal, hoja
+pegada a bordes, «Limpiar», filtros Todas/En zona/Anticipadas que FUNCIONAN, filas punto+hora·zona·
+nivel+cuerpo, «Ir a la app móvil»), banner de alerta en el MAPA del escritorio, aviso de demo, .AI azul.
+Pendiente:
+- Escritorio: la barra «Prioridad de seguridad: X%» debe verse IGUAL a la app (slider Mínima/
+  Equilibrada/Máxima, azul→morado). Portar ProtectionSlider al escritorio.
+- Escritorio: «Menú» debe replicar COMPLETO los Ajustes de la app (vehículo predeterminado, umbral,
+  tema, capas, riesgo) sin quitar lo del panel.
+- Clerk: el usuario YA puso nombre «Nómada.AI» + logo en el dashboard, pero al iniciar con Google
+  SIGUE mostrando Clerk. Revisar: puede ser el «Secured by Clerk» (solo se quita en plan pago) o la
+  pantalla de consentimiento de Google (Google Cloud Console → OAuth consent screen: nombre+logo).
+- SEGUNDO PLANO: si estoy en viaje, la app debe seguir operando en background y REANUDAR al volver
+  (expo-location background + task-manager + foreground service + notificación persistente;
+  restaurar el viaje en curso al reabrir). Es lo próximo GRANDE de U7 (con U7-SEC).
+- A veces la animación de entrada se traba/lenta — perfilar (medir en release, no debug).
 
 ### U7-B · Feedback 2026-07-11 (verificado en emulador Android)
 VERIFICADO funcionando en nativo: cambio de ciudad (flyTo Tumaco↔Cali con heatmap),

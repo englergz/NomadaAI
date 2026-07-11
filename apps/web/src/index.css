@@ -282,17 +282,43 @@ body.light .banner-line.ok { color: #14532d; }
 .help-lead { color: var(--muted); }
 .help-x { position: absolute; top: 12px; right: 12px; width: auto; background: transparent; border: none; color: var(--muted); font-size: 16px; box-shadow: none; }
 
-/* U5b: el «celular» muestra el historial de alertas desplegado desde arriba,
-   solo el nombre de la app arriba y «Ir a la app móvil» abajo (como la hoja móvil). */
-.phone-alerts { padding: 26px 12px 12px; align-items: stretch; }
-.phone-brand { display: flex; align-items: center; justify-content: center; gap: 7px; font-weight: 800; font-size: 15px; color: #e8edf3; }
-body.light .phone-brand { color: #17212c; }
-.phone-livebar { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+/* U5b: el «celular» = teléfono real con la marca flotando arriba (fuera del modal),
+   fondo oscurecido y una HOJA modal deslizada desde abajo (como la app móvil). */
+.phone-screen { justify-content: flex-start; }
+.phone-brand-float { display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; font-size: 14px; color: #e8edf3; background: rgba(20,26,34,0.9); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; padding: 5px 12px; margin-top: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); z-index: 2; }
+body.light .phone-brand-float { color: #17212c; background: rgba(255,255,255,0.95); border-color: rgba(0,0,0,0.06); }
+.brand-ai { color: #2f81f7; }
+.phone-sheet-head { display: flex; align-items: center; justify-content: space-between; }
+.phone-clear { background: transparent; border: none; box-shadow: none; width: auto; color: #ff6b5e; font-size: 11.5px; font-weight: 600; cursor: pointer; padding: 0; }
+.phone-filters { display: flex; gap: 6px; margin: 8px 0; }
+.phone-chip { background: transparent; border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; width: auto; box-shadow: none; }
+.phone-chip.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.phone-alist { flex: 1; overflow-y: auto; min-height: 0; }
+.alert-row { display: flex; gap: 8px; align-items: flex-start; border-bottom: 1px solid var(--border); padding: 8px 0; }
+.alert-dot { width: 8px; height: 8px; border-radius: 4px; margin-top: 5px; flex-shrink: 0; }
+.alert-dot.cau { background: #f5a524; }
+.alert-dot.att { background: #ff6b5e; }
+.alert-title { font-size: 12px; font-weight: 600; color: var(--text); }
+.alert-body { font-size: 11px; color: var(--muted); line-height: 1.4; margin-top: 2px; }
+.phone-livebar { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; z-index: 2; }
 .phone-veh-sm { font-size: 20px; }
 .risk-pill.sm { margin-top: 0; padding: 3px 8px; font-size: 10px; }
-.phone-alerts-h { margin-top: 12px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); }
+/* Backdrop de modal encima del mapa del teléfono */
+.phone-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 3; }
+/* Hoja modal PEGADA a los bordes del teléfono (izq/der/abajo); solo redondea arriba.
+   El overflow del .phone-screen recorta las esquinas inferiores a la curva del móvil. */
+.phone-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; background: var(--panel); border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; padding: 8px 14px 16px; display: flex; flex-direction: column; max-height: 74%; box-shadow: 0 -6px 20px rgba(0,0,0,0.35); }
+.phone-sheet-handle { align-self: center; width: 38px; height: 4px; border-radius: 2px; background: var(--border); margin: 2px 0 8px; }
+.phone-sheet-title { font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
 .phone-empty { font-size: 11px; color: var(--muted); line-height: 1.5; padding: 6px 2px; }
 .phone-cta { display: block; margin-top: 10px; text-align: center; background: var(--accent); color: #fff; font-weight: 700; font-size: 13px; padding: 11px; border-radius: 999px; text-decoration: none; flex-shrink: 0; }
+/* Banner de alerta EN EL MAPA del escritorio (como el móvil): arriba-centro. */
+.map-banner { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 40; max-width: min(460px, 84vw); display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid #f5a524; border-radius: 14px; padding: 9px 14px; box-shadow: var(--shadow-2); }
+.map-banner.att { border-color: #ff6b5e; }
+.map-banner-txt { font-size: 12.5px; color: var(--text); line-height: 1.35; }
+.map-banner-x { background: transparent; border: none; box-shadow: none; width: auto; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0; }
+/* Aviso de demo: esto es simulación; el uso real es la app móvil. */
+.demo-note { font-size: 11px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 10px; }
 
 /* Panel reorganizado: propósito + secciones numeradas */
 .panel-lead { font-size: 12px; line-height: 1.5; color: var(--text); margin: 0 0 12px; }

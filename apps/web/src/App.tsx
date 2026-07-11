@@ -65,7 +65,10 @@ function vehicleSVG(t?: string): string {
   return `<svg width="30" height="30" viewBox="0 0 40 40">${sh}<g filter="url(#vs)"><rect x="12.5" y="6" width="15" height="28" rx="6.5" fill="#1f2937" stroke="#fff" stroke-width="1.5"/><path d="M15 13 Q20 9.5 25 13 L25 17 L15 17 Z" fill="#9cd2ff"/><rect x="15" y="25.5" width="10" height="5.5" rx="2.5" fill="#4b5563"/></g></svg>`;
 }
 
-interface Notif { id: number; title: string; body: string; time: string; }
+interface Notif {
+  id: number; title: string; body: string; time: string;
+  zone?: string; level?: "precaucion" | "atencion"; kind?: "proximidad" | "anticipada";
+}
 // Acumulado de un viaje en curso: predicción del modelo vs baseline (línea recta) + alertas.
 interface TripAgg { n: number; modelErr: number; baseErr: number; modelHit50: number; baseHit50: number; alerts: number; }
 const emptyTripAgg = (): TripAgg => ({ n: 0, modelErr: 0, baseErr: 0, modelHit50: 0, baseHit50: 0, alerts: 0 });
@@ -198,6 +201,7 @@ export default function App() {
   const [histSummary, setHistSummary] = useState<any>(null);            // agregados del usuario (DB)
   const [histGlobal, setHistGlobal] = useState<any>(null);              // contexto global (BI)
   const [showHelp, setShowHelp] = useState(false);
+  const [alertFilter, setAlertFilter] = useState<"all" | "proximidad" | "anticipada">("all"); // filtros del historial (como el móvil)
   const [log, setLog] = useState<string[]>([]);
   const [showConsole, setShowConsole] = useState(true);
   const [finished, setFinished] = useState(false);
@@ -732,11 +736,13 @@ export default function App() {
               lastCellRef.current = a.cell_id;
               tripAggRef.current.alerts += 1;
               const id = ++notifIdRef.current;
+              const level: "precaucion" | "atencion" = a.risk_norm >= 0.75 ? "atencion" : "precaucion";
               setNotifs((prev) => [{
                 id,
-                title: "⚠️ Alerta de seguridad",
+                title: level === "atencion" ? "Atención en este tramo" : "Precaución en este tramo",
                 time: fmtClock(clockRef.current).slice(0, 5),
-                body: `Zona ${a.cell_id} de alto riesgo (${(a.risk_norm * 100).toFixed(0)}%) a ~${a.distance_m.toFixed(0)} m. Considera un desvío.`,
+                zone: String(a.cell_id), level, kind: "proximidad" as const,
+                body: `Zona de alto riesgo (${(a.risk_norm * 100).toFixed(0)}%) a ~${a.distance_m.toFixed(0)} m. Considera un desvío.`,
               }, ...prev].slice(0, 20));
             }
           } else { setPoint(map, "danger", null); }
@@ -763,6 +769,14 @@ export default function App() {
   return (
     <>
       <div id="map" ref={containerRef} />
+
+      {/* Banner de la alerta más reciente EN EL MAPA (como el móvil): arriba-centro. */}
+      {notifs[0] && (
+        <div className={`map-banner ${notifs[0].level === "atencion" ? "att" : ""}`}>
+          <span className="map-banner-txt"><b>{notifs[0].title}.</b> {notifs[0].body}</span>
+          <button className="map-banner-x" onClick={() => setNotifs((p) => p.slice(1))} title="Cerrar">✕</button>
+        </div>
+      )}
 
       {/* Banner informativo flotante al centro (lo que está pasando de fondo, visible). */}
       {(busy || (mode === "draw" && !running && drawMsg) || safeMsg) && (
@@ -833,7 +847,8 @@ export default function App() {
       )}
       <div className="panel" style={{ display: panelOpen ? undefined : "none" }}>
         <button className="panel-collapse" onClick={() => setPanelOpen(false)} title="Ocultar panel">«</button>
-        <h1 className="brand"><img src="/favicon.png" alt="" className="brand-logo" /> Nómada.AI</h1>
+        <h1 className="brand"><img src="/favicon.png" alt="" className="brand-logo" /> Nómada<span className="brand-ai">.AI</span></h1>
+        <p className="demo-note">🧪 Espacio de <b>demostración</b>: aquí ves simulaciones sobre datos reales. El uso real es desde la <b>app móvil</b> (Android/iOS).</p>
         <p className="subtitle">Navegación consciente del riesgo · <select className="city-sel" value={city} onChange={(e) => changeCity(e.target.value)} disabled={running}>
           {Object.entries(CITIES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select></p>
@@ -1059,8 +1074,9 @@ export default function App() {
           abajo. Durante la simulación se ve el estado en vivo bajo el nombre. */}
       <div className="phone">
         <div className="phone-notch" />
-        <div className="phone-screen phone-alerts">
-          <div className="phone-brand"><img src="/favicon.png" alt="" className="brand-logo" /> Nómada.AI</div>
+        <div className="phone-screen">
+          {/* Marca flotante ARRIBA (fuera del modal), «.AI» azul como en la app */}
+          <div className="phone-brand-float"><img src="/favicon.png" alt="" className="brand-logo" /> Nómada<span className="brand-ai">.AI</span></div>
           <div className="phone-livebar">
             <span className="phone-veh-sm">{vehIcon}</span>
             <span className="phone-sub">{running ? "Navegando…" : finished ? "Finalizado" : "En espera"}</span>
@@ -1068,18 +1084,41 @@ export default function App() {
               <span className={`risk-pill sm ${liveRisk >= thrRef.current ? "hi" : ""}`}>{(liveRisk * 100).toFixed(0)}%</span>
             )}
           </div>
-          <div className="phone-alerts-h">Historial de alertas</div>
-          <div className="notif-stack">
-            {notifs.length === 0 ? (
-              <div className="phone-empty">Sin alertas por ahora. Aparecerán aquí durante la simulación, con hora y zona.</div>
-            ) : notifs.map((n) => (
-              <div className="push" key={n.id}>
-                <div className="push-head"><span className="push-title">{n.title}</span><span className="push-time">{n.time}</span></div>
-                <div className="push-body">{n.body}</div>
+          {/* Backdrop oscurecido: hay un modal encima */}
+          <div className="phone-backdrop" />
+          {/* Hoja modal PEGADA a los bordes — el mismo diseño que la app móvil */}
+          <div className="phone-sheet">
+            <div className="phone-sheet-handle" />
+            <div className="phone-sheet-head">
+              <span className="phone-sheet-title">Historial de alertas</span>
+              {notifs.length > 0 && (
+                <button className="phone-clear" onClick={() => setNotifs([])}>Limpiar</button>
+              )}
+            </div>
+            {notifs.length > 0 && (
+              <div className="phone-filters">
+                {([["all", "Todas"], ["proximidad", "En zona"], ["anticipada", "Anticipadas"]] as const).map(([k, lbl]) => (
+                  <button key={k} className={`phone-chip ${alertFilter === k ? "on" : ""}`} onClick={() => setAlertFilter(k)}>{lbl}</button>
+                ))}
               </div>
-            ))}
+            )}
+            <div className="phone-alist">
+              {(() => {
+                const shown = alertFilter === "all" ? notifs : notifs.filter((n) => (n.kind ?? "proximidad") === alertFilter);
+                if (shown.length === 0) return <div className="phone-empty">Sin alertas por ahora. Aparecerán aquí durante la simulación, con hora y zona.</div>;
+                return shown.map((n) => (
+                  <div className="alert-row" key={n.id}>
+                    <span className={`alert-dot ${n.level === "atencion" ? "att" : "cau"}`} />
+                    <div>
+                      <div className="alert-title">{n.time} · zona {n.zone ?? "—"} · {n.level === "atencion" ? "Atención" : "Precaución"}{n.kind === "anticipada" ? " (anticipada)" : ""}</div>
+                      <div className="alert-body">{n.body}</div>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+            <a className="phone-cta" href={MOBILE_APP_URL} target="_blank" rel="noopener noreferrer">Ir a la app móvil</a>
           </div>
-          <a className="phone-cta" href={MOBILE_APP_URL} target="_blank" rel="noopener noreferrer">Ir a la app móvil</a>
         </div>
       </div>
     </>

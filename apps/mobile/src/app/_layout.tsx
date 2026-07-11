@@ -68,25 +68,25 @@ function Root() {
 
 // Splash animado SOLO en arranque en frío: este componente raíz se monta una vez
 // por proceso; la app carga detrás mientras la ruta se dibuja (~3 s).
-function SplashGate() {
+function SplashGate({ fontsReady }: { fontsReady: boolean }) {
   const [done, setDone] = useState(false);
   if (done) return null;
-  return <AnimatedSplash onDone={() => setDone(true)} />;
+  return <AnimatedSplash fontsReady={fontsReady} onDone={() => setDone(true)} />;
 }
 
 export default function RootLayout() {
   // Tipografía de marca (wordmark Nómada.AI); la UI sigue con la fuente del sistema.
   const [fontsLoaded] = useFonts({ Sora_700Bold });
-  useEffect(() => { if (fontsLoaded) SplashScreen.hideAsync(); }, [fontsLoaded]);
-  // En nativo, pintar ANTES de tener la Sora deja el wordmark mal medido y
-  // recortado («Nóma .A»): no se renderiza nada hasta que la fuente esté lista
-  // (el splash nativo del sistema sigue en pantalla, no hay parpadeo).
-  if (!fontsLoaded) return null;
+  // Se OCULTA el splash nativo del sistema de inmediato (la «pantalla negra con el
+  // logo»): la app entra DIRECTO en la animación de arranque, sin salto intermedio.
+  useEffect(() => { SplashScreen.hideAsync().catch(() => { /* ya oculto */ }); }, []);
   return (
     <MaybeClerk>
       <SettingsProvider>
         <Root />
-        <SplashGate />
+        {/* La animación (dibujo del logo) no depende de Sora; el wordmark final espera
+            la fuente para no recortarse. */}
+        <SplashGate fontsReady={fontsLoaded} />
       </SettingsProvider>
     </MaybeClerk>
   );
