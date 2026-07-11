@@ -93,7 +93,62 @@
   (SVG en web, sprite de Views en nativo con MarkerView).
 - APK: prebuild + gradle assembleRelease local (SDK en ~/Library/Android/sdk).
 
-### U7 · PLAN pruebas reales Android (feedback 2026-07-10) — EN CURSO, prioridad
+### DECISIÓN DE STACK (2026-07-10): NO reescribir, NO migrar a Flutter
+La lentitud reportada NO es del stack (RN/Expo/MapLibre) sino de configuración:
+watchPosition estaba en Balanced/4s/15m (→ «relento» y desfase en carretera) y la
+cámara hacía easeTo suelto por punto. Flutter usaría el mismo MapLibre y el mismo GPS
+del SO → mismo problema, perdiendo semanas de U1–U4. Camino correcto = tuning +
+arquitectura, no cambiar de lenguaje. Documentado para no reabrir el debate.
+
+### U7 · Fluidez tiempo-real + robustez (feedback 2026-07-10, campo) — EN CURSO, MÁXIMA prioridad
+Hecho en esta pasada:
+- watchPosition → BestForNavigation, 1s/3m; rumbo desde course del GPS en movimiento.
+- GPS con última-posición-conocida inmediata + fix de alta precisión (25s) — arregla
+  «no se pudo obtener ubicación» recurrente.
+- Ruta /sso-callback (fix «page could not be found» al volver del login Google).
+- Guard «viaje fantasma»: no registra viaje si no hubo movimiento (≥4 puntos).
+Pendiente (orden de campo):
+A. FLUIDEZ cámara: seguimiento continuo (interpolación entre fixes, no salto por
+   punto); marcador que se desliza; probar en APK que el mapa gira con el teléfono.
+B. AutoTrip inteligente: si quieto >15 min → preguntar «¿sigues en viaje?» (alert 60s);
+   sin respuesta y sin moverse → repreguntar a los 15 min; 2ª sin respuesta → finaliza
+   automático. Detección de arranque YA funciona en campo (confirmado por usuario).
+C. Ruteo en viaje libre: permitir elegir destino DESPUÉS de iniciar; recálculo al
+   desviarse de la ruta segura (¿implementado? — verificar/agregar).
+D. Copys/UI: «Recorrido libre automático» con menos texto (explicación DEBAJO del
+   toggle); switch tipo iOS; quitar mención «Android» (multiplataforma); modal
+   Reportar con botones que encajen + MÁS categorías de incidente.
+E. Selector de PROTECCIÓN: reemplazar los 3 chips (palabras largas) por una barra
+   deslizante elegante (paleta de la app): «Protección» al medio, «Mínima»–«Máxima»
+   en extremos, 3 topes marcados, default centro.
+F. Estados de segundo plano SIEMPRE visibles y para público general: «Obteniendo
+   ubicación…», «Cargando mapa de riesgo…», etc. (hoy casi nunca aparece).
+G. Fecha de nacimiento: avisar cuando la fecha no es válida (hoy valida en silencio).
+H. Animación cambio de ciudad en NATIVO: sigue sin funcionar / «deja full todo» al
+   cambiar — INVESTIGAR a fondo (¿Camera key/animationMode?).
+I. Splash: quita pantalla negra con logo previa a la animación (splash nativo del SO);
+   calibrar waypoints del punto sobre el PNG.
+J. Consentimiento Google: pantalla dice «ir a Clerk», no «Nómada.AI» — configurar
+   nombre/branding de la app OAuth en el dashboard de Clerk (acción del usuario).
+
+### U7-SEC · CIBERSEGURIDAD (transversal, prioritario)
+- Nunca exponer ubicaciones/viajes: cifrar histórico local sensible (expo-secure-store
+  para tokens ya; evaluar cifrado de trip logs), HTTPS estricto, no loguear coords en
+  claro, minimizar datos enviados, verificar token en servidor (CLERK_ISSUER en Space),
+  RLS/authz en escrituras, rate-limit, consentimiento y borrado (Ley 1581).
+- Auditar antes de publicar: /security-review sobre el diff.
+
+### U7-OTA · Actualizaciones sin reinstalar
+expo-updates (canal prod): cambios JS/asset al instante; vista «Novedades» tipo
+changelog al abrir tras actualizar; NUNCA actualizar durante un viaje (solo en frío).
+
+### U7-ARCH · Refactor (mantenibilidad/escalabilidad)
+Extraer de map.tsx: hooks useTrip / useCity / useBanner / useHealth / useLocation;
+BaseSheet común (6 hojas duplican backdrop/estilos); servicios en lib/ sin lógica en
+vistas; recortar APK 151MB (split ABIs, proguard/shrink). Patrón: capa servicios →
+hooks → vistas. Sin duplicación.
+
+### U7 · (histórico) plan previo pruebas reales Android — consolidado arriba
 Hecho en esta pasada: banners con auto-descarte por categoría (info 6s / warn 10s /
 alerta 15s) y ✕ manual; guard «sin fix GPS no hay viaje» + estado «Obteniendo tu
 ubicación…»; wordmark recortado en APK (no pintar hasta cargar Sora); punto del

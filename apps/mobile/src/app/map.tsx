@@ -227,9 +227,18 @@ export default function MapScreen() {
         setBanner({ text: t('map.banner.noPermission'), tone: 'warn' });
         return null;
       }
-      const pos = await withTimeout(
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }), 10000, 'gps',
-      );
+      // GPS robusto: primero la última posición conocida (respuesta INMEDIATA) y
+      // en paralelo un fix fresco de alta precisión con más margen — el fallo
+      // recurrente era el timeout corto de un único intento.
+      let pos = await Location.getLastKnownPositionAsync({ maxAge: 60000 }).catch(() => null);
+      try {
+        pos = await withTimeout(
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }), 25000, 'gps',
+        );
+      } catch {
+        if (!pos) throw new Error('gps');
+        // sin fix fresco pero con última posición: seguimos con ella
+      }
       const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
       setUserLoc(loc);
       // Centrar SIEMPRE al ubicar (antes solo volaba la primera vez).
@@ -445,9 +454,17 @@ export default function MapScreen() {
     setTripLevel('despejado');
     setOnTrip(true);
     setBanner({ text: t('map.banner.tripStarted'), tone: 'info' });
+    // TIEMPO REAL: máxima precisión y refresco ~1 s / 3 m (antes 4 s / 15 m = el
+    // «relento»). El rumbo del propio GPS (course) es más estable que la brújula
+    // cuando hay velocidad, así que se usa como fuente principal en movimiento.
     watchRef.current = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.Balanced, timeInterval: 4000, distanceInterval: 15 },
-      (p) => handlePosition([p.coords.longitude, p.coords.latitude]),
+      { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 3 },
+      (p) => {
+        if (typeof p.coords.heading === 'number' && p.coords.heading >= 0 && (p.coords.speed ?? 0) > 1.5) {
+          setHeading(p.coords.heading);
+        }
+        handlePosition([p.coords.longitude, p.coords.latitude]);
+      },
     );
     // Brújula (nativo): el mapa/vehículo se orientan a donde apunta el teléfono.
     if (Platform.OS !== 'web') {
@@ -469,7 +486,10 @@ export default function MapScreen() {
     // Salida GARANTIZADA del modo navegación: además del reset de pitch/rumbo,
     // se fuerza un encuadre normal sobre la última posición conocida.
     if (userLoc) setFocus({ center: userLoc, zoom: 15 });
-    if (onTrip) {
+    // Sin movimiento real no hay viaje que registrar: evita el «viaje fantasma»
+    // de pulsar Recorrido libre y finalizar sin haberse movido.
+    const moved = tripPtsRef.current.length >= 4;
+    if (onTrip && moved) {
       setBanner(null);
       // Registra el viaje real en «Tu protección» (mode: mobile — BI lo separa del simulador).
       const comp = comparisonRef.current;
