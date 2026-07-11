@@ -282,6 +282,18 @@ body.light .banner-line.ok { color: #14532d; }
 .help-lead { color: var(--muted); }
 .help-x { position: absolute; top: 12px; right: 12px; width: auto; background: transparent; border: none; color: var(--muted); font-size: 16px; box-shadow: none; }
 
+/* U5b: el «celular» muestra el historial de alertas desplegado desde arriba,
+   solo el nombre de la app arriba y «Ir a la app móvil» abajo (como la hoja móvil). */
+.phone-alerts { padding: 26px 12px 12px; align-items: stretch; }
+.phone-brand { display: flex; align-items: center; justify-content: center; gap: 7px; font-weight: 800; font-size: 15px; color: #e8edf3; }
+body.light .phone-brand { color: #17212c; }
+.phone-livebar { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+.phone-veh-sm { font-size: 20px; }
+.risk-pill.sm { margin-top: 0; padding: 3px 8px; font-size: 10px; }
+.phone-alerts-h { margin-top: 12px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); }
+.phone-empty { font-size: 11px; color: var(--muted); line-height: 1.5; padding: 6px 2px; }
+.phone-cta { display: block; margin-top: 10px; text-align: center; background: var(--accent); color: #fff; font-weight: 700; font-size: 13px; padding: 11px; border-radius: 999px; text-decoration: none; flex-shrink: 0; }
+
 /* Panel reorganizado: propósito + secciones numeradas */
 .panel-lead { font-size: 12px; line-height: 1.5; color: var(--text); margin: 0 0 12px; }
 .counts-cap { font-size: 11px; color: var(--muted); margin: 6px 0 2px; }

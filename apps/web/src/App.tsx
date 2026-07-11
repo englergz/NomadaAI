@@ -44,6 +44,8 @@ function labelForType(t?: string): string {
   }
 }
 const base = () => import.meta.env.VITE_API_URL ?? "";
+// URL de la app móvil (dominio/tienda/web-build). Cambiar al publicar.
+const MOBILE_APP_URL = import.meta.env.VITE_MOBILE_APP_URL ?? "https://englergz-nomadaai.hf.space";
 
 // Ícono cenital del vehículo (estilo Uber/Rappi). Apunta hacia ARRIBA (norte) en rotación 0;
 // el marcador se rota al rumbo. El parabrisas claro marca el frente.
@@ -1052,24 +1054,32 @@ export default function App() {
         </div>
       )}
 
-      {/* Simulador de móvil con notificaciones apiladas */}
+      {/* Simulador de móvil: historial de alertas desplegado desde arriba (como la
+          hoja del móvil), con solo el nombre de la app arriba y «Ir a la app móvil»
+          abajo. Durante la simulación se ve el estado en vivo bajo el nombre. */}
       <div className="phone">
         <div className="phone-notch" />
-        <div className="phone-screen">
-          <div className="phone-status">{running || finished ? fmtClock(clock) : `${String(hour).padStart(2, "0")}:00`} · Nómada.AI</div>
-          <div className="phone-veh">{vehIcon}</div>
-          <div className="phone-sub">{running ? "Navegando…" : finished ? "Finalizado" : "En espera"}</div>
-          {liveRisk != null && (
-            <div className={`risk-pill ${liveRisk >= thrRef.current ? "hi" : ""}`}>Riesgo de la zona: {(liveRisk * 100).toFixed(0)}%</div>
-          )}
+        <div className="phone-screen phone-alerts">
+          <div className="phone-brand"><img src="/favicon.png" alt="" className="brand-logo" /> Nómada.AI</div>
+          <div className="phone-livebar">
+            <span className="phone-veh-sm">{vehIcon}</span>
+            <span className="phone-sub">{running ? "Navegando…" : finished ? "Finalizado" : "En espera"}</span>
+            {liveRisk != null && (
+              <span className={`risk-pill sm ${liveRisk >= thrRef.current ? "hi" : ""}`}>{(liveRisk * 100).toFixed(0)}%</span>
+            )}
+          </div>
+          <div className="phone-alerts-h">Historial de alertas</div>
           <div className="notif-stack">
-            {notifs.map((n) => (
+            {notifs.length === 0 ? (
+              <div className="phone-empty">Sin alertas por ahora. Aparecerán aquí durante la simulación, con hora y zona.</div>
+            ) : notifs.map((n) => (
               <div className="push" key={n.id}>
                 <div className="push-head"><span className="push-title">{n.title}</span><span className="push-time">{n.time}</span></div>
                 <div className="push-body">{n.body}</div>
               </div>
             ))}
           </div>
+          <a className="phone-cta" href={MOBILE_APP_URL} target="_blank" rel="noopener noreferrer">Ir a la app móvil</a>
         </div>
       </div>
     </>
