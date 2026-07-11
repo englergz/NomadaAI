@@ -2,7 +2,8 @@
 // Paridad con la tarjeta del panel de escritorio: riesgo evitado, viajes, alertas
 // a tiempo, contexto de comunidad y reinicio del histórico propio.
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ProfileSection from '@/components/profile-section';
 import { Colors, Radii } from '@/constants/theme';
@@ -38,6 +39,8 @@ export default function ProtectionSheet({ visible, onClose }: { visible: boolean
   const [mine, setMine] = useState<HistorySummary | null>(null);
   const [all, setAll] = useState<HistorySummary | null>(null);
   const [loading, setLoading] = useState(false);
+  const insets = useSafeAreaInsets();
+  const { height: winH } = useWindowDimensions();
 
   useEffect(() => {
     if (!visible) return;
@@ -54,11 +57,14 @@ export default function ProtectionSheet({ visible, onClose }: { visible: boolean
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: c.backgroundElement, borderColor: c.border }]}>
+      <View style={[styles.sheet, { maxHeight: winH * 0.9, paddingBottom: insets.bottom + 16, backgroundColor: c.backgroundElement, borderColor: c.border }]}>
         <View style={[styles.handle, { backgroundColor: c.border }]} />
         <Text style={[styles.title, { color: c.text }]}>{t('prot.title')}</Text>
         <Text style={{ color: c.textSecondary, fontSize: 12 }}>{t('prot.subtitle')}</Text>
 
+        {/* Contenido scrollable: en pantallas cortas el perfil no cabía y no había
+            forma de llegar a «Listo». */}
+        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: 12, paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
         {/* U4: sesión y perfil (solo si hay clave de Clerk; si no, invitado puro) */}
         {CLERK_ENABLED && <ProfileSection />}
 
@@ -102,6 +108,7 @@ export default function ProtectionSheet({ visible, onClose }: { visible: boolean
             {t('prot.community', { trips: all.trips, users: all.users, s: all.users === 1 ? '' : 's', alerts: all.alerts })}
           </Text>
         )}
+        </ScrollView>
 
         <Pressable onPress={onClose} style={[styles.btn, { backgroundColor: c.accent, borderColor: c.accent }]}>
           <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{t('prot.done')}</Text>

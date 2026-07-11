@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { baseStyle, baseTiles, CITIES, DEFAULT_CITY, HEAT_PALETTES, RISK_FILL_COLOR, RISK_LINE_COLOR, riskFillColor } from '@/constants/map';
+import { baseStyle, baseTiles, CITIES, DEFAULT_CITY, RISK_FILL_COLOR, riskFillColor } from '@/constants/map';
 // Glyphmap oficial de MaterialCommunityIcons (nombre → codepoint): iconos literales
 // por categoría (gas-station, hospital-box, church…), nada de emojis.
 import MCIGlyphs from '@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/MaterialCommunityIcons.json';
@@ -90,10 +90,7 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
         id: 'risk-fill', type: 'fill', source: 'risk',
         paint: { 'fill-color': RISK_FILL_COLOR as never },
       });
-      map.addLayer({
-        id: 'risk-line', type: 'line', source: 'risk',
-        paint: { 'line-color': RISK_LINE_COLOR, 'line-width': 0.5 },
-      });
+      // Sin bordes de celda: el heatmap se ve como superficie continua (pedido).
       // Lugares (POIs): iconos por categoría (B4). Las imágenes se rasterizan async;
       // al terminar se fuerza un repaint para que la capa las tome.
       const empty = { type: 'FeatureCollection', features: [] } as never;
@@ -187,7 +184,6 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
       if (!map.getLayer('risk-fill')) return;
       map.setPaintProperty('risk-fill', 'fill-color', riskFillColor(riskStyle.palette, riskStyle.intensity) as never);
       map.setPaintProperty('risk-fill', 'fill-opacity', riskStyle.opacity);
-      map.setPaintProperty('risk-line', 'line-color', HEAT_PALETTES[riskStyle.palette].line);
     };
     if (loadedRef.current) apply(); else map.once('load', apply);
   }, [riskStyle]);
@@ -199,7 +195,7 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     const apply = () => {
       const src = map.getSource('risk') as maplibregl.GeoJSONSource | undefined;
       if (src && riskData) src.setData(riskData as never);
-      for (const id of ['risk-fill', 'risk-line']) {
+      for (const id of ['risk-fill']) {
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', riskOn ? 'visible' : 'none');
       }
     };

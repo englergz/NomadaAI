@@ -32,7 +32,7 @@ import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
 import { Colors } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { levelFor, ProximityTracker, zoneAt, type AlertLevel } from '@/lib/alerts';
-import { bearingDeg, coverageCity, distM, searchPlaces, type Place } from '@/lib/geocode';
+import { bearingDeg, coverageCity, distM, distToPath, searchPlaces, type Place } from '@/lib/geocode';
 
 // Nivel de protección → λ (risk_weight) del backend. Naming de producto: habla del
 // valor (protegerte), no de la geometría de la ruta; empata con «Tu protección».
@@ -131,6 +131,13 @@ export default function MapScreen() {
   const idleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const riskRef = useRef<RiskZonesResponse | null>(null);
   useEffect(() => { riskRef.current = riskData; }, [riskData]);
+  // Refs para los callbacks de GPS (ven estado fresco sin re-suscribir el watcher).
+  const routesRef = useRef<RouteLines | null>(null);
+  useEffect(() => { routesRef.current = routes; }, [routes]);
+  const destRef = useRef<Place | null>(null);
+  useEffect(() => { destRef.current = dest; }, [dest]);
+  const lastRerouteRef = useRef(0);
+  const reroutingRef = useRef(false);
 
   // Estado del servicio: comprobación REAL de /health, repetida cada 60 s. Alimenta
   // el punto verde/coral del chip de ciudad; si cae, además avisa con un banner.
@@ -270,16 +277,15 @@ export default function MapScreen() {
 
   const lastOriginRef = useRef<[number, number] | null>(null);
 
-  async function goSafe(prioIdx: number = priority) {
+  async function goSafe(prioIdx: number = priority, originOverride?: [number, number], silent = false) {
     if (!dest || routing) return;
     Keyboard.dismiss();
     setRouting(true);
-    setBanner({ text: t('map.banner.routing'), tone: 'info' });
+    if (!silent) setBanner({ text: t('map.banner.routing'), tone: 'info' });
     try {
-      // Origen: tu ubicación si está en cobertura; si no (o si el GPS no responde
-      // a tiempo), el centro de la ciudad demo — el flujo nunca se queda colgado.
-      // Al recalcular (cambio de prioridad) se reutiliza el último origen.
-      let origin = (userLoc && !outOfCoverage ? userLoc : null) ?? lastOriginRef.current;
+      // Origen: el forzado (recálculo desde la posición actual al desviarse), o tu
+      // ubicación si está en cobertura; si no, el centro de la ciudad demo.
+      let origin = originOverride ?? (userLoc && !outOfCoverage ? userLoc : null) ?? lastOriginRef.current;
       if (!origin) {
         const loc = await locate().catch(() => null);
         origin = loc && coverageCity(loc as Coordinate) ? loc : CITIES[city].center;
@@ -293,6 +299,7 @@ export default function MapScreen() {
           risk_weight: PRIORITIES[prioIdx].w,
           type: effVehicle ?? undefined, // calles según el vehículo (opcional)
         }),
+        // silent=recálculo por desvío: banner discreto, no interrumpe el viaje.
         45000, // el Space gratuito puede tardar en despertar
         'ruta',
       );
@@ -316,13 +323,15 @@ export default function MapScreen() {
       const prio = t(PRIORITIES[prioIdx].key);
       // EVITAR vs AVISAR: si el desvío no reduce exposición, no fingimos un desvío útil.
       // Siempre se muestran km y % para que se VEA el recálculo aunque el trazo coincida.
-      if (red >= 2) {
+      if (silent) {
+        setBanner({ text: t('map.banner.rerouted'), tone: 'info' });
+      } else if (red >= 2) {
         setBanner({ text: t('map.banner.routeOk', { prio: prio.toLowerCase(), km, red: red.toFixed(1) }), tone: 'ok' });
       } else {
         setBanner({ text: t('map.banner.routeNoAlt', { km, red: red.toFixed(1) }), tone: 'warn' });
       }
     } catch {
-      setBanner({ text: t('map.banner.routeError'), tone: 'warn' });
+      if (!silent) setBanner({ text: t('map.banner.routeError'), tone: 'warn' });
     } finally {
       setRouting(false);
     }
@@ -425,6 +434,17 @@ export default function MapScreen() {
     if (prev && distM([prev.lon, prev.lat], pos) > 8) {
       lastMoveAtRef.current = Date.now();
       idlePromptsRef.current = 0;
+    }
+    // RECÁLCULO AL DESVIARSE: si te alejas >45 m de la ruta segura, se traza una
+    // nueva desde tu posición actual (máx. 1 recálculo cada 12 s).
+    const rt = routesRef.current;
+    if (rt?.safe && rt.safe.length > 1 && destRef.current && !reroutingRef.current) {
+      const off = distToPath(pos, rt.safe);
+      if (off > 45 && Date.now() - lastRerouteRef.current > 12000) {
+        lastRerouteRef.current = Date.now();
+        reroutingRef.current = true;
+        goSafe(priority, pos, true).finally(() => { reroutingRef.current = false; });
+      }
     }
     // Rumbo estimado por movimiento (fallback web y respaldo si no hay brújula).
     if (prev && Platform.OS === 'web' && distM([prev.lon, prev.lat], pos) > 3) {
@@ -713,7 +733,12 @@ export default function MapScreen() {
             style={[styles.results, { borderColor: c.border }]}
             renderItem={({ item }) => (
               <Pressable
-                onPress={() => { setDest(item); setQuery(item.name); setResults([]); Keyboard.dismiss(); }}
+                onPress={() => {
+                  setDest(item); setQuery(item.name); setResults([]); Keyboard.dismiss();
+                  // Elegir destino DURANTE un recorrido libre traza la ruta al vuelo
+                  // desde tu posición actual (sin cortar el viaje).
+                  if (onTrip && userLoc) setTimeout(() => goSafe(priority, userLoc, false), 0);
+                }}
                 style={({ pressed }) => [styles.resultRow, { backgroundColor: pressed ? c.backgroundSelected : 'transparent' }]}
               >
                 <Text style={{ color: c.text, fontSize: 14 }} numberOfLines={1}>{item.name}</Text>

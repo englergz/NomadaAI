@@ -5,8 +5,8 @@ import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
-import { baseStyle, CITIES, DEFAULT_CITY, HEAT_PALETTES, riskFillColor } from '@/constants/map';
-import { POI_CIRCLE_COLOR, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
+import { baseStyle, CITIES, DEFAULT_CITY, riskFillColor } from '@/constants/map';
+import { POI_CIRCLE_COLOR, POI_EMOJI_FIELD, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
 
 // Carga perezosa: si el módulo nativo no está (Expo Go), no reventamos el bundle.
 let ML: typeof import('@maplibre/maplibre-react-native') | null = null;
@@ -78,27 +78,34 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
             id="risk-fill"
             type="fill"
             paint={{
-              'fill-color': riskFillColor(riskStyle?.palette ?? 'calor', riskStyle?.intensity ?? 0.5) as never,
-              'fill-opacity': riskStyle?.opacity ?? 0.7,
+              'fill-color': riskFillColor(riskStyle?.palette ?? 'semaforo', riskStyle?.intensity ?? 0.5) as never,
+              'fill-opacity': riskStyle?.opacity ?? 0.25,
             }}
           />
-          <Layer
-            id="risk-line"
-            type="line"
-            paint={{ 'line-color': HEAT_PALETTES[riskStyle?.palette ?? 'calor'].line, 'line-width': 0.5 }}
-          />
+          {/* Sin bordes de celda (risk-line): superficie continua, como en la web. */}
         </GeoJSONSource>
       )}
       {poisData && poisOn && (
         <GeoJSONSource id="pois" data={poisData as never}>
+          {/* Círculo de fondo blanco + emoji de categoría encima: aproxima los
+              iconos de la web (el canvas del navegador no existe en nativo). */}
           <Layer
-            id="pois"
+            id="pois-bg"
             type="circle"
             paint={{
-              'circle-radius': 5,
-              'circle-color': POI_CIRCLE_COLOR as never,
-              'circle-stroke-width': 1.2,
-              'circle-stroke-color': '#ffffff',
+              'circle-radius': 11,
+              'circle-color': '#ffffff',
+              'circle-stroke-width': 1.5,
+              'circle-stroke-color': POI_CIRCLE_COLOR as never,
+            }}
+          />
+          <Layer
+            id="pois"
+            type="symbol"
+            layout={{
+              'text-field': POI_EMOJI_FIELD as never,
+              'text-size': 15,
+              'text-allow-overlap': false,
             }}
           />
         </GeoJSONSource>

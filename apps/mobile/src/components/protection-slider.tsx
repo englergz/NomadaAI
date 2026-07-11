@@ -57,7 +57,9 @@ export default function ProtectionSlider({
     inputRange: [0, STOPS - 1],
     outputRange: [PAD, PAD + usable],
   });
-  const stopColors = [c.accent, c.amber, c.coral];
+  // Azul en TODOS los niveles: más protección = azul más intenso (el ámbar/rojo
+  // no representan «más seguridad»). Claro → marca → azul profundo.
+  const stopColors = ['#8fc0ff', c.accent, '#0b4fc0'];
 
   return (
     <View style={styles.wrap}>
