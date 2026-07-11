@@ -6,7 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { baseStyle, CITIES, DEFAULT_CITY, riskFillColor } from '@/constants/map';
-import { POI_CIRCLE_COLOR, POI_EMOJI_FIELD, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
+import { POI_CIRCLE_COLOR, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
 import { VehicleSpriteView } from './vehicle-sprite';
 
 // Carga perezosa: si el módulo nativo no está (Expo Go), no reventamos el bundle.
@@ -87,26 +87,17 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
         </GeoJSONSource>
       )}
       {poisData && poisOn && (
+        // POIs como puntos de color por categoría (fiable en nativo; los iconos tipo
+        // web requieren assets PNG registrados con <Images/> — pendiente U7-B).
         <GeoJSONSource id="pois" data={poisData as never}>
-          {/* Círculo de fondo blanco + emoji de categoría encima: aproxima los
-              iconos de la web (el canvas del navegador no existe en nativo). */}
           <Layer
             id="pois-bg"
             type="circle"
             paint={{
-              'circle-radius': 11,
-              'circle-color': '#ffffff',
-              'circle-stroke-width': 1.5,
-              'circle-stroke-color': POI_CIRCLE_COLOR as never,
-            }}
-          />
-          <Layer
-            id="pois"
-            type="symbol"
-            layout={{
-              'text-field': POI_EMOJI_FIELD as never,
-              'text-size': 15,
-              'text-allow-overlap': false,
+              'circle-radius': 6,
+              'circle-color': POI_CIRCLE_COLOR as never,
+              'circle-stroke-width': 1.6,
+              'circle-stroke-color': '#ffffff',
             }}
           />
         </GeoJSONSource>

@@ -16,6 +16,9 @@ export function baseTiles(dark: boolean, satellite = false): string[] {
 export function baseStyle(dark: boolean, satellite = false) {
   return {
     version: 8 as const,
+    // `glyphs` es necesario si alguna capa symbol usa texto; sin él, MapLibre nativo
+    // lanza «Unable to parse resourceUrl». Fuente pública de glifos de OpenMapTiles.
+    glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
     sources: {
       base: {
         type: 'raster' as const,
