@@ -107,9 +107,18 @@ Hecho en esta pasada:
   «no se pudo obtener ubicación» recurrente.
 - Ruta /sso-callback (fix «page could not be found» al volver del login Google).
 - Guard «viaje fantasma»: no registra viaje si no hubo movimiento (≥4 puntos).
+Hecho 2026-07-11: barra Protección azul (intensidad por nivel), defaults
+semaforo/int50%/op25%, sin líneas de grilla, POIs nativos = emoji sobre círculo
+(canvas no existe en nativo), modales responsive (Ajustes/Perfil con maxHeight 90%
++ ScrollView → «Listo» siempre visible), switch iOS, copy corto sin «Android»,
+RUTEO en viaje libre (elegir destino en marcha) + RECÁLCULO al desviarse >45m.
 Pendiente (orden de campo):
 A. FLUIDEZ cámara: seguimiento continuo (interpolación entre fixes, no salto por
    punto); marcador que se desliza; probar en APK que el mapa gira con el teléfono.
+A2. HONESTIDAD web vs nativo: web (maplibre-gl) y nativo (maplibre-react-native) son
+    renderers DISTINTOS; POI-icons/flyTo/pitch difieren. Montar verificación real en
+    emulador Android + simulador iOS antes de dar por bueno lo del mapa nativo.
+    (city flyTo en nativo SIGUE fallando pese a animationMode; requiere device test.)
 B. AutoTrip inteligente: si quieto >15 min → preguntar «¿sigues en viaje?» (alert 60s);
    sin respuesta y sin moverse → repreguntar a los 15 min; 2ª sin respuesta → finaliza
    automático. Detección de arranque YA funciona en campo (confirmado por usuario).
