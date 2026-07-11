@@ -58,6 +58,16 @@ export default function MapScreen() {
   const dark = scheme === 'dark';
   const c = Colors[scheme];
   const insets = useSafeAreaInsets();
+  // Altura del teclado: la barra inferior (con el input y los resultados) sube por
+  // encima del teclado en vez de quedar tapada.
+  const [kbHeight, setKbHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setKbHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKbHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
   const { settings, set, hydrated } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -726,7 +736,7 @@ export default function MapScreen() {
       {/* Barra inferior: destino + prioridad + Ir seguro */}
       <View
         onLayout={(e) => setSheetH(e.nativeEvent.layout.height)}
-        style={[styles.sheet, { bottom: 0, paddingBottom: insets.bottom + 14, backgroundColor: c.backgroundElement, borderColor: c.border }]}
+        style={[styles.sheet, { bottom: kbHeight, paddingBottom: (kbHeight ? 14 : insets.bottom + 14), backgroundColor: c.backgroundElement, borderColor: c.border }]}
       >
         {cityFull && results.length > 0 && !dest && (
           <FlatList
