@@ -799,7 +799,9 @@ export default function MapScreen() {
           value={priority}
           onChange={(v) => {
             setPriority(v);
-            if (routes && dest && !onTrip) goSafe(v); // recalcula al instante si hay ruta
+            // Cambiar el nivel RECALCULA en vivo si hay ruta — también durante el
+            // recorrido (desde la posición actual, sin cortar el viaje).
+            if (routes && dest) goSafe(v, onTrip ? (userLoc ?? undefined) : undefined, onTrip);
           }}
         />
         </>)}
