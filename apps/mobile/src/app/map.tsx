@@ -277,8 +277,11 @@ export default function MapScreen() {
 
   const lastOriginRef = useRef<[number, number] | null>(null);
 
-  async function goSafe(prioIdx: number = priority, originOverride?: [number, number], silent = false) {
-    if (!dest || routing) return;
+  async function goSafe(prioIdx: number = priority, originOverride?: [number, number], silent = false, destOverride?: Place) {
+    // destOverride: al elegir destino durante un viaje, `dest` del estado aún no se
+    // actualizó en este tick — se usa el place recibido directamente.
+    const target = destOverride ?? dest;
+    if (!target || routing) return;
     Keyboard.dismiss();
     setRouting(true);
     if (!silent) setBanner({ text: t('map.banner.routing'), tone: 'info' });
@@ -294,7 +297,7 @@ export default function MapScreen() {
       const r: BuildRouteResponse = await withTimeout(
         api.buildRoute({
           origin: origin as Coordinate,
-          dest: dest.coord,
+          dest: target.coord,
           hour: new Date().getHours(),
           risk_weight: PRIORITIES[prioIdx].w,
           type: effVehicle ?? undefined, // calles según el vehículo (opcional)
@@ -736,8 +739,8 @@ export default function MapScreen() {
                 onPress={() => {
                   setDest(item); setQuery(item.name); setResults([]); Keyboard.dismiss();
                   // Elegir destino DURANTE un recorrido libre traza la ruta al vuelo
-                  // desde tu posición actual (sin cortar el viaje).
-                  if (onTrip && userLoc) setTimeout(() => goSafe(priority, userLoc, false), 0);
+                  // desde tu posición actual (el place va directo: setDest es async).
+                  if (onTrip) goSafe(priority, userLoc ?? undefined, false, item);
                 }}
                 style={({ pressed }) => [styles.resultRow, { backgroundColor: pressed ? c.backgroundSelected : 'transparent' }]}
               >

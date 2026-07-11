@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
-import { baseStyle, CITIES, DEFAULT_CITY, heatmapPaint, riskPointsFC } from '@/constants/map';
+import { baseStyle, CITIES, DEFAULT_CITY, riskFillColor } from '@/constants/map';
 import { POI_CIRCLE_COLOR, POI_EMOJI_FIELD, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
 import { VehicleSpriteView } from './vehicle-sprite';
 
@@ -75,12 +75,14 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
           : {})}
       />
       {riskData && riskOn && (
-        // HEATMAP suave (estilo Rappi): centroides pesados por risk_norm, sin grillas.
-        <GeoJSONSource id="risk-heat" data={riskPointsFC(riskData) as never}>
+        <GeoJSONSource id="risk" data={riskData as never}>
           <Layer
-            id="risk-heat"
-            type="heatmap"
-            paint={heatmapPaint(riskStyle?.palette ?? 'semaforo', riskStyle?.intensity ?? 0.5, riskStyle?.opacity ?? 0.25) as never}
+            id="risk-fill"
+            type="fill"
+            paint={{
+              'fill-color': riskFillColor(riskStyle?.palette ?? 'semaforo', riskStyle?.intensity ?? 0.5) as never,
+              'fill-opacity': riskStyle?.opacity ?? 0.25,
+            }}
           />
         </GeoJSONSource>
       )}
