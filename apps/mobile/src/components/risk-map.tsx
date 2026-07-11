@@ -1,12 +1,13 @@
 // Mapa de la app de usuario — implementación NATIVA (Android/iOS) con MapLibre Native.
 // Requiere un development build (npx expo run:android / run:ios o EAS); en Expo Go
 // el módulo nativo no existe y se muestra un aviso en su lugar.
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
-import { baseStyle, CITIES, DEFAULT_CITY, riskFillColor } from '@/constants/map';
+import { baseStyle, CITIES, DEFAULT_CITY, heatmapPaint, riskPointsFC } from '@/constants/map';
 import { POI_CIRCLE_COLOR, POI_EMOJI_FIELD, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
+import { VehicleSpriteView } from './vehicle-sprite';
 
 // Carga perezosa: si el módulo nativo no está (Expo Go), no reventamos el bundle.
 let ML: typeof import('@maplibre/maplibre-react-native') | null = null;
@@ -17,28 +18,12 @@ try {
   ML = null;
 }
 
-// Vehículo cenital nativo (Views): cuerpo por tipo + parabrisas claro al frente.
-// Con `trackUserLocation="course"` el mapa rota, pero el marcador NO, así que lo
-// rotamos al rumbo aquí. La ligera inclinación (rotateX) le da aire 3D con el pitch.
-const VEH_STYLE: Record<string, { w: number; h: number; body: string; glass: string }> = {
-  moto: { w: 16, h: 30, body: '#f97316', glass: '#111827' },
-  car: { w: 24, h: 36, body: '#1f2937', glass: '#9cd2ff' },
-  bus: { w: 26, h: 40, body: '#2563eb', glass: '#cfe5ff' },
-  truck: { w: 26, h: 40, body: '#374151', glass: '#cbd5e1' },
-};
+// Vehículo ilustrado (SVG estilo Uber/Rappi). La cámara nativa rota el mapa, pero no
+// el marcador, así que lo rotamos al rumbo aquí; la leve inclinación le da aire 3D.
 function VehicleSprite({ type, heading = 0 }: { type: string | null; heading?: number }) {
-  const v = VEH_STYLE[(type ?? 'car')] ?? VEH_STYLE.car;
   return (
-    <View style={{ transform: [{ perspective: 320 }, { rotateX: '48deg' }, { rotate: `${heading}deg` }] }}>
-      <View
-        style={{
-          width: v.w, height: v.h, borderRadius: v.w * 0.42,
-          backgroundColor: v.body, borderWidth: 2, borderColor: '#fff', alignItems: 'center', paddingTop: 5,
-          shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 4, shadowOffset: { width: 0, height: 3 },
-        }}
-      >
-        <View style={{ width: v.w * 0.6, height: 7, borderRadius: 3, backgroundColor: v.glass }} />
-      </View>
+    <View style={{ transform: [{ perspective: 500 }, { rotateX: '32deg' }, { rotate: `${heading}deg` }] }}>
+      <VehicleSpriteView type={type} />
     </View>
   );
 }
@@ -65,37 +50,38 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { Map, Camera, GeoJSONSource, Layer, Marker } = ML as typeof ML & { Marker?: any };
   const navOn = !!nav?.active && !!userLocation;
+
+  // Cámara IMPERATIVA (ref): las props declarativas de stop no re-aplicaban el
+  // cambio de ciudad. flyTo/easeTo con `center`+`zoom` sí mueven la cámara.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cameraRef = useRef<any>(null);
+  useEffect(() => {
+    if (navOn || !focus) return;               // en navegación manda trackUserLocation
+    cameraRef.current?.flyTo?.({ center: focus.center, zoom: focus.zoom, pitch: 0, duration: 1400 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, navOn]);
+
   return (
     <Map style={styles.map} mapStyle={style as never}>
-      {/* API v11: props `centerCoordinate`/`zoomLevel` (antes usaba `center`/`zoom`,
-          que la librería IGNORA — por eso el cambio de ciudad no movía la cámara).
-          En navegación, `trackUserLocation="course"` hace que MapLibre siga al
-          usuario y ROTE el mapa según el movimiento de forma NATIVA y fluida
-          (sin animar a mano ni cancelar teselas). minZoom evita cargar el mundo. */}
+      {/* En navegación, `trackUserLocation="course"` hace que MapLibre siga al
+          usuario y ROTE el mapa según el movimiento de forma NATIVA y fluida.
+          minZoom evita cargar teselas del mundo entero (menos cancelaciones). */}
       <Camera
+        ref={cameraRef}
         initialViewState={{ center: city.center, zoom: city.zoom } as never}
         minZoom={9}
         {...(navOn
           ? ({ trackUserLocation: 'course', pitch: 50, followZoomLevel: 16.5 } as Record<string, unknown>)
-          : ({
-              centerCoordinate: focus?.center ?? userLocation ?? city.center,
-              zoomLevel: focus?.zoom ?? (userLocation ? 15 : city.zoom),
-              pitch: 0,
-              animationMode: 'flyTo',
-              animationDuration: 1400,
-            } as Record<string, unknown>))}
+          : {})}
       />
       {riskData && riskOn && (
-        <GeoJSONSource id="risk" data={riskData as never}>
+        // HEATMAP suave (estilo Rappi): centroides pesados por risk_norm, sin grillas.
+        <GeoJSONSource id="risk-heat" data={riskPointsFC(riskData) as never}>
           <Layer
-            id="risk-fill"
-            type="fill"
-            paint={{
-              'fill-color': riskFillColor(riskStyle?.palette ?? 'semaforo', riskStyle?.intensity ?? 0.5) as never,
-              'fill-opacity': riskStyle?.opacity ?? 0.25,
-            }}
+            id="risk-heat"
+            type="heatmap"
+            paint={heatmapPaint(riskStyle?.palette ?? 'semaforo', riskStyle?.intensity ?? 0.5, riskStyle?.opacity ?? 0.25) as never}
           />
-          {/* Sin bordes de celda (risk-line): superficie continua, como en la web. */}
         </GeoJSONSource>
       )}
       {poisData && poisOn && (

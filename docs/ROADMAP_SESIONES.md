@@ -147,6 +147,37 @@ J. Consentimiento Google: pantalla dice «ir a Clerk», no «Nómada.AI» — co
   RLS/authz en escrituras, rate-limit, consentimiento y borrado (Ley 1581).
 - Auditar antes de publicar: /security-review sobre el diff.
 
+### U7-B · Feedback 2026-07-11 (verificado en emulador Android)
+VERIFICADO funcionando en nativo: cambio de ciudad (flyTo Tumaco↔Cali con heatmap),
+vehículo Marker por tipo (ya no es punto), Ajustes responsive con «Done» visible +
+switches iOS, banner auto-descarte + ✕, «End trip» sale de navegación, riesgo carga.
+Nuevas tareas (orden):
+1. VEHÍCULO 3D ilustrado estilo Uber/Rappi (SVG isométrico por tipo: moto/carro/bus/
+   camión) — el sprite naranja actual NO parece vehículo. react-native-svg ya está.
+2. HEATMAP SUAVE (referencia imagen2 tipo Rappi): capa `heatmap` nativa con centroides
+   de celda pesados por risk_norm, en vez de grillas cuadradas. Web+nativo. Elegante.
+3. CIUDAD por PAÍS: el modal detecta el país actual y lista sus ciudades con NOMBRE
+   OFICIAL y estado: Disponible / Próximamente (seleccionable pero avisa, ej. Cali) /
+   No disponible (deshabilitado). Abajo: switch «¿Cambiar de país? / ver todos» +
+   input buscador de todos los lugares.
+4. PUSH + VIBRACIÓN + PRIORIDAD: expo-notifications push (token, servidor), canal
+   Android IMPORTANCE_HIGH con vibración, iOS time-sensitive/critical (que NO se
+   agrupen ni dupliquen; entrega inmediata para alertas de seguridad). expo-haptics
+   para vibración en alertas.
+5. ANIMACIÓN protección MÁXIMA (referencia imagen5 ultracode de Claude Code): al poner
+   la barra en Máxima, la pista se «llena» de destellos que parpadean y el tono vira a
+   azul→morado. Con Animated en protection-slider.
+6. iOS: simulador iPhone 17 Pro disponible — verificar ahí tras Android.
+
+### U7-BIZ · Modelo de negocio (publicidad + suscripción)
+- Publicidad SUTIL, no invasiva, NUNCA interrumpe la función: aparece muy
+  eventualmente (ej. tarjeta patrocinada discreta en la hoja de notificaciones/
+  historial, o un aviso breve DESPUÉS de finalizar un viaje — jamás durante). Definir
+  ubicación exacta sin tapar el mapa ni las alertas.
+- Quitar anuncios = contribución «cafecito»: USD 0.99 / COP 1.990 mensual, o anual
+  USD 9.90 / COP 19.900 → destinado a mantenimiento, operación y mejoras. Copy honesto.
+- Implementación futura: RevenueCat/StoreKit+Play Billing; feature flag `adsEnabled`.
+
 ### U7-OTA · Actualizaciones sin reinstalar
 expo-updates (canal prod): cambios JS/asset al instante; vista «Novedades» tipo
 changelog al abrir tras actualizar; NUNCA actualizar durante un viaje (solo en frío).

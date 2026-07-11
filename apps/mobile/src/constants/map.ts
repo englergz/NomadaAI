@@ -68,6 +68,50 @@ export function riskFillColor(palette: HeatPaletteKey, intensity: number) {
 export const RISK_FILL_COLOR = riskFillColor('calor', 0.5);
 export const RISK_LINE_COLOR = HEAT_PALETTES.calor.line;
 
+// --- HEATMAP SUAVE (estilo Rappi/Uber): superficie difuminada en vez de grillas. ---
+// La capa `heatmap` de MapLibre necesita PUNTOS pesados; convertimos cada celda de
+// riesgo (polígono) en su centroide con peso = risk_norm.
+interface PolyFeature { geometry?: { type?: string; coordinates?: unknown }; properties?: { risk_norm?: number } }
+export function riskPointsFC(fc: { features?: PolyFeature[] } | null) {
+  const out: unknown[] = [];
+  for (const f of fc?.features ?? []) {
+    const w = Number(f.properties?.risk_norm ?? 0);
+    if (!w) continue;
+    let ring: number[][] | undefined;
+    const g = f.geometry;
+    if (g?.type === 'Polygon') ring = (g.coordinates as number[][][])?.[0];
+    else if (g?.type === 'MultiPolygon') ring = (g.coordinates as number[][][][])?.[0]?.[0];
+    if (!ring || ring.length < 3) continue;
+    let x = 0, y = 0;
+    for (const p of ring) { x += p[0]; y += p[1]; }
+    out.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [x / ring.length, y / ring.length] },
+      properties: { w },
+    });
+  }
+  return { type: 'FeatureCollection', features: out };
+}
+
+// Pintura de la capa heatmap. La paleta define el degradado; intensidad y opacidad
+// vienen de Ajustes. El radio crece con el zoom para que se vea fino de lejos y de cerca.
+export function heatmapPaint(palette: HeatPaletteKey, intensity: number, opacity: number) {
+  const cols = HEAT_PALETTES[palette].colors; // [transparente, …, fuerte]
+  // heatmap-color va de densidad 0 (transparente) a 1 (color fuerte).
+  const color = [
+    'interpolate', ['linear'], ['heatmap-density'],
+    0, 'rgba(0,0,0,0)',
+    0.2, cols[1], 0.4, cols[2], 0.6, cols[3], 0.85, cols[4],
+  ];
+  return {
+    'heatmap-weight': ['interpolate', ['linear'], ['get', 'w'], 0, 0, 1, 1],
+    'heatmap-intensity': 0.6 + intensity * 1.1,          // Ajustes → intensidad
+    'heatmap-color': color,
+    'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 14, 13, 26, 16, 48],
+    'heatmap-opacity': opacity,
+  };
+}
+
 export type CityKey = 'tumaco' | 'cali';
 export const CITIES: Record<CityKey, { label: string; center: [number, number]; zoom: number }> = {
   tumaco: { label: 'Tumaco', center: [-78.785, 1.806], zoom: 13 },
