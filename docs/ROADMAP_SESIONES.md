@@ -280,6 +280,14 @@ Pendiente (orden):
 - Pendiente U4: configurar CLERK_ISSUER en el Space (para que el backend VERIFIQUE los
   tokens); sincronizar vehículo/tema al perfil; foto en reportes cuando exista Storage.
 
+### U5c · ESCRITORIO — barra de protección final (2026-07-12) — ✅ HECHO
+- ✅ components/ProtectionBar.tsx: idéntica a la app, con RAIL interno (topes y pulgar
+  SIEMPRE dentro del redondeado — fix imágenes usuario), arrastre confiable con
+  Pointer Events + setPointerCapture (fix «a veces no responde»), y NIVELES
+  CONFIGURABLES desde el panel admin (GET /config/app) — hoy 5: 0/25/50/75/100.
+- ✅ Vehículos en modo oscuro: disco claro tras el sprite (estilo Uber) — se
+  distinguen sobre Dark Matter.
+
 ### U5b · ESCRITORIO (tesis) — coherencia con la app (feedback 2026-07-11)
 - ✅ Grillas de riesgo SIN líneas divisoras (risk-line eliminado, como el móvil).
 - Pendiente: «Menú» del escritorio = misma estructura que AJUSTES de la app móvil
@@ -294,11 +302,36 @@ Pendiente (orden):
   lo existente (satelital, seguir vehículo, trayectorias, ayuda). Vehículo elegido = predeterminado
   del panel.
 
-### U6 · ADMIN + PORTAL (pendientes previos + brief parte 2)
-- Panel admin (B.9) con rol Clerk verificado EN SERVIDOR: editar risk_config por ciudad con vista
-  previa; moderación de reportes; BI (mode sim|mobile ya separado).
-- Portal appweb: dominio propio pendiente de decisión; smart banner «continuar aquí / descargar app»;
-  botón desde el escritorio.
+### U6 · ADMIN — ✅ HECHO v1 (2026-07-12)
+- ✅ Backend: routers/admin.py con rol verificado EN SERVIDOR (token Clerk RS256 +
+  allowlist `ADMIN_USER_IDS` en env — configurar en el Space con el user id de Clerk,
+  visible en Clerk Dashboard → Users). Sin ids ⇒ 403 siempre (seguro por defecto).
+- ✅ Config de producto en Postgres (app_config): `protection_levels` (topes % de la
+  barra, 2–7 valores — hoy [0,25,50,75,100]) y `ads_enabled`. Pública en GET
+  /config/app (la leen escritorio y app); edición PUT /admin/config/app.
+- ✅ Moderación: GET /admin/reports + DELETE /admin/reports/{id} (confirmación en UI).
+- ✅ BI: GET /admin/summary (reportes por categoría/ciudad + history.stats()).
+- ✅ Frontend: components/AdminPanel.tsx (pestañas Configuración/Reportes/BI); el
+  ítem «Panel admin» del Menú solo aparece si /admin/me responde 200.
+- Pendiente U6.2: editar risk_config de factores por ciudad (requiere re-correr el
+  pipeline offline — diseñar flujo aparte); portal appweb + smart banner.
+
+### AUDITORÍA DE SEGURIDAD (2026-07-12, escritorio+API)
+- ✅ Corregido XSS: popups del mapa inyectaban nombre/categoría de POIs (datos OSM
+  externos) en setHTML sin escapar → helper esc() aplicado.
+- ✅ Admin: autorización solo en servidor; el cliente jamás decide el rol.
+- ✅ Sin secretos en el bundle web, sin eval/dangerouslySetInnerHTML.
+- ⚠️ Anotado (bajo): DELETE /history?user_id= permite borrar histórico conociendo el
+  uid (uuid aleatorio, difícil de adivinar). Mitigar cuando haya sesión obligatoria:
+  exigir token y que user_id == sub.
+- ⚠️ Reportes: rate-limit 5/h por usuario ya existe (server-side). OK.
+
+### NEON (correo checklist producción) — acciones del USUARIO en console.neon.tech
+1. Mín. compute ≥ 1 CU y desactivar scale-to-zero (evita cold starts) — requiere plan pago.
+2. Read replica para lecturas/BI (offload del primario).
+3. Restore window a 7 días (hoy 0.3).
+4. IP allowlist (restringir a IPs del Space/backend) — plan pago.
+No se pueden hacer desde el repo: son configuración de la consola de Neon.
 
 ## Reglas permanentes
 - Commits 100% autoría de englergz, sin trailer de coautoría. Verificar en preview claro/oscuro y

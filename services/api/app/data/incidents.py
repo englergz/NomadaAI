@@ -112,3 +112,43 @@ def aggregate(city: str = "tumaco", half_life_days: float = 30.0) -> dict[str, A
                 for r in cur.fetchall()
             ]
     return {"available": True, "half_life_days": half_life_days, "cells": cells}
+
+
+# --- Moderación (panel admin, U6): SOLO tras verificación de rol en servidor. ---
+def list_recent(city: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
+    """Reportes recientes para moderación (incluye user_id: uso interno admin)."""
+    if not available():
+        return []
+    _ensure()
+    limit = max(1, min(int(limit), 500))
+    q = (
+        "select id, created_at, city, user_id, category, description, lon, lat, hour "
+        "from incidents {} order by created_at desc limit %s"
+    )
+    with _connect() as conn, conn.cursor() as cur:
+        if city:
+            cur.execute(q.format("where city = %s"), (city, limit))
+        else:
+            cur.execute(q.format(""), (limit,))
+        rows = cur.fetchall()
+    return [
+        {
+            "id": int(r[0]), "created_at": r[1].isoformat(), "city": r[2], "user_id": r[3],
+            "category": r[4], "description": r[5], "lon": float(r[6]), "lat": float(r[7]),
+            "hour": r[8],
+        }
+        for r in rows
+    ]
+
+
+def delete(incident_id: int) -> bool:
+    """Elimina un reporte (moderación). True si existía."""
+    if not available():
+        return False
+    _ensure()
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("delete from incidents where id = %s returning id", (incident_id,))
+            gone = cur.fetchone() is not None
+        conn.commit()
+    return gone
