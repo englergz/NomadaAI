@@ -336,11 +336,31 @@ body.light .phone-wm { color: #17212c; text-shadow: 0 1px 4px rgba(255,255,255,0
 .prot-labels { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .prot-labels span { font-size: 11px; color: var(--muted); font-weight: 600; }
 .prot-labels b { font-size: 12px; color: var(--text); letter-spacing: 0.3px; }
-.prot-track { position: relative; height: 30px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-elev, var(--panel)); }
-.prot-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; opacity: 0.28; }
-.prot-stop { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 6px; height: 6px; border-radius: 3px; border: none; padding: 0; box-shadow: none; cursor: pointer; }
-.prot-thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 26px; height: 26px; border-radius: 50%; border: 2px solid; background: var(--panel); display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.25); pointer-events: none; }
+.prot-track { position: relative; height: 30px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-elev, var(--panel)); cursor: pointer; touch-action: none; user-select: none; }
+.prot-track.off { cursor: default; opacity: 0.55; }
+.prot-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; opacity: 0.28; pointer-events: none; }
+/* Rail interno con margen = radio del pulgar: topes y pulgar SIEMPRE dentro del redondeado. */
+.prot-rail { position: absolute; left: 14px; right: 14px; top: 0; bottom: 0; pointer-events: none; }
+.prot-stop { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 6px; height: 6px; border-radius: 3px; }
+.prot-thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 26px; height: 26px; border-radius: 50%; border: 2px solid; background: var(--panel); display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: left 160ms ease; }
 .prot-thumb span { width: 10px; height: 10px; border-radius: 50%; }
+
+/* Panel admin (U6) */
+.admin-modal { width: min(640px, 94vw); }
+.admin-tabs { display: flex; gap: 6px; margin: 10px 0 14px; }
+.admin-tabs button { width: auto; padding: 6px 14px; border-radius: 999px; font-size: 12.5px; background: transparent; border: 1px solid var(--border); color: var(--muted); box-shadow: none; }
+.admin-tabs button.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.admin-msg { font-size: 12.5px; color: var(--accent); margin: 4px 0 8px; }
+.admin-sec { display: flex; flex-direction: column; gap: 8px; }
+.admin-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+.admin-check input { width: auto; }
+.admin-table { display: flex; flex-direction: column; gap: 8px; max-height: 46vh; overflow-y: auto; }
+.admin-row { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+.admin-row-main { flex: 1; font-size: 12.5px; color: var(--text); }
+.admin-desc { color: var(--muted); margin-top: 3px; }
+.admin-meta { color: var(--muted); font-size: 11px; margin-top: 3px; }
+.admin-del { width: auto; padding: 6px 12px; font-size: 12px; flex-shrink: 0; }
+.admin-pre { font-size: 11px; background: var(--bg-elev, rgba(0,0,0,0.15)); border: 1px solid var(--border); border-radius: 10px; padding: 10px; overflow-x: auto; max-height: 34vh; }
 
 /* Panel reorganizado: propósito + secciones numeradas */
 .panel-lead { font-size: 12px; line-height: 1.5; color: var(--text); margin: 0 0 12px; }

@@ -9,6 +9,15 @@ import type {
 } from "@nomadaai/shared";
 import { api } from "./lib/api";
 import { osmStyle, TUMACO_CENTER, TUMACO_ZOOM } from "./lib/mapStyle";
+import AdminPanel from "./components/AdminPanel";
+import ProtectionBar from "./components/ProtectionBar";
+
+// Escapa HTML de datos externos (nombres de POIs de OSM) antes de inyectarlos en
+// popups con setHTML — sin esto un nombre malicioso podría ejecutar script (XSS).
+function esc(v: unknown): string {
+  return String(v ?? "").replace(/[&<>"']/g, (ch) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch] as string));
+}
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
@@ -47,20 +56,23 @@ const base = () => import.meta.env.VITE_API_URL ?? "";
 
 // Ícono cenital del vehículo (estilo Uber/Rappi). Apunta hacia ARRIBA (norte) en rotación 0;
 // el marcador se rota al rumbo. El parabrisas claro marca el frente.
-function vehicleSVG(t?: string): string {
+function vehicleSVG(t?: string, halo = false): string {
   const ty = (t ?? "car").toLowerCase();
+  // Modo oscuro: disco claro tras el vehículo (estilo Uber) — sin él los sprites
+  // oscuros se pierden contra las teselas Dark Matter.
+  const disk = halo ? '<circle cx="20" cy="20" r="18" fill="#f3f6fa" opacity="0.92"/>' : "";
   const sh = `<defs><filter id="vs" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="1" stdDeviation="1.3" flood-color="#000" flood-opacity="0.5"/></filter></defs>`;
   if (ty === "mot" || ty === "moto" || ty === "bike") {
-    return `<svg width="26" height="26" viewBox="0 0 40 40">${sh}<g filter="url(#vs)"><rect x="16.5" y="10" width="7" height="20" rx="3.5" fill="#f97316" stroke="#fff" stroke-width="1.4"/><circle cx="20" cy="13.5" r="2.8" fill="#111827"/></g></svg>`;
+    return `<svg width="26" height="26" viewBox="0 0 40 40">${sh}${disk}<g filter="url(#vs)"><rect x="16.5" y="10" width="7" height="20" rx="3.5" fill="#f97316" stroke="#fff" stroke-width="1.4"/><circle cx="20" cy="13.5" r="2.8" fill="#111827"/></g></svg>`;
   }
   if (ty === "bus") {
-    return `<svg width="32" height="32" viewBox="0 0 40 40">${sh}<g filter="url(#vs)"><rect x="12.5" y="5" width="15" height="30" rx="3.5" fill="#2563eb" stroke="#fff" stroke-width="1.4"/><rect x="15" y="7" width="10" height="5" rx="1.5" fill="#cfe5ff"/><rect x="15" y="15" width="10" height="3.5" rx="1" fill="#93c5fd"/><rect x="15" y="21" width="10" height="3.5" rx="1" fill="#93c5fd"/></g></svg>`;
+    return `<svg width="32" height="32" viewBox="0 0 40 40">${sh}${disk}<g filter="url(#vs)"><rect x="12.5" y="5" width="15" height="30" rx="3.5" fill="#2563eb" stroke="#fff" stroke-width="1.4"/><rect x="15" y="7" width="10" height="5" rx="1.5" fill="#cfe5ff"/><rect x="15" y="15" width="10" height="3.5" rx="1" fill="#93c5fd"/><rect x="15" y="21" width="10" height="3.5" rx="1" fill="#93c5fd"/></g></svg>`;
   }
   if (ty === "truck") {
-    return `<svg width="32" height="32" viewBox="0 0 40 40">${sh}<g filter="url(#vs)"><rect x="13.5" y="4.5" width="13" height="10" rx="2.5" fill="#374151" stroke="#fff" stroke-width="1.4"/><rect x="15.5" y="6.5" width="9" height="5" rx="1.5" fill="#cbd5e1"/><rect x="13" y="14.5" width="14" height="21" rx="2" fill="#9ca3af" stroke="#fff" stroke-width="1.4"/></g></svg>`;
+    return `<svg width="32" height="32" viewBox="0 0 40 40">${sh}${disk}<g filter="url(#vs)"><rect x="13.5" y="4.5" width="13" height="10" rx="2.5" fill="#374151" stroke="#fff" stroke-width="1.4"/><rect x="15.5" y="6.5" width="9" height="5" rx="1.5" fill="#cbd5e1"/><rect x="13" y="14.5" width="14" height="21" rx="2" fill="#9ca3af" stroke="#fff" stroke-width="1.4"/></g></svg>`;
   }
   // carro (estilo Uber): cuerpo oscuro, parabrisas claro al frente
-  return `<svg width="30" height="30" viewBox="0 0 40 40">${sh}<g filter="url(#vs)"><rect x="12.5" y="6" width="15" height="28" rx="6.5" fill="#1f2937" stroke="#fff" stroke-width="1.5"/><path d="M15 13 Q20 9.5 25 13 L25 17 L15 17 Z" fill="#9cd2ff"/><rect x="15" y="25.5" width="10" height="5.5" rx="2.5" fill="#4b5563"/></g></svg>`;
+  return `<svg width="30" height="30" viewBox="0 0 40 40">${sh}${disk}<g filter="url(#vs)"><rect x="12.5" y="6" width="15" height="28" rx="6.5" fill="#1f2937" stroke="#fff" stroke-width="1.5"/><path d="M15 13 Q20 9.5 25 13 L25 17 L15 17 Z" fill="#9cd2ff"/><rect x="15" y="25.5" width="10" height="5.5" rx="2.5" fill="#4b5563"/></g></svg>`;
 }
 
 interface Notif {
@@ -192,6 +204,10 @@ export default function App() {
   const uidRef = useRef<string>(getUid());
   const sessionRef = useRef<string>(`s_${Date.now()}`);
   const [authUid, setAuthUid] = useState<string | null>(null);          // id de Clerk si hay sesión
+  // U6/config de producto: niveles de la barra de protección (los define el admin).
+  const [protLevels, setProtLevels] = useState<number[]>([0, 25, 50, 75, 100]);
+  const [isAdmin, setIsAdmin] = useState(false);   // confirmado por /admin/me EN SERVIDOR
+  const [showAdmin, setShowAdmin] = useState(false);
   const authGetTokenRef = useRef<null | (() => Promise<string | null>)>(null);
   const effUidRef = useRef<string>(uidRef.current);                     // usuario efectivo (sesión o anónimo)
   const histLocalRef = useRef<HistLocal>(emptyHist());
@@ -279,8 +295,29 @@ export default function App() {
   useEffect(() => {
     effUidRef.current = authUid ?? uidRef.current;
     refreshSummary();
+    // ¿Es admin? Lo decide el SERVIDOR (/admin/me con el token); aquí solo se consulta.
+    if (!authUid) { setIsAdmin(false); return; }
+    (async () => {
+      try {
+        const h = await authHeader();
+        const r = await fetch(`${base()}/admin/me`, { headers: h });
+        setIsAdmin(r.ok);
+      } catch { setIsAdmin(false); }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUid]);
+
+  // Config de producto (niveles de protección definidos desde el panel admin).
+  useEffect(() => {
+    fetch(`${base()}/config/app`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c) => {
+        if (Array.isArray(c?.protection_levels) && c.protection_levels.length >= 2) {
+          setProtLevels(c.protection_levels.map(Number));
+        }
+      })
+      .catch(() => { /* defaults locales */ });
+  }, []);
 
   async function authHeader(): Promise<Record<string, string>> {
     try {
@@ -456,7 +493,7 @@ export default function App() {
           const p = e.features?.[0]?.properties as Record<string, unknown> | undefined;
           if (!p) return;
           new maplibregl.Popup({ closeButton: true }).setLngLat(e.lngLat)
-            .setHTML(`<b>${p.name}</b><br/>${p.category}`).addTo(map);
+            .setHTML(`<b>${esc(p.name)}</b><br/>${esc(p.category)}`).addTo(map);
         });
       } catch (e) { console.error("pois:", e); }
 
@@ -663,7 +700,7 @@ export default function App() {
     // marcador cenital (estilo Uber/Rappi): el sprite apunta al rumbo
     if (vehMarkerRef.current) { vehMarkerRef.current.remove(); vehMarkerRef.current = null; }
     const el = document.createElement("div"); el.className = "veh-sprite";
-    el.innerHTML = vehicleSVG(typeRef.current);
+    el.innerHTML = vehicleSVG(typeRef.current, theme === "dark");
     vehMarkerRef.current = new maplibregl.Marker({ element: el, rotationAlignment: "map" })
       .setLngLat(coords[0]).addTo(map);
 
@@ -835,6 +872,11 @@ export default function App() {
                 <button className="menu-row" onClick={() => { setShowHelp(true); setMenuOpen(false); }}>
                   <span className="menu-lbl"><Icon name="help" /> ¿Cómo funciona?</span>
                 </button>
+                {isAdmin && (
+                  <button className="menu-row" onClick={() => { setShowAdmin(true); setMenuOpen(false); }}>
+                    <span className="menu-lbl"><Icon name="follow" /> Panel admin</span>
+                  </button>
+                )}
               </div>
               <p className="menu-note">
                 Las alertas y la actividad se revisan y se usan para mejorar la IA de Nómada.AI. El núcleo
@@ -851,6 +893,13 @@ export default function App() {
       </div>
 
       {showHelp && <HelpPanel onClose={() => setShowHelp(false)} />}
+      {showAdmin && isAdmin && (
+        <AdminPanel
+          getToken={async () => (authGetTokenRef.current ? await authGetTokenRef.current() : null)}
+          onClose={() => setShowAdmin(false)}
+          onConfigSaved={(c) => setProtLevels(c.protection_levels)}
+        />
+      )}
 
       {!panelOpen && (
         <button className="panel-open btn-ic" onClick={() => setPanelOpen(true)} title="Mostrar panel"><Icon name="menu" /> Panel</button>
@@ -903,26 +952,8 @@ export default function App() {
               {DRAW_VEHICLES.map((v) => <option key={v.key} value={v.key}>{v.label}</option>)}
             </select>
             <p className="counts-cap">Opcional, pero indicar tu vehículo mejora la precisión de la predicción (calles según el tipo). Se puede cambiar en cada viaje.</p>
-            {/* Barra de protección como la app: Mínima / Equilibrada / Máxima (azul→morado). */}
-            {(() => {
-              const lvl = riskWeight <= 25 ? 0 : riskWeight >= 75 ? 2 : 1; // 3 topes
-              const colors = ["#8fc0ff", "#2f81f7", "#6d5cf5"];
-              return (
-                <div className="prot-slider">
-                  <div className="prot-labels"><span>Mínima</span><b>Protección</b><span>Máxima</span></div>
-                  <div className="prot-track">
-                    <div className="prot-fill" style={{ width: `${lvl === 0 ? 12 : lvl === 1 ? 50 : 100}%`, background: colors[lvl] }} />
-                    {[0, 1, 2].map((i) => (
-                      <button key={i} className="prot-stop" style={{ left: `${i * 50}%`, background: i <= lvl ? "#fff" : "var(--border)" }}
-                        onClick={() => !running && setRiskWeight(i === 0 ? 0 : i === 1 ? 50 : 100)} disabled={running} />
-                    ))}
-                    <div className="prot-thumb" style={{ left: `${lvl === 0 ? 0 : lvl === 1 ? 50 : 100}%`, borderColor: colors[lvl] }}>
-                      <span style={{ background: colors[lvl] }} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+            {/* Barra de protección idéntica a la app; niveles definidos por el admin. */}
+            <ProtectionBar levels={protLevels} value={riskWeight} onChange={setRiskWeight} disabled={running} />
           </>
         )}
 
