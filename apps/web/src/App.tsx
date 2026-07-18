@@ -9,8 +9,20 @@ import type {
 } from "@nomadaai/shared";
 import { api } from "./lib/api";
 import { osmStyle, TUMACO_CENTER, TUMACO_ZOOM } from "./lib/mapStyle";
+import { HEAT_PALETTES, loadRiskPrefs, riskFillColor, saveRiskPrefs, type HeatPaletteKey, type RiskPrefs } from "./lib/riskStyle";
 import AdminPanel from "./components/AdminPanel";
 import ProtectionBar from "./components/ProtectionBar";
+
+// Marca ÚNICA del escritorio: logo + Nómada.AI SIEMPRE junto (un solo nodo de
+// texto, sin gaps de flex) y .AI en azul. Prohibido escribirla a mano en JSX.
+function Brand({ size = 18 }: { size?: number }) {
+  return (
+    <span className="wm" style={{ fontSize: size }}>
+      <img src="/favicon.png" alt="" className="brand-logo" />
+      <span className="wm-txt">Nómada<span className="brand-ai">.AI</span></span>
+    </span>
+  );
+}
 
 // Escapa HTML de datos externos (nombres de POIs de OSM) antes de inyectarlos en
 // popups con setHTML — sin esto un nombre malicioso podría ejecutar script (XSS).
@@ -182,13 +194,19 @@ export default function App() {
   const [trips, setTrips] = useState<TripSummary[]>([]);
   const [tripId, setTripId] = useState("");
   const [mode, setMode] = useState<"test" | "draw">("test");
-  const [drawVeh, setDrawVeh] = useState("");
+  const [drawVeh, setDrawVeh] = useState(() => {
+    try { return localStorage.getItem("nomadaai_vehicle") ?? ""; } catch { return ""; }
+  }); // vehículo PREDETERMINADO (Ajustes), cambiable por viaje
+  useEffect(() => { try { localStorage.setItem("nomadaai_vehicle", drawVeh); } catch { /* ignore */ } }, [drawVeh]);
   const [hour, setHour] = useState(20);
   const [day, setDay] = useState<number>(() => (new Date().getDay() + 6) % 7); // 0=lun … 6=dom
   const dayRef = useRef((new Date().getDay() + 6) % 7);
   const [city, setCity] = useState("tumaco");
   const cityRef = useRef("tumaco");
-  const [threshold, setThreshold] = useState(70);
+  const [threshold, setThreshold] = useState(() => {
+    try { return Number(localStorage.getItem("nomadaai_threshold") ?? 70) || 70; } catch { return 70; }
+  });
+  useEffect(() => { try { localStorage.setItem("nomadaai_threshold", String(threshold)); } catch { /* ignore */ } }, [threshold]);
   const [riskWeight, setRiskWeight] = useState(50); // prioridad de seguridad (0-100) → λ
   const [safeMsg, setSafeMsg] = useState<string>("");
   const [timeScale, setTimeScale] = useState(60);
@@ -237,6 +255,16 @@ export default function App() {
   const [poisOn, setPoisOn] = useState(false);
   const [corridorsOn, setCorridorsOn] = useState(true);
   const [follow, setFollow] = useState(true);
+  // Estilo del mapa de calor — MISMOS ajustes y defaults que la app móvil.
+  const [riskPrefs, setRiskPrefs] = useState<RiskPrefs>(loadRiskPrefs());
+  useEffect(() => {
+    saveRiskPrefs(riskPrefs);
+    const map = mapRef.current; if (!map || !map.getLayer("risk-fill")) return;
+    try {
+      map.setPaintProperty("risk-fill", "fill-color", riskFillColor(riskPrefs.palette, riskPrefs.intensity) as never);
+      map.setPaintProperty("risk-fill", "fill-opacity", riskPrefs.opacity);
+    } catch (e) { console.error(e); }
+  }, [riskPrefs]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
   const [evalRes, setEvalRes] = useState<any>(null);
@@ -456,13 +484,11 @@ export default function App() {
       map.addSource("risk", { type: "geojson", data: emptyFC() as never });
       map.addLayer({
         id: "risk-fill", type: "fill", source: "risk",
-        paint: {
-          // Rampa secuencial verde→amarillo→naranja→rojo (percentil): distingue bien 20% de 60% de 90%.
-          "fill-color": ["interpolate", ["linear"], ["get", "risk_norm"],
-            0, "#22c55e", 0.25, "#a3e635", 0.45, "#facc15", 0.6, "#f59e0b", 0.78, "#f97316", 0.9, "#ef4444", 1, "#b91c1c"],
-          "fill-opacity": ["interpolate", ["linear"], ["get", "risk_norm"],
-            0, 0.14, 0.5, 0.34, 0.9, 0.52, 1, 0.66],
-        },
+        paint: (() => {
+          // Estilo según Ajustes (paleta/intensidad/opacidad), defaults = app móvil.
+          const rp = loadRiskPrefs();
+          return { "fill-color": riskFillColor(rp.palette, rp.intensity) as never, "fill-opacity": rp.opacity };
+        })(),
       } as never);
       // Sin líneas divisoras de celda (coherencia con la app móvil): superficie continua.
       addLine(map, "direct", { "line-color": "#94a3b8", "line-width": 3, "line-dasharray": [2, 2], "line-opacity": 0.7 });
@@ -837,9 +863,27 @@ export default function App() {
       {/* Barra superior: menú de capas/vista agrupado + ayuda + sesión */}
       <div className="topbar">
         <div className="menu-wrap">
-          <button className={`btn-ic ${menuOpen ? "on" : ""}`} onClick={() => setMenuOpen((v) => !v)}><Icon name="menu" /> Menú</button>
+          <button className={`btn-ic ${menuOpen ? "on" : ""}`} onClick={() => setMenuOpen((v) => !v)}><Icon name="menu" /> Ajustes</button>
           {menuOpen && (
             <div className="menu" onMouseLeave={() => setMenuOpen(false)}>
+              <div className="menu-sec">Tu vehículo</div>
+              <div className="menu-veh">
+                {([["mot", "Moto"], ["car", "Carro"], ["bus", "Bus"], ["truck", "Camión"]] as const).map(([k, lbl]) => (
+                  <button key={k} className={`menu-veh-btn ${drawVeh === k ? "on" : ""}`}
+                    onClick={() => setDrawVeh(drawVeh === k ? "" : k)} disabled={running}>
+                    <span>{iconForType(k)}</span>{lbl}
+                  </button>
+                ))}
+              </div>
+              <p className="menu-cap">Opcional: mejora la precisión (calles según el tipo). Se puede cambiar en cada viaje.</p>
+
+              <div className="menu-sec">Recorrido y alertas</div>
+              <div className="menu-slider">
+                <span className="menu-cap">Umbral de alerta · <b>{threshold}%</b></span>
+                <input className="range" type="range" min={30} max={95} step={5} value={threshold}
+                  onChange={(e) => setThreshold(Number(e.target.value))} />
+              </div>
+
               <div className="menu-sec">Tema</div>
               <div className="menu-seg">
                 {(["system", "light", "dark"] as const).map((t) => (
@@ -848,24 +892,49 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <div className="menu-sec">Mapa</div>
+
+              <div className="menu-sec">Mapa y capas</div>
               <div className="menu-group">
                 {([["satellite", "Satelital", sat, () => toggleSat(!sat)],
-                   ["follow", "Seguir vehículo", follow, () => setFollow(!follow)]] as const).map(([ic, lbl, on, fn], i) => (
-                  <button key={i} className="menu-row" onClick={fn as () => void}>
+                   ["places", "Lugares", poisOn, () => togglePois(!poisOn)],
+                   ["follow", "Seguir vehículo", follow, () => setFollow(!follow)],
+                   ["routes", "Trayectorias", corridorsOn, () => toggleCorridors(!corridorsOn)]] as const).map(([ic, lbl, on, fn], i2) => (
+                  <button key={i2} className="menu-row" onClick={fn as () => void}>
                     <span className="menu-lbl"><Icon name={ic} /> {lbl}</span><span className={`sw ${on ? "on" : ""}`}>{on ? "ON" : "OFF"}</span>
                   </button>
                 ))}
               </div>
-              <div className="menu-sec">Capas</div>
+
+              <div className="menu-sec">Riesgo</div>
               <div className="menu-group">
-                {([["risk", "Riesgo", riskOn, () => toggleRisk(!riskOn)],
-                   ["places", "Lugares", poisOn, () => togglePois(!poisOn)],
-                   ["routes", "Trayectorias", corridorsOn, () => toggleCorridors(!corridorsOn)]] as const).map(([ic, lbl, on, fn], i) => (
-                  <button key={i} className="menu-row" onClick={fn as () => void}>
-                    <span className="menu-lbl"><Icon name={ic} /> {lbl}</span><span className={`sw ${on ? "on" : ""}`}>{on ? "ON" : "OFF"}</span>
-                  </button>
-                ))}
+                <button className="menu-row" onClick={() => toggleRisk(!riskOn)}>
+                  <span className="menu-lbl"><Icon name="risk" /> Capa de riesgo</span><span className={`sw ${riskOn ? "on" : ""}`}>{riskOn ? "ON" : "OFF"}</span>
+                </button>
+              </div>
+              <div className={`menu-riskcfg ${riskOn ? "" : "off"}`}>
+                <div className="menu-pal">
+                  {(Object.keys(HEAT_PALETTES) as HeatPaletteKey[]).map((k) => (
+                    <button key={k} className={`menu-pal-btn ${riskPrefs.palette === k ? "on" : ""}`}
+                      onClick={() => setRiskPrefs({ ...riskPrefs, palette: k })}>
+                      <span className="menu-swatches">
+                        {[1, 2, 4].map((ci) => (
+                          <span key={ci} className="menu-swatch" style={{ background: HEAT_PALETTES[k].colors[ci].replace(/[\d.]+\)$/, "1)") }} />
+                        ))}
+                      </span>
+                      {HEAT_PALETTES[k].label}
+                    </button>
+                  ))}
+                </div>
+                <div className="menu-slider">
+                  <span className="menu-cap">Intensidad · <b>{Math.round(riskPrefs.intensity * 100)}%</b></span>
+                  <input className="range" type="range" min={0} max={100} step={5} value={Math.round(riskPrefs.intensity * 100)}
+                    onChange={(e) => setRiskPrefs({ ...riskPrefs, intensity: Number(e.target.value) / 100 })} />
+                </div>
+                <div className="menu-slider">
+                  <span className="menu-cap">Opacidad de la capa · <b>{Math.round(riskPrefs.opacity * 100)}%</b></span>
+                  <input className="range" type="range" min={10} max={100} step={5} value={Math.round(riskPrefs.opacity * 100)}
+                    onChange={(e) => setRiskPrefs({ ...riskPrefs, opacity: Number(e.target.value) / 100 })} />
+                </div>
               </div>
               <div className="menu-div" />
               <div className="menu-group">
@@ -906,7 +975,7 @@ export default function App() {
       )}
       <div className="panel" style={{ display: panelOpen ? undefined : "none" }}>
         <button className="panel-collapse" onClick={() => setPanelOpen(false)} title="Ocultar panel">«</button>
-        <h1 className="brand"><img src="/favicon.png" alt="" className="brand-logo" /> Nómada<span className="brand-ai">.AI</span></h1>
+        <h1 className="brand"><Brand size={20} /></h1>
        
         <p className="subtitle">Navegación consciente del riesgo · <select className="city-sel" value={city} onChange={(e) => changeCity(e.target.value)} disabled={running}>
           {Object.entries(CITIES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
@@ -971,9 +1040,6 @@ export default function App() {
         <select className="select" value={timeScale} onChange={(e) => setTimeScale(Number(e.target.value))}>
           {TIME_SCALES.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
         </select>
-
-        <label className="lbl">Umbral de alerta: <b>{threshold}%</b></label>
-        <input className="range" type="range" min={0} max={100} step={5} value={threshold} onChange={(e) => setThreshold(Number(e.target.value))} />
 
         {running ? (
           <button className="secondary" onClick={stopSim}>■ Detener simulación</button>
@@ -1135,7 +1201,7 @@ export default function App() {
         <div className="phone-notch" />
         <div className="phone-screen">
           {/* Marca flotante ARRIBA (fuera del modal), SIN relleno, «.AI» azul pegado */}
-          <div className="phone-brand-float"><img src="/favicon.png" alt="" className="brand-logo" /><span className="phone-wm">Nómada<span className="brand-ai">.AI</span></span></div>
+          <div className="phone-brand-float"><Brand size={15} /></div>
           <div className="phone-livebar">
             <span className="phone-veh-sm">{vehIcon}</span>
             <span className="phone-sub">{running ? "Navegando…" : finished ? "Finalizado" : "En espera"}</span>

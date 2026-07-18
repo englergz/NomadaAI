@@ -284,15 +284,17 @@ body.light .banner-line.ok { color: #14532d; }
 
 /* U5b: el «celular» = teléfono real con la marca flotando arriba (fuera del modal),
    fondo oscurecido y una HOJA modal deslizada desde abajo (como la app móvil). */
-.phone-screen { justify-content: flex-start; }
+.phone-screen { justify-content: flex-start; overflow: hidden; }
 .phone-brand-float { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; z-index: 2; }
-.phone-wm { font-weight: 800; font-size: 15px; color: #e8edf3; text-shadow: 0 1px 4px rgba(0,0,0,0.55); }
-body.light .phone-wm { color: #17212c; text-shadow: 0 1px 4px rgba(255,255,255,0.85); }
+.wm { display: inline-flex; align-items: center; gap: 7px; font-weight: 800; }
+.wm-txt { color: var(--text); letter-spacing: 0.2px; }
+.phone-brand-float .wm-txt { text-shadow: 0 1px 4px rgba(0,0,0,0.45); }
+body.light .phone-brand-float .wm-txt { text-shadow: 0 1px 4px rgba(255,255,255,0.85); }
 .brand-ai { color: #2f81f7; }
 .phone-sheet-head { display: flex; align-items: center; justify-content: space-between; }
 .phone-clear { background: transparent; border: none; box-shadow: none; width: auto; color: #ff6b5e; font-size: 11.5px; font-weight: 600; cursor: pointer; padding: 0; }
 .phone-filters { display: flex; gap: 6px; margin: 8px 0; }
-.phone-chip { background: transparent; border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; width: auto; box-shadow: none; }
+.phone-chip { background: transparent; border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px; font-size: 10.5px; font-weight: 600; color: var(--muted); cursor: pointer; width: auto; box-shadow: none; white-space: nowrap; flex-shrink: 0; }
 .phone-chip.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .phone-alist { flex: 1; overflow-y: auto; min-height: 0; }
 .alert-row { display: flex; gap: 8px; align-items: flex-start; border-bottom: 1px solid var(--border); padding: 8px 0; }
@@ -308,9 +310,9 @@ body.light .phone-wm { color: #17212c; text-shadow: 0 1px 4px rgba(255,255,255,0
 .phone-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 3; }
 /* Hoja modal PEGADA a los bordes del teléfono (izq/der/abajo); solo redondea arriba.
    El overflow del .phone-screen recorta las esquinas inferiores a la curva del móvil. */
-.phone-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; background: var(--panel); border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; padding: 8px 14px 14px; display: flex; flex-direction: column; height: 80%; box-shadow: 0 -6px 20px rgba(0,0,0,0.35); }
+.phone-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; background: var(--panel); border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; padding: 8px 14px 14px; display: flex; flex-direction: column; height: auto; max-height: 60%; box-shadow: 0 -6px 20px rgba(0,0,0,0.35); }
 .phone-sheet-handle { align-self: center; width: 38px; height: 4px; border-radius: 2px; background: var(--border); margin: 2px 0 8px; }
-.phone-sheet-title { font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.phone-sheet-title { white-space: nowrap; font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
 .phone-empty { font-size: 11px; color: var(--muted); line-height: 1.5; padding: 6px 2px; }
 .phone-cta { display: block; margin-top: 10px; text-align: center; background: var(--accent); color: #fff; font-weight: 700; font-size: 13px; padding: 11px; border-radius: 999px; text-decoration: none; flex-shrink: 0; }
 /* Líneas de alerta dentro del banner unificado (borde por nivel + ✕ para cerrar). */
@@ -420,3 +422,19 @@ button[class^="cl-"], button[class*=" cl-"], [class^="cl-"] button, [class*=" cl
 .menu-note { font-size: 10.5px; line-height: 1.5; color: var(--muted); margin: 8px 6px 2px; }
 .menu-note a { color: var(--accent); cursor: pointer; text-decoration: none; }
 .menu-note a:hover { text-decoration: underline; }
+
+/* Ajustes (paridad móvil): vehículo, sliders y paletas dentro del menú */
+.menu-veh { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 10px; }
+.menu-veh-btn { display: flex; align-items: center; gap: 6px; width: 100%; background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 7px 9px; font-size: 12px; box-shadow: none; }
+.menu-veh-btn.on { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
+.menu-veh-btn span { font-size: 15px; }
+.menu-cap { font-size: 11px; color: var(--muted); margin: 4px 10px 6px; display: block; line-height: 1.45; }
+.menu-slider { padding: 0 10px 4px; }
+.menu-slider .range { margin: 2px 0 6px; }
+.menu-riskcfg { transition: opacity 160ms ease; }
+.menu-riskcfg.off { opacity: 0.45; pointer-events: none; }
+.menu-pal { display: flex; gap: 6px; padding: 4px 10px 8px; }
+.menu-pal-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 7px 4px; font-size: 11px; box-shadow: none; }
+.menu-pal-btn.on { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
+.menu-swatches { display: flex; gap: 3px; }
+.menu-swatch { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
