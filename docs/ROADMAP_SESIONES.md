@@ -280,6 +280,18 @@ Pendiente (orden):
 - Pendiente U4: configurar CLERK_ISSUER en el Space (para que el backend VERIFIQUE los
   tokens); sincronizar vehículo/tema al perfil; foto en reportes cuando exista Storage.
 
+### U5d · ESCRITORIO — paridad final con el móvil (2026-07-12 tarde) — ✅ HECHO
+- ✅ Componente Brand ÚNICO (logo + «Nómada.AI» junto, .AI azul) usado en panel y
+  teléfono — prohibido escribir la marca a mano en JSX.
+- ✅ Menú renombrado a «AJUSTES» con la MISMA estructura y defaults del móvil:
+  TU VEHÍCULO (predeterminado persistente, alimenta «Ruta nueva») · RECORRIDO Y
+  ALERTAS (umbral, movido del panel) · TEMA · MAPA Y CAPAS (Satelital, Lugares,
+  Seguir vehículo, Trayectorias) · RIESGO (capa + paletas Calor/Semáforo/Frío +
+  intensidad + opacidad; defaults móvil: semaforo/50%/25%; persistido).
+- ✅ Teléfono-maqueta: overflow recortado a la silueta (esquinas del modal ya no
+  sobresalen), hoja max-height 60% (no tapa vehículo/estado), chips en una línea.
+- VERIFICADO en navegador con capturas (claro y oscuro).
+
 ### U5c · ESCRITORIO — barra de protección final (2026-07-12) — ✅ HECHO
 - ✅ components/ProtectionBar.tsx: idéntica a la app, con RAIL interno (topes y pulgar
   SIEMPRE dentro del redondeado — fix imágenes usuario), arrastre confiable con
