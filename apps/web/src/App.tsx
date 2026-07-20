@@ -194,10 +194,13 @@ export default function App() {
   const [trips, setTrips] = useState<TripSummary[]>([]);
   const [tripId, setTripId] = useState("");
   const [mode, setMode] = useState<"test" | "draw">("test");
-  const [drawVeh, setDrawVeh] = useState(() => {
+  // Vehículo PREDETERMINADO (Ajustes, persistente) — el selector de «Ruta nueva»
+  // solo cambia el del viaje en curso, sin tocar el predeterminado.
+  const [defaultVeh, setDefaultVeh] = useState(() => {
     try { return localStorage.getItem("nomadaai_vehicle") ?? ""; } catch { return ""; }
-  }); // vehículo PREDETERMINADO (Ajustes), cambiable por viaje
-  useEffect(() => { try { localStorage.setItem("nomadaai_vehicle", drawVeh); } catch { /* ignore */ } }, [drawVeh]);
+  });
+  useEffect(() => { try { localStorage.setItem("nomadaai_vehicle", defaultVeh); } catch { /* ignore */ } }, [defaultVeh]);
+  const [drawVeh, setDrawVeh] = useState(""); // "" = usar el predeterminado
   const [hour, setHour] = useState(20);
   const [day, setDay] = useState<number>(() => (new Date().getDay() + 6) % 7); // 0=lun … 6=dom
   const dayRef = useRef((new Date().getDay() + 6) % 7);
@@ -274,7 +277,7 @@ export default function App() {
   const [busy, setBusy] = useState("");  // aviso mientras se prepara la simulación
 
   const selectedTrip = trips.find((t) => t.id === tripId);
-  const vehType = mode === "draw" ? (drawVeh || "car") : (selectedTrip?.type ?? "car");
+  const vehType = mode === "draw" ? (drawVeh || defaultVeh || "car") : (selectedTrip?.type ?? "car");
   const vehIcon = iconForType(vehType);
 
   useEffect(() => { thrRef.current = threshold / 100; }, [threshold]);
@@ -674,7 +677,7 @@ export default function App() {
     try {
       const r = await fetch(`${base()}/route/build`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ origin: d.origin, dest: d.dest, type: drawVeh || null,
+        body: JSON.stringify({ origin: d.origin, dest: d.dest, type: drawVeh || defaultVeh || null,
           hour, risk_weight: riskWeight / 20 }),  // λ ∈ [0,5]
       });
       if (!r.ok) { setBusy(""); setDrawMsg("No se pudo trazar la ruta (puntos lejos de la red)."); return; }
@@ -694,11 +697,11 @@ export default function App() {
       } else {
         protectionRef.current = null;
       }
-      const adapted = j.vehicle_restricted ? `adaptada a ${labelForType(drawVeh || "car")}` : "red general";
+      const adapted = j.vehicle_restricted ? `adaptada a ${labelForType(drawVeh || defaultVeh || "car")}` : "red general";
       const dir = j.directional ? "respeta sentidos" : "sin sentido estricto";
       setDrawMsg(`Ruta ${(j.distance_m / 1000).toFixed(2)} km · ${adapted} · ${dir}. Simulando…`);
     } catch (e) { setBusy(""); setDrawMsg("Error: " + (e as Error).message); return; }
-    excludeRef.current = null; typeRef.current = drawVeh || "car";
+    excludeRef.current = null; typeRef.current = drawVeh || defaultVeh || "car";
     setBusy("");
     startStream(coords);
   }
@@ -869,8 +872,8 @@ export default function App() {
               <div className="menu-sec">Tu vehículo</div>
               <div className="menu-veh">
                 {([["mot", "Moto"], ["car", "Carro"], ["bus", "Bus"], ["truck", "Camión"]] as const).map(([k, lbl]) => (
-                  <button key={k} className={`menu-veh-btn ${drawVeh === k ? "on" : ""}`}
-                    onClick={() => setDrawVeh(drawVeh === k ? "" : k)} disabled={running}>
+                  <button key={k} className={`menu-veh-btn ${defaultVeh === k ? "on" : ""}`}
+                    onClick={() => { const next = defaultVeh === k ? "" : k; setDefaultVeh(next); if (!running) setDrawVeh(""); }} disabled={running}>
                     <span>{iconForType(k)}</span>{lbl}
                   </button>
                 ))}
@@ -1018,7 +1021,11 @@ export default function App() {
           <>
             <label className="lbl">Vehículo (opcional)</label>
             <select className="select" value={drawVeh} onChange={(e) => setDrawVeh(e.target.value)} disabled={running}>
-              {DRAW_VEHICLES.map((v) => <option key={v.key} value={v.key}>{v.label}</option>)}
+              {DRAW_VEHICLES.map((v) => (
+                <option key={v.key} value={v.key}>
+                  {v.key === "" ? `Predeterminado · ${labelForType(defaultVeh || "car")}` : v.label}
+                </option>
+              ))}
             </select>
             <p className="counts-cap">Opcional, pero indicar tu vehículo mejora la precisión de la predicción (calles según el tipo). Se puede cambiar en cada viaje.</p>
             {/* Barra de protección idéntica a la app; niveles definidos por el admin. */}
