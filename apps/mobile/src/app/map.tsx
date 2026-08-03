@@ -4,8 +4,8 @@
 // Regla de ruteo: EVITAR cuando hay alternativa; AVISAR cuando el riesgo es inevitable.
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, FlatList, Image, Keyboard, Linking, Platform, Pressable, StyleSheet,
-  Text, TextInput, useWindowDimensions, View,
+  ActivityIndicator, Alert, AppState, FlatList, Image, Keyboard, Linking, Platform, Pressable,
+  StyleSheet, Text, TextInput, useWindowDimensions, View,
 } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +24,10 @@ import SettingsSheet, { VEHICLES } from '@/components/settings-sheet';
 import NotificationsSheet from '@/components/notifications-sheet';
 import ProtectionSlider from '@/components/protection-slider';
 import { hasUnseenAlerts, logAlert } from '@/lib/alert-log';
+import {
+  clearActiveTrip, drainQueuedPoints, isResumable, loadActiveTrip, saveActiveTrip,
+  startBackgroundTrip, stopBackgroundTrip, type ActiveTrip,
+} from '@/lib/background-trip';
 import { logTrip } from '@/lib/history';
 import type { RouteLines } from '@/components/risk-map.types';
 import { useT, type TKey } from '@/lib/i18n';
@@ -148,6 +152,13 @@ export default function MapScreen() {
   useEffect(() => { destRef.current = dest; }, [dest]);
   const lastRerouteRef = useRef(0);
   const reroutingRef = useRef(false);
+  // Segundo plano: instantánea del viaje en disco para poder reanudarlo.
+  const tripStartedAtRef = useRef(0);
+  const lastPersistRef = useRef(0);
+  const tripMetaRef = useRef<{
+    city: string; vehicle: string | null; priority: number;
+    dest: ActiveTrip['dest'];
+  } | null>(null);
 
   // Estado del servicio: comprobación REAL de /health, repetida cada 60 s. Alimenta
   // el punto verde/coral del chip de ciudad; si cae, además avisa con un banner.
@@ -450,6 +461,7 @@ export default function MapScreen() {
       lastMoveAtRef.current = Date.now();
       idlePromptsRef.current = 0;
     }
+    persistTrip();
     // RECÁLCULO AL DESVIARSE: si te alejas >45 m de la ruta segura, se traza una
     // nueva desde tu posición actual (máx. 1 recálculo cada 12 s).
     const rt = routesRef.current;
@@ -470,6 +482,74 @@ export default function MapScreen() {
       const speed = dt > 0 ? distM([prev.lon, prev.lat], pos) / dt : 0;
       if (speed >= 4) feedModel(speed); // ~15 km/h: hay desplazamiento real (moto/carro/bus)
     }
+  }
+
+  // ---------- piezas del recorrido, compartidas por «iniciar» y «reanudar» ----------
+
+  // Vigilancia de inactividad: revisa cada 30 s cuánto llevas quieto.
+  function startIdleTimer() {
+    if (idleTimerRef.current) clearInterval(idleTimerRef.current);
+    idleTimerRef.current = setInterval(() => {
+      const idleMin = (Date.now() - lastMoveAtRef.current) / 60000;
+      if (idleMin >= 30 && idlePromptsRef.current >= 1) {
+        // Segunda vez sin moverse ni responder → se finaliza solo.
+        setBanner({ text: t('map.banner.tripAutoEnd'), tone: 'info' });
+        stopTrip();
+      } else if (idleMin >= 15 && idlePromptsRef.current < 1) {
+        idlePromptsRef.current = 1;
+        Alert.alert(t('map.idle.title'), t('map.idle.body'), [
+          { text: t('map.idle.end'), style: 'destructive', onPress: stopTrip },
+          { text: t('map.idle.continue'), onPress: () => { lastMoveAtRef.current = Date.now(); idlePromptsRef.current = 0; } },
+        ]);
+      }
+    }, 30000);
+  }
+
+  // TIEMPO REAL: máxima precisión y refresco ~1 s / 3 m (antes 4 s / 15 m = el
+  // «relento»). El rumbo del propio GPS (course) es más estable que la brújula
+  // cuando hay velocidad, así que se usa como fuente principal en movimiento.
+  async function startWatchers() {
+    watchRef.current?.remove();
+    watchRef.current = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 3 },
+      (p) => {
+        if (typeof p.coords.heading === 'number' && p.coords.heading >= 0 && (p.coords.speed ?? 0) > 1.5) {
+          setHeading(p.coords.heading);
+        }
+        handlePosition([p.coords.longitude, p.coords.latitude]);
+      },
+    );
+    // Brújula (nativo): el mapa/vehículo se orientan a donde apunta el teléfono.
+    if (Platform.OS !== 'web') {
+      try {
+        headingSubRef.current?.remove();
+        headingSubRef.current = await Location.watchHeadingAsync((h) => {
+          const deg = h.trueHeading >= 0 ? h.trueHeading : h.magHeading;
+          if (deg >= 0) setHeading(deg);
+        });
+      } catch { /* sin brújula: rumbo por movimiento */ }
+    }
+  }
+
+  // Instantánea del viaje en disco: permite REANUDAR si la app se cierra o el
+  // sistema la mata durante el recorrido. Se escribe con freno (cada 10 s).
+  function persistTrip() {
+    if (Platform.OS === 'web') return;
+    const meta = tripMetaRef.current;
+    if (!meta) return;
+    const now = Date.now();
+    if (now - lastPersistRef.current < 10000) return;
+    lastPersistRef.current = now;
+    void saveActiveTrip({
+      startedAt: tripStartedAtRef.current || now,
+      updatedAt: now,
+      city: meta.city,
+      vehicle: meta.vehicle,
+      priority: meta.priority,
+      alerts: alertsRef.current,
+      dest: meta.dest,
+      points: tripPtsRef.current,
+    });
   }
 
   async function startTrip() {
@@ -499,44 +579,26 @@ export default function MapScreen() {
     alertsRef.current = 0;
     lastMoveAtRef.current = Date.now();
     idlePromptsRef.current = 0;
-    // Vigilancia de inactividad: revisa cada 30 s cuánto llevas quieto.
-    idleTimerRef.current = setInterval(() => {
-      const idleMin = (Date.now() - lastMoveAtRef.current) / 60000;
-      if (idleMin >= 30 && idlePromptsRef.current >= 1) {
-        // Segunda vez sin moverse ni responder → se finaliza solo.
-        setBanner({ text: t('map.banner.tripAutoEnd'), tone: 'info' });
-        stopTrip();
-      } else if (idleMin >= 15 && idlePromptsRef.current < 1) {
-        idlePromptsRef.current = 1;
-        Alert.alert(t('map.idle.title'), t('map.idle.body'), [
-          { text: t('map.idle.end'), style: 'destructive', onPress: stopTrip },
-          { text: t('map.idle.continue'), onPress: () => { lastMoveAtRef.current = Date.now(); idlePromptsRef.current = 0; } },
-        ]);
-      }
-    }, 30000);
+    tripStartedAtRef.current = Date.now();
+    lastPersistRef.current = 0;
+    startIdleTimer();
     setTripLevel('despejado');
     setOnTrip(true);
     setBanner({ text: t('map.banner.tripStarted'), tone: 'info' });
-    // TIEMPO REAL: máxima precisión y refresco ~1 s / 3 m (antes 4 s / 15 m = el
-    // «relento»). El rumbo del propio GPS (course) es más estable que la brújula
-    // cuando hay velocidad, así que se usa como fuente principal en movimiento.
-    watchRef.current = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 3 },
-      (p) => {
-        if (typeof p.coords.heading === 'number' && p.coords.heading >= 0 && (p.coords.speed ?? 0) > 1.5) {
-          setHeading(p.coords.heading);
-        }
-        handlePosition([p.coords.longitude, p.coords.latitude]);
-      },
-    );
-    // Brújula (nativo): el mapa/vehículo se orientan a donde apunta el teléfono.
+    await startWatchers();
+    persistTrip();
+    // SEGUNDO PLANO: la protección no puede depender de que la pantalla esté
+    // encendida. Se pide «Permitir siempre» EN CONTEXTO (ya empezaste a andar) y,
+    // si el usuario dice que no, el recorrido sigue igual solo en primer plano.
     if (Platform.OS !== 'web') {
-      try {
-        headingSubRef.current = await Location.watchHeadingAsync((h) => {
-          const deg = h.trueHeading >= 0 ? h.trueHeading : h.magHeading;
-          if (deg >= 0) setHeading(deg);
-        });
-      } catch { /* sin brújula: rumbo por movimiento */ }
+      const bgOn = await startBackgroundTrip({
+        title: t('map.bg.notifTitle'),
+        body: t('map.bg.notifBody'),
+        color: c.accent,
+      });
+      // Si quedó activo, la notificación persistente (Android) y el indicador del
+      // sistema (iOS) ya lo dicen; solo hace falta avisar cuando NO quedó activo.
+      if (!bgOn) setBanner({ text: t('map.bg.off'), tone: 'warn' });
     }
   }
 
@@ -546,6 +608,11 @@ export default function MapScreen() {
     headingSubRef.current?.remove();
     headingSubRef.current = null;
     if (idleTimerRef.current) { clearInterval(idleTimerRef.current); idleTimerRef.current = null; }
+    // El seguimiento de fondo y el rastro guardado se apagan y se BORRAN al
+    // terminar: no dejamos ubicaciones del usuario vivas en el dispositivo.
+    void stopBackgroundTrip();
+    void clearActiveTrip();
+    tripStartedAtRef.current = 0;
     setHeading(null);
     // Salida GARANTIZADA del modo navegación: además del reset de pitch/rumbo,
     // se fuerza un encuadre normal sobre la última posición conocida.
@@ -573,6 +640,76 @@ export default function MapScreen() {
   }
 
   useEffect(() => () => { watchRef.current?.remove(); headingSubRef.current?.remove(); }, []);
+
+  // Meta del viaje siempre fresca para la instantánea (la escribe un callback de
+  // GPS que no ve re-renders).
+  useEffect(() => {
+    tripMetaRef.current = {
+      city,
+      vehicle: effVehicle ?? null,
+      priority,
+      dest: dest ? { name: dest.name, center: dest.coord as [number, number] } : null,
+    };
+  }, [city, effVehicle, priority, dest]);
+
+  // REANUDAR AL VOLVER: si la app se cerró (o el sistema la mató) con un recorrido
+  // en curso, al abrir se retoma donde quedó en vez de perderlo.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let alive = true;
+    (async () => {
+      const trip = await loadActiveTrip();
+      if (!alive) return;
+      if (!isResumable(trip)) { void clearActiveTrip(); void stopBackgroundTrip(); return; }
+      // Sin permiso vigente no se puede retomar nada: se limpia y se sigue normal.
+      const perm = await Location.getForegroundPermissionsAsync();
+      if (!alive) return;
+      if (perm.status !== 'granted') { void clearActiveTrip(); void stopBackgroundTrip(); return; }
+      tripStartedAtRef.current = trip.startedAt;
+      tripPtsRef.current = trip.points ?? [];
+      alertsRef.current = trip.alerts ?? 0;
+      lastMoveAtRef.current = Date.now();
+      idlePromptsRef.current = 0;
+      setPriority(trip.priority);
+      if (trip.vehicle !== null) setTripVehicle(trip.vehicle);
+      setOnTrip(true);
+      startIdleTimer();
+      try { await startWatchers(); } catch { /* sin GPS el viaje sigue con la última posición */ }
+      if (!alive) return;
+      // Se consume lo capturado mientras la app estuvo cerrada.
+      const queued = await drainQueuedPoints();
+      if (!alive) return;
+      const last = queued[queued.length - 1];
+      if (last) handlePosition([last.lon, last.lat]);
+      setBanner({ text: t('map.banner.tripResumed'), tone: 'info' });
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Al volver del segundo plano se consumen las posiciones capturadas mientras la
+  // app no estaba en pantalla: el rastro queda continuo, sin lluvia de alertas
+  // viejas (solo la última posición pasa por el evaluador completo).
+  const onTripStateRef = useRef(onTrip);
+  useEffect(() => { onTripStateRef.current = onTrip; }, [onTrip]);
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active' || !onTripStateRef.current) return;
+      void (async () => {
+        const queued = await drainQueuedPoints();
+        if (!queued.length) return;
+        const pts = tripPtsRef.current;
+        pts.push(...queued.slice(0, -1));
+        if (pts.length > 120) pts.splice(0, pts.length - 120);
+        const last = queued[queued.length - 1];
+        lastMoveAtRef.current = Date.now();
+        handlePosition([last.lon, last.lat]);
+      })();
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Recorrido libre AUTOMÁTICO (Ajustes): vigilancia ligera SOLO si el permiso ya fue
   // concedido; al detectar movimiento sostenido (~≥15 km/h) el recorrido arranca solo.
