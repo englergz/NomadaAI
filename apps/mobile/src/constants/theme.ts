@@ -43,11 +43,13 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 // pill (999) = todo control interactivo (botones, chips, inputs de una línea, FABs);
 // control (14) = tarjetas pequeñas seleccionables y campos multilínea;
 // card (16) = tarjetas/contendores informativos; sheet (20) = hojas modales.
+// Escala de radios: suave y proporcional al tamaño del elemento, igual criterio
+// que el escritorio (apps/web index.css --r-sm/md/lg). Redondear desde AQUÍ.
 export const Radii = {
   pill: 999,
-  control: 14,
-  card: 16,
-  sheet: 20,
+  control: 16,  // botones, campos, chips
+  card: 20,     // tarjetas y grupos
+  sheet: 28,    // hojas y modales
 } as const;
 
 export const Fonts = Platform.select({

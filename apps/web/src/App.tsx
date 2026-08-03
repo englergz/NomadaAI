@@ -118,15 +118,15 @@ function Icon({ name }: { name: string }) {
     routes: "M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 17h6a3 3 0 0 0 3-3V9",
     help: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .9-1 1.7M12 17h.01",
     menu: "M4 7h16M4 12h16M4 17h16",
-    // Engranaje: MISMO signo que el botón de Ajustes de la app móvil.
-    settings: "M10.3 3.6a1 1 0 0 1 1-.8h1.4a1 1 0 0 1 1 .8l.3 1.6a7 7 0 0 1 1.5.9l1.5-.6a1 1 0 0 1 1.2.4l.7 1.2a1 1 0 0 1-.2 1.3l-1.2 1a7 7 0 0 1 0 1.7l1.2 1a1 1 0 0 1 .2 1.3l-.7 1.2a1 1 0 0 1-1.2.4l-1.5-.6a7 7 0 0 1-1.5.9l-.3 1.6a1 1 0 0 1-1 .8h-1.4a1 1 0 0 1-1-.8l-.3-1.6a7 7 0 0 1-1.5-.9l-1.5.6a1 1 0 0 1-1.2-.4l-.7-1.2a1 1 0 0 1 .2-1.3l1.2-1a7 7 0 0 1 0-1.7l-1.2-1a1 1 0 0 1-.2-1.3l.7-1.2a1 1 0 0 1 1.2-.4l1.5.6a7 7 0 0 1 1.5-.9z",
+    // Engranaje de trazo: legible a 16 px (el anterior, relleno de dientes, se veía sucio).
+    settings: "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
   };
   const circle = name === "follow"; // el engranaje lleva su propio círculo central
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {circle && <circle cx="12" cy="12" r="7" />}
-      {name === "settings" && <circle cx="12" cy="12" r="2.6" />}
+      {name === "settings" && <circle cx="12" cy="12" r="3" />}
       <path d={p[name] || ""} />
     </svg>
   );
@@ -869,7 +869,7 @@ export default function App() {
       {/* Barra superior: menú de capas/vista agrupado + ayuda + sesión */}
       <div className="topbar">
         <div className="menu-wrap">
-          <button className={`btn-ic ${menuOpen ? "on" : ""}`} onClick={() => setMenuOpen((v) => !v)}><Icon name="settings" /> Ajustes</button>
+          <button className={`btn-ic ${menuOpen ? "on" : ""}`} onClick={() => setMenuOpen((v) => !v)}><Icon name="settings" /> Configuración</button>
           {menuOpen && (
             <div className="menu" onMouseLeave={() => setMenuOpen(false)}>
               <div className="menu-sec">Tu vehículo</div>
