@@ -65,6 +65,7 @@ const es = {
   'map.pre.etaMin': ' en ~{min} min',
   'map.pre.etaAhead': ' más adelante',
   'map.pre.notifTitle': '{title}: riesgo{eta}',
+  'map.dismissKeyboard': 'Cerrar el teclado',
   'map.disclaimer': 'Índice de referencia relativo: orienta tu decisión, no garantiza seguridad.',
   'map.webHint': 'En el navegador la ubicación usa el diálogo del propio navegador.',
 
@@ -272,6 +273,7 @@ const en: Record<TKey, string> = {
   'map.pre.etaMin': ' in ~{min} min',
   'map.pre.etaAhead': ' ahead',
   'map.pre.notifTitle': '{title}: risk{eta}',
+  'map.dismissKeyboard': 'Dismiss keyboard',
   'map.disclaimer': 'Relative reference index: it guides your decision, it does not guarantee safety.',
   'map.webHint': 'In the browser, location uses the browser’s own dialog.',
 

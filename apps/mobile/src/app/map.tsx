@@ -883,6 +883,18 @@ export default function MapScreen() {
 
       {/* Pila derecha centrada en el ÁREA DEL MAPA: perfil · ajustes · reportar ·
           notificaciones · centrar */}
+      {/* Cerrar el teclado tocando el MAPA. Solo existe con el teclado abierto y
+          solo cubre el área del mapa: así no roba toques al buscador (tocar dentro
+          del input para mover el cursor no debe bajar el teclado) ni a los FABs.
+          Antes, si abrías el buscador y no escribías nada, no había salida. */}
+      {kbHeight > 0 && (
+        <Pressable
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: sheetH + kbHeight }}
+          onPress={() => Keyboard.dismiss()}
+          accessibilityLabel={t('map.dismissKeyboard')}
+        />
+      )}
+
       <View style={[styles.rightStack, { top: stackTop }]}>
         <Pressable
           onPress={() => setShowProtection(true)}

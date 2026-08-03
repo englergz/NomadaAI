@@ -10,6 +10,7 @@ import SliderImpl from '@react-native-community/slider';
 // Los tipos del slider aún no están alineados con React 19; el runtime es correcto.
 const Slider = SliderImpl as unknown as React.ComponentType<Record<string, unknown>>;
 
+import PaletteRamp from '@/components/palette-ramp';
 import { HEAT_PALETTES, type HeatPaletteKey } from '@/constants/map';
 import { Colors, Radii } from '@/constants/theme';
 import IOSSwitch from '@/components/ios-switch';
@@ -182,7 +183,6 @@ export default function SettingsSheet({ visible, onClose, onHelp }: {
         <View style={styles.row}>
           {(Object.keys(HEAT_PALETTES) as HeatPaletteKey[]).map((k) => {
             const on = settings.palette === k;
-            const cols = HEAT_PALETTES[k].colors;
             return (
               <Pressable
                 key={k}
@@ -192,11 +192,7 @@ export default function SettingsSheet({ visible, onClose, onHelp }: {
                   { borderColor: on ? c.accent : c.border, backgroundColor: on ? c.backgroundSelected : 'transparent' },
                 ]}
               >
-                <View style={styles.swatchRow}>
-                  {[1, 2, 4].map((i) => (
-                    <View key={i} style={[styles.swatch, { backgroundColor: cols[i].replace(/[\d.]+\)$/, '1)') }]} />
-                  ))}
-                </View>
+                <PaletteRamp palette={k} width={56} height={8} />
                 <Text style={{ color: on ? c.accent : c.text, fontSize: 12, fontWeight: '600' }}>
                   {t(`settings.palette.${k}` as TKey)}
                 </Text>
