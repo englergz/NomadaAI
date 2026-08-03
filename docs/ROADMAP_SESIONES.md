@@ -25,6 +25,40 @@ barra, Ajustes responsive, banners auto-descarte. glyphs en el estilo (arregla �
 resourceUrl»). POIs nativos = círculos de color (iconos tipo web necesitan PNG con <Images/>).
 
 ## Cola de trabajo (en orden)
+### ⚠️ TRAMPA CRÍTICA · R8 vs SEGUNDO PLANO (2026-08-03) — resuelta, NO reintroducir
+Al activar `enableProguardInReleaseBuilds` para bajar el APK (159 MB → 49 MB), R8
+BORRÓ `expo.modules.adapters.react.apploader.RNHeadlessAppLoader`, que
+expo-task-manager instancia **por reflexión** para levantar el runtime de JS sin
+interfaz. Síntoma: `java.lang.ClassNotFoundException` + ANR en cuanto llegaba una
+posición de fondo; la app quedaba INARRANCABLE. Por separado, minificación y
+segundo plano funcionaban: solo fallaba la combinación.
+- Solución: `extraProguardRules` en el plugin `expo-build-properties` de app.json
+  (NO en `android/app/proguard-rules.pro`, que se regenera en cada prebuild), con
+  `-keep` de `expo.modules.adapters.react.apploader.**`, `taskManager.**`,
+  `interfaces.taskManager.**`, `location.**` y `notifications.**`.
+- REGLA: **toda build de producción minificada se prueba EJECUTÁNDOLA** (arrancar,
+  iniciar viaje, mandar al fondo). Que compile no dice nada sobre la reflexión.
+
+### U7-BACKLOG · TANDA 2026-08-03 (fluidez, cámara, avisos) — ✅ HECHO
+- **A · FLUIDEZ de cámara**: el vehículo INTERPOLA entre fijaciones GPS (~25 fps,
+  easeOut) en vez de saltar una vez por segundo. Vive en `SmoothVehicleMarker`
+  dentro de risk-map.tsx: al aislarlo, la animación repinta SOLO el marcador y no
+  el mapa con sus capas. Saltos grandes (cambio de ciudad, primer fix) no se animan.
+  Ojo: el efecto depende de `target[0]`/`target[1]`, NO del array (se recrea en
+  cada render y reiniciaría la animación sin fin).
+- **H · Cambio de ciudad en nativo**: VERIFICADO funcionando en emulador (vuelo a
+  Cali con su capa de riesgo y vuelta a Tumaco, capturado a mitad de animación).
+  Lo que seguía roto era otra cosa: al salir de navegación el mapa quedaba ROTADO
+  para siempre (trackUserLocation="course" lo gira y nadie lo devolvía al norte)
+  → `flyTo` ahora lleva `bearing: 0` y stopTrip SIEMPRE reencuadra.
+- **U7-B.4 · Avisos urgentes**: `src/lib/notify.ts` con canal Android de
+  importancia MAX + patrón de vibración por nivel (atención insiste más que
+  precaución), `interruptionLevel: timeSensitive` en iOS y presentación en primer
+  plano. La vibración se dispara SIEMPRE, aunque la notificación falle. En SDK 57
+  `shouldShowAlert` está obsoleto → `shouldShowBanner` + `shouldShowList`.
+- **D · Reporte ciudadano**: de 4 a 11 categorías (atraco a mano armada, hurto de
+  vehículo, acoso, vía en mal estado, accidente, retén irregular, otro…), es/en.
+
 ### DRY · CÓDIGO COMPARTIDO WEB/MÓVIL (2026-08-03) — ✅ HECHO
 Origen: el usuario detectó que arreglábamos la barra de protección y las paletas en
 la web mientras el móvil seguía con la versión vieja. Peor: los λ HABÍAN DIVERGIDO

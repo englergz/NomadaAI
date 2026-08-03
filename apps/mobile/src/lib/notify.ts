@@ -48,7 +48,11 @@ export async function setupAlerts(): Promise<void> {
       });
     }
     ready = true;
-  } catch { /* sin módulo de notificaciones seguimos con los banners in-app */ }
+  } catch (e) {
+    // NO se traga en silencio: si el canal no se crea, las alertas llegan sin
+    // prioridad y eso es justo lo que no podemos permitirnos no enterarnos.
+    console.warn('[nomadaai] no se pudo preparar el canal de alertas:', e);
+  }
 }
 
 /**
@@ -75,5 +79,7 @@ export async function notifyAlert(title: string, body: string, level: AlertLevel
       },
       trigger: null, // inmediata: una alerta de seguridad no se programa
     });
-  } catch { /* el banner in-app y la vibración ya cumplieron */ }
+  } catch (e) {
+    console.warn('[nomadaai] no se pudo enviar la alerta:', e);
+  }
 }

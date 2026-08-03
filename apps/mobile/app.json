@@ -55,7 +55,8 @@
         {
           "android": {
             "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "# El segundo plano usa REFLEXIÓN: expo-task-manager instancia\n# RNHeadlessAppLoader por nombre para levantar el runtime de JS sin UI.\n# R8 no ve esa referencia y la borraba → ClassNotFoundException y la app\n# se caía en cuanto llegaba una posición de fondo (verificado en emulador).\n-keep class expo.modules.adapters.react.apploader.** { *; }\n-keep class expo.modules.taskManager.** { *; }\n-keep class expo.modules.interfaces.taskManager.** { *; }\n-keep class expo.modules.location.** { *; }\n-keep class expo.modules.notifications.** { *; }"
           }
         }
       ],
