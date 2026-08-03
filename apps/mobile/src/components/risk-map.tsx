@@ -1,7 +1,7 @@
 // Mapa de la app de usuario — implementación NATIVA (Android/iOS) con MapLibre Native.
 // Requiere un development build (npx expo run:android / run:ios o EAS); en Expo Go
 // el módulo nativo no existe y se muestra un aviso en su lugar.
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
@@ -25,6 +25,63 @@ function VehicleSprite({ type, heading = 0 }: { type: string | null; heading?: n
     <View style={{ transform: [{ perspective: 500 }, { rotateX: '32deg' }, { rotate: `${heading}deg` }] }}>
       <VehicleSpriteView type={type} />
     </View>
+  );
+}
+
+/**
+ * FLUIDEZ EN CAMPO: el GPS entrega una posición por segundo, así que pintar cada
+ * fijación tal cual hace que el vehículo SALTE. Aquí se interpola entre la
+ * anterior y la nueva para que se DESLICE.
+ *
+ * Vive en su propio componente a propósito: la animación cambia estado ~25 veces
+ * por segundo y así solo se repinta el marcador, no el mapa entero con sus capas.
+ */
+function SmoothVehicleMarker({
+  Marker, target, type, heading, ms = 1000,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Marker: any;
+  target: [number, number];
+  type: string | null;
+  heading: number;
+  ms?: number;
+}) {
+  const [pos, setPos] = useState<[number, number]>(target);
+  const posRef = useRef<[number, number]>(target);
+  const rafRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const from = posRef.current;
+    const to = target;
+    // Un salto enorme (cambio de ciudad, primer fix) no se anima: se teletransporta.
+    const jump = Math.abs(to[0] - from[0]) > 0.02 || Math.abs(to[1] - from[1]) > 0.02;
+    if (jump) {
+      posRef.current = to; setPos(to);
+      return;
+    }
+    const start = Date.now();
+    if (rafRef.current) clearInterval(rafRef.current);
+    rafRef.current = setInterval(() => {
+      const k = Math.min(1, (Date.now() - start) / ms);
+      const e = k * (2 - k); // easeOut: entra rápido y asienta suave
+      const next: [number, number] = [
+        from[0] + (to[0] - from[0]) * e,
+        from[1] + (to[1] - from[1]) * e,
+      ];
+      posRef.current = next;
+      setPos(next);
+      if (k >= 1 && rafRef.current) { clearInterval(rafRef.current); rafRef.current = null; }
+    }, 40); // ~25 fps: suficiente para que se vea continuo sin castigar el puente
+    return () => { if (rafRef.current) { clearInterval(rafRef.current); rafRef.current = null; } };
+    // Se depende de los VALORES, no del array: `target` se recrea en cada render y
+    // reiniciaría la animación constantemente (el vehículo nunca llegaría).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target[0], target[1], ms]);
+
+  return (
+    <Marker {...({ lngLat: pos } as Record<string, unknown>)}>
+      <VehicleSprite type={type} heading={heading} />
+    </Marker>
   );
 }
 
@@ -57,7 +114,12 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
   const cameraRef = useRef<any>(null);
   useEffect(() => {
     if (navOn || !focus) return;               // en navegación manda trackUserLocation
-    cameraRef.current?.flyTo?.({ center: focus.center, zoom: focus.zoom, pitch: 0, duration: 1400 });
+    // bearing:0 además de pitch:0 — al salir de navegación el mapa quedaba ROTADO
+    // para siempre (trackUserLocation="course" lo gira y nadie lo devolvía al
+    // norte): las etiquetas se leían al revés y la brújula quedaba torcida.
+    cameraRef.current?.flyTo?.({
+      center: focus.center, zoom: focus.zoom, pitch: 0, bearing: 0, duration: 1400,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus, navOn]);
 
@@ -149,11 +211,13 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
         </GeoJSONSource>
       )}
       {/* En navegación: vehículo cenital (Marker con lngLat); si no, punto azul */}
-      {navOn && Marker ? (
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        <Marker {...({ lngLat: userLocation } as any)}>
-          <VehicleSprite type={nav?.vehicle ?? null} heading={nav?.heading ?? 0} />
-        </Marker>
+      {navOn && Marker && userLocation ? (
+        <SmoothVehicleMarker
+          Marker={Marker}
+          target={userLocation as [number, number]}
+          type={nav?.vehicle ?? null}
+          heading={nav?.heading ?? 0}
+        />
       ) : userLocation ? (
         <GeoJSONSource
           id="me"

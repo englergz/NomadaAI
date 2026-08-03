@@ -662,7 +662,9 @@ export default function MapScreen() {
     setHeading(null);
     // Salida GARANTIZADA del modo navegación: además del reset de pitch/rumbo,
     // se fuerza un encuadre normal sobre la última posición conocida.
-    if (userLoc) setFocus({ center: userLoc, zoom: 15 });
+    // SIEMPRE se reencuadra (aunque no haya última posición): si no, el mapa se
+    // queda rotado y con pitch del modo navegación hasta que cambies de ciudad.
+    setFocus({ center: userLoc ?? CITIES[city].center, zoom: userLoc ? 15 : CITIES[city].zoom });
     // Sin movimiento real no hay viaje que registrar: evita el «viaje fantasma»
     // de pulsar Recorrido libre y finalizar sin haberse movido.
     const moved = tripPtsRef.current.length >= 4;
