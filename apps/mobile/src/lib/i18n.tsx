@@ -107,6 +107,11 @@ const es = {
   'settings.intensity': 'Intensidad',
   'settings.opacity': 'Opacidad de la capa',
   'settings.done': 'Listo',
+  'settings.reset.action': 'Restablecer configuración',
+  'settings.reset.title': '¿Restablecer la configuración?',
+  'settings.reset.body': 'Todas tus preferencias (vehículo, tema, idioma, capas y riesgo) vuelven a los valores por defecto. Tu histórico no se borra.',
+  'settings.reset.cancel': 'Cancelar',
+  'settings.reset.confirm': 'Restablecer',
 
   // Reporte ciudadano
   'report.title': 'Reportar incidente',
@@ -305,6 +310,11 @@ const en: Record<TKey, string> = {
   'settings.intensity': 'Intensity',
   'settings.opacity': 'Layer opacity',
   'settings.done': 'Done',
+  'settings.reset.action': 'Reset settings',
+  'settings.reset.title': 'Reset your settings?',
+  'settings.reset.body': 'All your preferences (vehicle, theme, language, layers and risk) go back to their defaults. Your history is not deleted.',
+  'settings.reset.cancel': 'Cancel',
+  'settings.reset.confirm': 'Reset',
 
   'report.title': 'Report an incident',
   'report.intro': 'Sent anonymously with your current location and the time. Reports feed the model; they are never published individually.',

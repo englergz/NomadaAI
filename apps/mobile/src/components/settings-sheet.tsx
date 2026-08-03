@@ -2,7 +2,7 @@
 // (categoría propia: toggle de capa + heatmap dentro, deshabilitado si la capa está OFF).
 // Paridad con el menú del panel de escritorio.
 import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import SliderImpl from '@react-native-community/slider';
@@ -41,7 +41,7 @@ export default function SettingsSheet({ visible, onClose }: { visible: boolean; 
   const t = useT();
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
-  const { settings, set } = useSettings();
+  const { settings, set, reset } = useSettings();
   const insets = useSafeAreaInsets();
   const { height: winH } = useWindowDimensions();
 
@@ -229,6 +229,23 @@ export default function SettingsSheet({ visible, onClose }: { visible: boolean; 
         </View>
         </View>
 
+        {/* Restablecer: pide confirmación porque borra TODAS las preferencias. */}
+        <Pressable
+          onPress={() => Alert.alert(
+            t('settings.reset.title'),
+            t('settings.reset.body'),
+            [
+              { text: t('settings.reset.cancel'), style: 'cancel' },
+              { text: t('settings.reset.confirm'), style: 'destructive', onPress: reset },
+            ],
+          )}
+          style={({ pressed }) => [styles.resetBtn, { borderColor: c.border, opacity: pressed ? 0.7 : 1 }]}
+        >
+          <Text style={{ color: c.textSecondary, fontSize: 13, fontWeight: '600' }}>
+            {t('settings.reset.action')}
+          </Text>
+        </Pressable>
+
         </ScrollView>
         <Pressable
           onPress={onClose}
@@ -242,6 +259,10 @@ export default function SettingsSheet({ visible, onClose }: { visible: boolean; 
 }
 
 const styles = StyleSheet.create({
+  resetBtn: {
+    marginTop: 18, marginHorizontal: 16, marginBottom: 6, paddingVertical: 11,
+    borderWidth: 1, borderRadius: 12, alignItems: 'center',
+  },
   // B3: el backdrop cubre TODA la pantalla (también detrás de las esquinas curvas de la
   // hoja); antes terminaba en el borde superior de la hoja y se veía una línea recta.
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
