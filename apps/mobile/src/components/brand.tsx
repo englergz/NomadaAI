@@ -34,7 +34,11 @@ export default function BrandWordmark({
       {/* El «.» es un punto REDONDO real (View), no el glifo cuadrado de la fuente —
           el mismo punto del mapa y del splash: consistencia en toda la marca. */}
       <View style={styles.wordRow}>
-        <Text style={[{ fontFamily: BRAND_FONT, fontSize: size, color, letterSpacing: 0.2 }, haloStyle]}>
+        <Text
+          numberOfLines={1}
+          ellipsizeMode="clip"
+          style={[styles.word, { fontFamily: BRAND_FONT, fontSize: size, color, letterSpacing: 0.2 }, haloStyle]}
+        >
           Nómada
         </Text>
         <View
@@ -43,7 +47,11 @@ export default function BrandWordmark({
             backgroundColor: Brand.accent, marginHorizontal: size * 0.14, marginBottom: size * 0.12,
           }}
         />
-        <Text style={[{ fontFamily: BRAND_FONT, fontSize: size, color: Brand.accent, letterSpacing: 0.2 }, haloStyle]}>
+        <Text
+          numberOfLines={1}
+          ellipsizeMode="clip"
+          style={[styles.word, { fontFamily: BRAND_FONT, fontSize: size, color: Brand.accent, letterSpacing: 0.2 }, haloStyle]}
+        >
           AI
         </Text>
       </View>
@@ -52,6 +60,10 @@ export default function BrandWordmark({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  wordRow: { flexDirection: 'row', alignItems: 'baseline' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 0 },
+  wordRow: { flexDirection: 'row', alignItems: 'baseline', flexShrink: 0 },
+  // La marca NUNCA se encoge ni se recorta: sin esto, cuando la barra superior
+  // aprieta el ancho, RN reparte el espacio entre los tres nodos y sale
+  // «Nóma . A» (cada Text truncado por su cuenta).
+  word: { flexShrink: 0, flexGrow: 0 },
 });

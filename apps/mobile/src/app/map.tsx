@@ -25,8 +25,9 @@ import NotificationsSheet from '@/components/notifications-sheet';
 import ProtectionSlider from '@/components/protection-slider';
 import { hasUnseenAlerts, logAlert } from '@/lib/alert-log';
 import {
-  clearActiveTrip, drainQueuedPoints, isResumable, loadActiveTrip, saveActiveTrip,
-  startBackgroundTrip, stopBackgroundTrip, type ActiveTrip,
+  clearActiveTrip, drainQueuedPoints, isResumable, loadActiveTrip, resumeBackgroundTrip,
+  saveActiveTrip, saveNotificationCopy, startAutoTripWatch, startBackgroundTrip,
+  stopAutoTripWatch, stopBackgroundTrip, type ActiveTrip,
 } from '@/lib/background-trip';
 import { logTrip } from '@/lib/history';
 import type { RouteLines } from '@/components/risk-map.types';
@@ -604,6 +605,7 @@ export default function MapScreen() {
     setBanner({ text: t('map.banner.tripStarted'), tone: 'info' });
     await startWatchers();
     persistTrip();
+    void stopAutoTripWatch(); // el seguimiento fino del viaje sustituye al vigía
     // SEGUNDO PLANO: la protección no puede depender de que la pantalla esté
     // encendida. Se pide «Permitir siempre» EN CONTEXTO (ya empezaste a andar) y,
     // si el usuario dice que no, el recorrido sigue igual solo en primer plano.
@@ -630,6 +632,11 @@ export default function MapScreen() {
     void stopBackgroundTrip();
     void clearActiveTrip();
     tripStartedAtRef.current = 0;
+    // Al terminar, si la protección automática sigue activa vuelve a quedar el
+    // vigía de bajo consumo esperando el próximo arranque.
+    if (settingsRef.current.autoTrip) {
+      void startAutoTripWatch({ title: t('map.bg.watchTitle'), body: t('map.bg.watchBody'), color: c.accent });
+    }
     setHeading(null);
     // Salida GARANTIZADA del modo navegación: además del reset de pitch/rumbo,
     // se fuerza un encuadre normal sobre la última posición conocida.
@@ -657,6 +664,26 @@ export default function MapScreen() {
   }
 
   useEffect(() => () => { watchRef.current?.remove(); headingSubRef.current?.remove(); }, []);
+
+  // PROTECCIÓN AUTOMÁTICA EN SEGUNDO PLANO: mientras el ajuste esté activo y no
+  // haya viaje, queda un vigía de bajo consumo que enciende la protección solo,
+  // aunque la app esté cerrada. Los textos se guardan en disco porque la tarea
+  // headless no tiene acceso al contexto de idioma de React.
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  useEffect(() => {
+    if (Platform.OS === 'web' || !hydrated) return;
+    void saveNotificationCopy({
+      title: t('map.bg.notifTitle'), body: t('map.bg.notifBody'), color: c.accent,
+      autoTitle: t('map.bg.autoTitle'), autoBody: t('map.bg.autoBody'),
+    });
+    if (settings.autoTrip && !onTrip) {
+      void startAutoTripWatch({ title: t('map.bg.watchTitle'), body: t('map.bg.watchBody'), color: c.accent });
+    } else if (!settings.autoTrip) {
+      void stopAutoTripWatch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.autoTrip, onTrip, hydrated]);
 
   // Meta del viaje siempre fresca para la instantánea (la escribe un callback de
   // GPS que no ve re-renders).
@@ -697,7 +724,15 @@ export default function MapScreen() {
       const queued = await drainQueuedPoints();
       if (!alive) return;
       applyQueuedPoints(queued);
-      setBanner({ text: t('map.banner.tripResumed'), tone: 'info' });
+      // Si la app había sido cerrada, el servicio de fondo murió con ella: se vuelve
+      // a enganchar (sin pedir permiso otra vez) o el viaje quedaría desprotegido en
+      // cuanto el usuario bloquee la pantalla.
+      void resumeBackgroundTrip({
+        title: t('map.bg.notifTitle'), body: t('map.bg.notifBody'), color: c.accent,
+      });
+      // Si lo abrió el vigía automático, el usuario nunca tocó «iniciar»: hay que
+      // decírselo con el copy de protección automática, no con el de «retomamos».
+      setBanner({ text: trip.auto ? t('map.banner.autoTrip') : t('map.banner.tripResumed'), tone: 'info' });
     })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
