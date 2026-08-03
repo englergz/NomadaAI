@@ -17,6 +17,7 @@ import AnimatedSplash from '@/components/animated-splash';
 // pueda ejecutarla sin montar ninguna vista.
 import '@/lib/background-trip';
 import { Colors } from '@/constants/theme';
+import { setupAlerts } from '@/lib/notify';
 import { CLERK_ENABLED, registerAuth } from '@/lib/auth';
 import { SettingsProvider, useResolvedScheme } from '@/lib/settings';
 
@@ -84,6 +85,10 @@ export default function RootLayout() {
   // Se OCULTA el splash nativo del sistema de inmediato (la «pantalla negra con el
   // logo»): la app entra DIRECTO en la animación de arranque, sin salto intermedio.
   useEffect(() => { SplashScreen.hideAsync().catch(() => { /* ya oculto */ }); }, []);
+  // El canal de alertas se crea AL ARRANCAR, no al iniciar el primer viaje: en
+  // Android la importancia de un canal se fija al crearlo y no se puede subir
+  // después, así que debe existir antes de la primera alerta.
+  useEffect(() => { void setupAlerts(); }, []);
   return (
     <MaybeClerk>
       <SettingsProvider>
