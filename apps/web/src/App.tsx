@@ -912,11 +912,12 @@ export default function App() {
               </div>
 
               <div className="menu-sec">Riesgo</div>
+              {/* TODO lo de riesgo vive DENTRO de la misma tarjeta: el interruptor y
+                  su configuración son una sola cosa, no dos bloques sueltos. */}
               <div className="menu-group">
                 <button className="menu-row" onClick={() => toggleRisk(!riskOn)}>
                   <span className="menu-lbl"><Icon name="risk" /> Capa de riesgo</span><span className={`sw ${riskOn ? "on" : ""}`}>{riskOn ? "ON" : "OFF"}</span>
                 </button>
-              </div>
               <div className={`menu-riskcfg ${riskOn ? "" : "off"}`}>
                 <span className="menu-cap">Paleta</span>
                 <div className="menu-pal">
@@ -938,6 +939,7 @@ export default function App() {
                   <input className="range" type="range" min={10} max={100} step={5} value={Math.round(riskPrefs.opacity * 100)}
                     onChange={(e) => setRiskPrefs({ ...riskPrefs, opacity: Number(e.target.value) / 100 })} />
                 </div>
+              </div>
               </div>
               <div className="menu-div" />
               <div className="menu-group">

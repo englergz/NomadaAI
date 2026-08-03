@@ -443,10 +443,10 @@ button[class^="cl-"], button[class*=" cl-"], [class^="cl-"] button, [class*=" cl
 .menu-cap b { color: var(--text); font-variant-numeric: tabular-nums; }
 .menu-slider { padding: 0 10px 4px; }
 .menu-slider .range { margin: 2px 0 6px; }
-.menu-riskcfg { transition: opacity 160ms ease; }
+.menu-riskcfg { transition: opacity 160ms ease; padding-top: 10px; border-top: 1px solid var(--border); }
 .menu-riskcfg.off { opacity: 0.45; pointer-events: none; }
-.menu-pal { display: flex; gap: 5px; padding: 0 10px 10px; }
-.menu .menu-pal-btn { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 7px; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: var(--r-sm); padding: 8px; font-size: 11px; box-shadow: none; transition: border-color 140ms ease, color 140ms ease, background 140ms ease; }
+.menu-pal { display: flex; align-items: stretch; gap: 5px; padding: 0 10px 10px; }
+.menu .menu-pal-btn { flex: 1; min-width: 0; height: auto; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; gap: 7px; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: var(--r-sm); padding: 8px; font-size: 11px; box-shadow: none; transition: border-color 140ms ease, color 140ms ease, background 140ms ease; }
 .menu .menu-pal-btn:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
 .menu .menu-pal-btn.on { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
 /* Rampa continua = misma escala que pinta el mapa; el borde interior la separa
