@@ -49,7 +49,17 @@
       ],
       "expo-task-manager",
       "expo-localization",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ],
+      "./plugins/with-abi-splits"
     ],
     "experiments": {
       "typedRoutes": true,
