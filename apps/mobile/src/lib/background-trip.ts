@@ -371,6 +371,22 @@ export async function resumeBackgroundTrip(notification: {
     console.warn('[nomadaai] no se pudo consultar el permiso de fondo:', e);
     return false;
   }
+  // CAUSA RAÍZ DEL BUG DE REANUDACIÓN (Android):
+  // `hasStartedLocationUpdatesAsync` NO dice si el servicio está vivo, dice si la
+  // TAREA sigue REGISTRADA en TaskManager — y ese registro sobrevive a que el
+  // sistema mate la app. Al reabrir con un viaje en curso, el registro seguía ahí,
+  // `startBackgroundTrip` respondía «ya está corriendo» y devolvía true sin
+  // arrancar nada: sin servicio, sin error y sin aviso. Por eso no aparecía ni el
+  // banner de fallo. En iOS no se notaba porque allí el seguimiento de fondo
+  // sobrevive en lugar de morir con la app.
+  //
+  // Al REANUDAR se fuerza siempre un ciclo limpio: se detiene el registro viejo
+  // (si lo hay) y se arranca de nuevo, garantizando un servicio real y vivo.
+  try {
+    if (await Location.hasStartedLocationUpdatesAsync(TRIP_TASK)) {
+      await Location.stopLocationUpdatesAsync(TRIP_TASK);
+    }
+  } catch { /* no había registro previo: seguimos a arrancar */ }
   return startBackgroundTrip(notification);
 }
 
