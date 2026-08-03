@@ -34,9 +34,9 @@ export default function HelpSheet({ visible, onClose }: { visible: boolean; onCl
 
           {sections.map((sec) => (
             <View key={sec.title} style={{ gap: 9 }}>
-              <Text style={[styles.section, { color: c.text }]}>{sec.title}</Text>
+              <Text style={[styles.section, { color: c.accent }]}>{sec.title}</Text>
               {sec.items.map((it) => (
-                <Text key={it.body} style={{ color: c.textSecondary, fontSize: 13, lineHeight: 19 }}>
+                <Text key={it.body} style={{ color: c.text, fontSize: 13, lineHeight: 20 }}>
                   {it.term ? <Text style={{ color: c.text, fontWeight: '700' }}>{it.term}: </Text> : null}
                   {it.body}
                 </Text>
@@ -65,6 +65,7 @@ const styles = StyleSheet.create({
   },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
   title: { fontSize: 17, fontWeight: '800' },
-  section: { fontSize: 14.5, fontWeight: '700' },
+  // Igual que .help-modal h3 en el escritorio: es lo que separa secciones de cuerpo.
+  section: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
   close: { borderRadius: Radii.pill, paddingVertical: 13, alignItems: 'center' },
 });

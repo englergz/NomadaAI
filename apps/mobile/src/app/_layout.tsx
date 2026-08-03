@@ -18,6 +18,7 @@ import AnimatedSplash from '@/components/animated-splash';
 import '@/lib/background-trip';
 import { Colors } from '@/constants/theme';
 import { setupAlerts } from '@/lib/notify';
+import { checkForUpdate } from '@/lib/ota';
 import { CLERK_ENABLED, registerAuth } from '@/lib/auth';
 import { SettingsProvider, useResolvedScheme } from '@/lib/settings';
 
@@ -89,6 +90,10 @@ export default function RootLayout() {
   // Android la importancia de un canal se fija al crearlo y no se puede subir
   // después, así que debe existir antes de la primera alerta.
   useEffect(() => { void setupAlerts(); }, []);
+  // Actualización por aire: se busca y descarga en segundo plano al arrancar.
+  // NO se recarga aquí; se aplica sola en el siguiente arranque en frío, para
+  // no reiniciar nunca la app en mitad de un recorrido.
+  useEffect(() => { void checkForUpdate(); }, []);
   return (
     <MaybeClerk>
       <SettingsProvider>
