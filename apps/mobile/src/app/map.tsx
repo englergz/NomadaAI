@@ -41,6 +41,7 @@ import { useResolvedScheme, useSettings } from '@/lib/settings';
 import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
 import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { diagnose, messageKeyFor, type NetState } from '@/lib/connectivity';
 import { levelFor, ProximityTracker, zoneAt, type AlertLevel } from '@/lib/alerts';
 import { bearingDeg, coverageCity, distM, distToPath, searchPlaces, type Place } from '@/lib/geocode';
 
@@ -182,20 +183,30 @@ export default function MapScreen() {
 
   // Estado del servicio: comprobación REAL de /health, repetida cada 60 s. Alimenta
   // el punto verde/coral del chip de ciudad; si cae, además avisa con un banner.
+  // Estado del servicio con DIAGNÓSTICO: distingue «no tienes internet» de «somos
+  // nosotros los que fallamos» y de «la red va lenta». Antes todo era el mismo
+  // mensaje culpando al usuario, incluso cuando el caído era nuestro servidor.
   const [healthOk, setHealthOk] = useState<boolean | null>(null);
+  const [netState, setNetState] = useState<NetState>('ok');
   useEffect(() => {
     let alive = true;
-    const check = () => api.health()
-      .then(() => { if (alive) setHealthOk(true); })
-      .catch(() => {
-        if (!alive) return;
-        setHealthOk((prev) => {
-          if (prev !== false) setBanner({ text: t('home.offline'), tone: 'warn' });
-          return false;
-        });
+    const check = async () => {
+      const d = await diagnose(async () => {
+        await api.health();
+        return 200;
       });
-    check();
-    const iv = setInterval(check, 60000);
+      if (!alive) return;
+      setNetState(d.state);
+      setHealthOk(d.state === 'ok' || d.state === 'lento');
+      const key = messageKeyFor(d.state);
+      // Solo se avisa al CAMBIAR de estado: no se repite el banner cada minuto.
+      setNetState((prev) => {
+        if (key && prev !== d.state) setBanner({ text: t(key as TKey), tone: d.state === 'lento' ? 'info' : 'warn' });
+        return d.state;
+      });
+    };
+    void check();
+    const iv = setInterval(() => { void check(); }, 60000);
     return () => { alive = false; clearInterval(iv); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
