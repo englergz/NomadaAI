@@ -14,7 +14,11 @@ import { useT } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
 
 // La clave viaja a la API en español (categorías del modelo); solo el rótulo se traduce.
-const CATEGORIES = ['robo', 'riña', 'iluminación dañada', 'presencia sospechosa'] as const;
+const CATEGORIES = [
+  'robo', 'atraco a mano armada', 'hurto de vehículo', 'riña', 'acoso',
+  'presencia sospechosa', 'iluminación dañada', 'vía en mal estado',
+  'accidente de tránsito', 'retén irregular', 'otro',
+] as const;
 
 const COOLDOWN_MS = 3 * 60 * 1000; // 3 min entre reportes desde este dispositivo
 const LAST_KEY = 'nomadaai_last_report';

@@ -25,6 +25,7 @@ import SettingsSheet, { VEHICLES } from '@/components/settings-sheet';
 import NotificationsSheet from '@/components/notifications-sheet';
 import ProtectionSlider from '@/components/protection-slider';
 import { hasUnseenAlerts, logAlert } from '@/lib/alert-log';
+import { notifyAlert, setupAlerts } from '@/lib/notify';
 import {
   clearActiveTrip, drainQueuedPoints, isResumable, loadActiveTrip, resumeBackgroundTrip,
   saveActiveTrip, saveNotificationCopy, startAutoTripWatch, startBackgroundTrip,
@@ -392,12 +393,10 @@ export default function MapScreen() {
   }
 
   // Notificación local (nativa). En web solo banner in-app.
-  async function notifyLocal(title: string, body: string) {
-    if (Platform.OS === 'web') return;
-    try {
-      const Notifications = await import('expo-notifications');
-      await Notifications.scheduleNotificationAsync({ content: { title, body }, trigger: null });
-    } catch { /* sin permiso o sin módulo: el banner in-app ya avisó */ }
+  // Los avisos de riesgo van por el canal de ALTA importancia con vibración
+  // (lib/notify): silenciosos o tarde no sirven de nada en la calle.
+  function notifyLocal(title: string, body: string, level: AlertLevel = 'precaucion') {
+    void notifyAlert(title, body, level);
   }
 
   // Prefijo del recorrido para el modelo de predicción (OE1): puntos [lon,lat,t].
@@ -434,7 +433,7 @@ export default function MapScreen() {
         const title = lvl === 'atencion' ? t('map.pre.title.attention') : t('map.pre.title.caution');
         const body = t('map.pre.body', { eta });
         setBanner({ text: `${title}: ${body}`, tone: lvl === 'atencion' ? 'coral' : 'warn' });
-        notifyLocal(t('map.pre.notifTitle', { title, eta }), body);
+        notifyLocal(t('map.pre.notifTitle', { title, eta }), body, lvl);
         logAlert({
           zone: String(a.cell_id),
           level: lvl === 'atencion' ? 'atencion' : 'precaucion',
@@ -464,7 +463,7 @@ export default function MapScreen() {
       const title = alert.level === 'atencion' ? t('alert.attention.title') : t('alert.caution.title');
       const body = alert.level === 'atencion' ? attBody : t('alert.caution.body');
       setBanner({ text: `${title}: ${body}`, tone: alert.level === 'atencion' ? 'coral' : 'warn' });
-      notifyLocal(title, body);
+      notifyLocal(title, body, alert.level);
       logAlert({
         zone: alert.cellId,
         level: alert.level === 'atencion' ? 'atencion' : 'precaucion',
@@ -611,6 +610,7 @@ export default function MapScreen() {
       try {
         const Notifications = await import('expo-notifications');
         await Notifications.requestPermissionsAsync();
+        await setupAlerts();
       } catch { /* opcional: sin notificaciones seguimos con banners */ }
     }
     trackerRef.current.reset();
