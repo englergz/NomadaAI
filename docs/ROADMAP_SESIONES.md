@@ -25,6 +25,28 @@ barra, Ajustes responsive, banners auto-descarte. glyphs en el estilo (arregla �
 resourceUrl»). POIs nativos = círculos de color (iconos tipo web necesitan PNG con <Images/>).
 
 ## Cola de trabajo (en orden)
+### U7-BG · SEGUNDO PLANO DEL RECORRIDO (2026-08-02) — implementado, falta prueba de campo
+Problema: la protección moría al bloquear el teléfono o cambiar de app.
+- `src/lib/background-trip.ts`: tarea `nomadaai-trip-location` definida en ámbito
+  GLOBAL (requisito de expo-task-manager: el runtime headless no monta vistas) e
+  importada desde `app/_layout.tsx` solo por su efecto.
+- Android: `startLocationUpdatesAsync` con `foregroundService` → notificación
+  persistente («Nómada.AI cuida tu recorrido»), permisos ACCESS_BACKGROUND_LOCATION
+  + FOREGROUND_SERVICE + FOREGROUND_SERVICE_LOCATION (obligatorio en Android 14+).
+- iOS: `UIBackgroundModes: [location]`, `activityType: AutomotiveNavigation`,
+  `pausesUpdatesAutomatically: false` (una pausa automática en mitad del viaje es
+  justo cuando hace falta el aviso) e indicador de fondo visible.
+- REANUDAR: instantánea del viaje en AsyncStorage (cada 10 s) + cola de posiciones
+  capturadas sin pantalla. Al abrir, si el viaje tiene <6 h se retoma (`isResumable`),
+  se consume la cola y solo la ÚLTIMA posición pasa por el evaluador completo →
+  rastro continuo sin lluvia de alertas viejas.
+- U7-SEC: coordenadas nunca se imprimen ni salen del dispositivo; solo se guarda un
+  prefijo de 120 puntos y se BORRA todo al finalizar el viaje.
+- Permiso «Siempre» se pide EN CONTEXTO al iniciar el recorrido; si se niega, el
+  viaje sigue en primer plano y se avisa con banner (`map.bg.off`).
+- Verificado: prebuild Android/iOS genera permisos, servicio y plist correctos.
+  PENDIENTE: prueba en emulador/campo (pantalla apagada, app cerrada, reapertura).
+
 ### U5e · ESCRITORIO — cierre fino (2026-08-02) — ✅ HECHO
 - ✅ Vehículo PREDETERMINADO (Ajustes, persistido) separado del vehículo POR VIAJE:
   el selector de «Ruta nueva» muestra «Predeterminado · X» y solo afecta ese viaje.

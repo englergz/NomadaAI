@@ -12,6 +12,10 @@ const ClerkProvider = ClerkProviderImpl as unknown as React.ComponentType<{
 }>;
 
 import AnimatedSplash from '@/components/animated-splash';
+// Importado por su efecto: define la tarea de ubicación en segundo plano en el
+// ámbito global del bundle, requisito de expo-task-manager para que el sistema
+// pueda ejecutarla sin montar ninguna vista.
+import '@/lib/background-trip';
 import { Colors } from '@/constants/theme';
 import { CLERK_ENABLED, registerAuth } from '@/lib/auth';
 import { SettingsProvider, useResolvedScheme } from '@/lib/settings';

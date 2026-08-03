@@ -41,10 +41,13 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Nómada.AI usa tu ubicación para mostrarte en el mapa y guiarte por la ruta más segura.",
-          "locationAlwaysAndWhenInUsePermission": "Con «Permitir siempre», Nómada.AI detecta cuando empiezas a moverte y activa tu protección automáticamente. Solo se usa para cuidarte en el camino.",
-          "isAndroidBackgroundLocationEnabled": true
+          "locationAlwaysAndWhenInUsePermission": "Con «Permitir siempre», Nómada.AI sigue cuidándote durante el recorrido aunque bloquees el teléfono o cambies de app, y detecta cuando empiezas a moverte. Solo se usa para avisarte del riesgo en el camino.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "isIosBackgroundLocationEnabled": true
         }
       ],
+      "expo-task-manager",
       "expo-localization",
       "expo-secure-store"
     ],
