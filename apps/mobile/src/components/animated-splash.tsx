@@ -37,6 +37,9 @@ const TOTAL = PTS.slice(1).reduce((s, p, i) => s + segLen(PTS[i], p), 0);
 const FRACS = PTS.map((_, i) =>
   PTS.slice(1, i + 1).reduce((s, p, j) => s + segLen(PTS[j], p), 0) / TOTAL);
 
+/** Tope de la pantalla de bienvenida: pasado esto se entra sí o sí. */
+const SPLASH_MAX_MS = 4000;
+
 export default function AnimatedSplash({ onDone, fontsReady = true }: { onDone: () => void; fontsReady?: boolean }) {
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
@@ -52,6 +55,7 @@ export default function AnimatedSplash({ onDone, fontsReady = true }: { onDone: 
   doneRef.current = onDone;
 
   useEffect(() => {
+    let finished = false;
     const gsub = grid.addListener(({ value }) => setGridOp(value));
     Animated.sequence([
       Animated.timing(progress, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.cubic), useNativeDriver: false }),
@@ -63,12 +67,24 @@ export default function AnimatedSplash({ onDone, fontsReady = true }: { onDone: 
       ]),
       Animated.delay(500),
       Animated.timing(fade, { toValue: 0, duration: 350, useNativeDriver: false }),
-    ]).start(() => { grid.removeListener(gsub); doneRef.current(); });
+    ]).start(() => { grid.removeListener(gsub); finish(); });
+
+    // TOPE DURO: la animación NO espera a que la app termine de cargar. Si algo se
+    // atasca (fuente, mapa, red), a los 4 s se sale igual y la carga sigue a la
+    // vista con los avisos del inicio. Nunca dejar al usuario mirando una
+    // animación bonita mientras no puede hacer nada.
+    const cap = setTimeout(finish, SPLASH_MAX_MS);
+    function finish() {
+      if (finished) return;
+      finished = true;
+      clearTimeout(cap);
+      doneRef.current();
+    }
     // Posición del hueco del «.» (destino del vuelo del punto).
     const t = setTimeout(() => {
       slotRef.current?.measureInWindow((x, y) => setSlot({ x, y }));
     }, 900);
-    return () => { clearTimeout(t); grid.removeListener(gsub); };
+    return () => { clearTimeout(t); clearTimeout(cap); grid.removeListener(gsub); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

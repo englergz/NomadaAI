@@ -221,8 +221,11 @@ export default function MapScreen() {
   // Capa de riesgo POR CIUDAD (U3): al cambiar de ciudad se recarga la malla.
   useEffect(() => {
     let alive = true;
+    // La carga de la capa se ve: el usuario entiende por qué el mapa aún no
+    // muestra el riesgo, en vez de quedarse mirando un mapa vacío sin explicación.
+    if (alive) setBanner({ text: t('map.banner.loadingRisk'), tone: 'info' });
     api.riskZones(undefined, city)
-      .then((d) => { if (alive) setRiskData(d); })
+      .then((d) => { if (alive) { setRiskData(d); setBanner(null); } })
       .catch(() => {
         // Sin riesgo no bloqueamos el mapa, pero el usuario debe saberlo (estado de error).
         if (alive) setBanner({ text: t('map.banner.riskLoadError'), tone: 'warn' });
