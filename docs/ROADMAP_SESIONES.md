@@ -25,6 +25,21 @@ barra, Ajustes responsive, banners auto-descarte. glyphs en el estilo (arregla �
 resourceUrl»). POIs nativos = círculos de color (iconos tipo web necesitan PNG con <Images/>).
 
 ## Cola de trabajo (en orden)
+### U5e · ESCRITORIO — cierre fino (2026-08-02) — ✅ HECHO
+- ✅ Vehículo PREDETERMINADO (Ajustes, persistido) separado del vehículo POR VIAJE:
+  el selector de «Ruta nueva» muestra «Predeterminado · X» y solo afecta ese viaje.
+- ✅ Hoja de alertas del teléfono: max-height 72% (sube al llegar alertas sin tapar
+  el icono del vehículo ni el estado); título e «Limpiar» sin colisión; los 3 chips
+  de filtro caben en una línea en los ~200 px de la maqueta.
+- ✅ RIESGO: las paletas se muestran como RAMPA CONTINUA (los 5 colores reales de la
+  escala) en vez de 3 cuadritos; ojo: el span vacío colapsa a ancho 0 si depende de
+  `align-items` del botón → usar `width: 100%`.
+- ✅ Menú Ajustes con SCROLL propio (max-height del viewport + overscroll contain):
+  ya no crece fuera de pantalla ni arrastra la página.
+- ✅ Modal de descarga con las marcas REALES de tienda (SVG inline: manzana de Apple,
+  triángulo 4 colores de Google Play), en negro y deshabilitados hasta publicar.
+  Botón del teléfono = «Descargar app». Modal usa el componente Brand.
+
 
 ### R1 · Framework de riesgo configurable (brief Parte A1+A2) — SIGUIENTE
 1. Golden test: hash de artifacts actuales (ver `services/api/scripts/GOLDEN.md`) — el refactor con
@@ -168,10 +183,8 @@ Sora); escritorio: el «celular» = modal REAL igual al móvil (marca .AI azul f
 pegada a bordes, «Limpiar», filtros Todas/En zona/Anticipadas que FUNCIONAN, filas punto+hora·zona·
 nivel+cuerpo, «Ir a la app móvil»), banner de alerta en el MAPA del escritorio, aviso de demo, .AI azul.
 Pendiente:
-- Escritorio: la barra «Prioridad de seguridad: X%» debe verse IGUAL a la app (slider Mínima/
-  Equilibrada/Máxima, azul→morado). Portar ProtectionSlider al escritorio.
-- Escritorio: «Menú» debe replicar COMPLETO los Ajustes de la app (vehículo predeterminado, umbral,
-  tema, capas, riesgo) sin quitar lo del panel.
+- ✅ (U5c) Escritorio: barra «Prioridad de seguridad» = ProtectionBar igual a la app.
+- ✅ (U5d/U5e) Escritorio: «Ajustes» replica completo los Ajustes de la app.
 - Clerk: el usuario YA puso nombre «Nómada.AI» + logo en el dashboard, pero al iniciar con Google
   SIGUE mostrando Clerk. Revisar: puede ser el «Secured by Clerk» (solo se quita en plan pago) o la
   pantalla de consentimiento de Google (Google Cloud Console → OAuth consent screen: nombre+logo).
