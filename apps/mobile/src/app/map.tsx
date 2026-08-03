@@ -30,7 +30,7 @@ import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { hasUnseenAlerts, logAlert } from '@/lib/alert-log';
 import { notifyAlert, setupAlerts } from '@/lib/notify';
 import {
-  clearActiveTrip, drainQueuedPoints, isBackgroundTripRunning, isResumable, loadActiveTrip,
+  clearActiveTrip, drainQueuedPoints, isResumable, loadActiveTrip,
   resumeBackgroundTrip,
   saveActiveTrip, saveNotificationCopy, startAutoTripWatch, startBackgroundTrip,
   stopAutoTripWatch, stopBackgroundTrip, type ActiveTrip,
@@ -776,7 +776,11 @@ export default function MapScreen() {
   useEffect(() => {
     if (Platform.OS === 'web' || !onTrip) return;
     void (async () => {
-      if (await isBackgroundTripRunning()) return;
+      // NO se comprueba aquí `isBackgroundTripRunning()`: esa función informa del
+      // REGISTRO de la tarea, que sobrevive a que el sistema mate la app, así que
+      // devolvía «sí está corriendo» cuando el servicio ya estaba muerto y nunca
+      // se reenganchaba. `resumeBackgroundTrip` hace el ciclo limpio de parada y
+      // arranque, que es idempotente y seguro de llamar siempre.
       const ok = await resumeBackgroundTrip({
         title: t('map.bg.notifTitle'), body: t('map.bg.notifBody'), color: c.accent,
       });
