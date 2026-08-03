@@ -259,7 +259,8 @@ export async function startAutoTripWatch(notification: { title: string; body: st
       },
     });
     return true;
-  } catch {
+  } catch (e) {
+    console.warn('[nomadaai] no se pudo armar el vigía automático:', e);
     return false;
   }
 }
@@ -287,7 +288,10 @@ export async function requestBackgroundPermission(): Promise<boolean> {
     if (fg.status !== 'granted') return false;
     const bg = await Location.getBackgroundPermissionsAsync();
     if (bg.status === 'granted') return true;
-    if (!bg.canAskAgain) return false;
+    if (!bg.canAskAgain) {
+      console.warn('[nomadaai] permiso de fondo denegado permanentemente');
+      return false;
+    }
     const asked = await Location.requestBackgroundPermissionsAsync();
     return asked.status === 'granted';
   } catch {
@@ -340,7 +344,10 @@ export async function startBackgroundTrip(notification: {
       },
     });
     return true;
-  } catch {
+  } catch (e) {
+    // Visible a propósito: si esto falla, el usuario se queda sin protección con
+    // la pantalla apagada y hay que poder enterarse.
+    console.warn('[nomadaai] no se pudo iniciar el seguimiento de fondo:', e);
     return false;
   }
 }
@@ -356,8 +363,12 @@ export async function resumeBackgroundTrip(notification: {
   if (Platform.OS === 'web') return false;
   try {
     const bg = await Location.getBackgroundPermissionsAsync();
-    if (bg.status !== 'granted') return false;
-  } catch {
+    if (bg.status !== 'granted') {
+      console.warn('[nomadaai] sin permiso de ubicación en segundo plano al reanudar:', bg.status);
+      return false;
+    }
+  } catch (e) {
+    console.warn('[nomadaai] no se pudo consultar el permiso de fondo:', e);
     return false;
   }
   return startBackgroundTrip(notification);

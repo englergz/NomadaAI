@@ -27,7 +27,8 @@ import ProtectionSlider from '@/components/protection-slider';
 import { hasUnseenAlerts, logAlert } from '@/lib/alert-log';
 import { notifyAlert, setupAlerts } from '@/lib/notify';
 import {
-  clearActiveTrip, drainQueuedPoints, isResumable, loadActiveTrip, resumeBackgroundTrip,
+  clearActiveTrip, drainQueuedPoints, isBackgroundTripRunning, isResumable, loadActiveTrip,
+  resumeBackgroundTrip,
   saveActiveTrip, saveNotificationCopy, startAutoTripWatch, startBackgroundTrip,
   stopAutoTripWatch, stopBackgroundTrip, type ActiveTrip,
 } from '@/lib/background-trip';
@@ -748,12 +749,6 @@ export default function MapScreen() {
       const queued = await drainQueuedPoints();
       if (!alive) return;
       applyQueuedPoints(queued);
-      // Si la app había sido cerrada, el servicio de fondo murió con ella: se vuelve
-      // a enganchar (sin pedir permiso otra vez) o el viaje quedaría desprotegido en
-      // cuanto el usuario bloquee la pantalla.
-      void resumeBackgroundTrip({
-        title: t('map.bg.notifTitle'), body: t('map.bg.notifBody'), color: c.accent,
-      });
       // Si lo abrió el vigía automático, el usuario nunca tocó «iniciar»: hay que
       // decírselo con el copy de protección automática, no con el de «retomamos».
       setBanner({ text: trip.auto ? t('map.banner.autoTrip') : t('map.banner.tripResumed'), tone: 'info' });
@@ -761,6 +756,21 @@ export default function MapScreen() {
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // RECONCILIACIÓN: mientras haya viaje, el seguimiento de fondo TIENE que estar
+  // vivo. Se comprueba aquí en vez de encadenarlo al arranque porque ese camino se
+  // puede interrumpir a mitad (la app se cerró, el efecto se canceló, el sistema
+  // mató el servicio) y el usuario se quedaría sin protección sin enterarse.
+  useEffect(() => {
+    if (Platform.OS === 'web' || !onTrip) return;
+    void (async () => {
+      if (await isBackgroundTripRunning()) return;
+      await resumeBackgroundTrip({
+        title: t('map.bg.notifTitle'), body: t('map.bg.notifBody'), color: c.accent,
+      });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onTrip]);
 
   // Al volver del segundo plano se consumen las posiciones capturadas mientras la
   // app no estaba en pantalla: el rastro queda continuo, sin lluvia de alertas
