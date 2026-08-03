@@ -37,6 +37,14 @@ export class NomadaApi {
     return this.req<HealthResponse>("/health");
   }
 
+  /**
+   * Config de producto que fija el panel admin (niveles de protección, etc.).
+   * La consumen la app móvil y el escritorio: un solo sitio para cambiarlos.
+   */
+  appConfig() {
+    return this.req<{ protection_levels: number[]; ads_enabled: boolean }>("/config/app");
+  }
+
   predictDestination(body: PredictRequest) {
     return this.req<PredictResponse>("/predict/destination", {
       method: "POST",

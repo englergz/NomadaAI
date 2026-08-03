@@ -34,38 +34,12 @@ export function baseStyle(dark: boolean, satellite = false) {
 // Capa de riesgo (mapa de calor): aquí SÍ se permite el rojo; la paleta
 // azul→ámbar→coral queda reservada a rutas y alertas.
 // Paletas personalizables (Ajustes): colores por parada de risk_norm.
-export const HEAT_PALETTES = {
-  calor: { // por defecto: verde → ámbar → naranja → rojo
-    label: 'Calor',
-    colors: ['rgba(34,197,94,0)', 'rgba(245,165,36,0.36)', 'rgba(249,115,22,0.56)', 'rgba(239,68,68,0.76)', 'rgba(220,38,38,1)'],
-    line: 'rgba(239,68,68,0.25)',
-  },
-  semaforo: { // verde → amarillo → rojo
-    label: 'Semáforo',
-    colors: ['rgba(22,163,74,0)', 'rgba(132,204,22,0.36)', 'rgba(250,204,21,0.56)', 'rgba(249,115,22,0.76)', 'rgba(220,38,38,1)'],
-    line: 'rgba(220,38,38,0.25)',
-  },
-  frio: { // azul → morado → rojo
-    label: 'Frío',
-    colors: ['rgba(59,130,246,0)', 'rgba(99,102,241,0.36)', 'rgba(168,85,247,0.56)', 'rgba(217,70,239,0.76)', 'rgba(225,29,72,1)'],
-    line: 'rgba(168,85,247,0.25)',
-  },
-} as const;
-export type HeatPaletteKey = keyof typeof HEAT_PALETTES;
+// Paletas y rampa de color: FUENTE ÚNICA en @nomadaai/shared (las comparte con el
+// escritorio; antes había una copia en cada app y se corregía dos veces lo mismo).
+import { HEAT_PALETTES, riskFillColor, type HeatPaletteKey } from '@nomadaai/shared';
 
-// Expresión de color del heatmap. `intensity` desplaza las paradas: con intensidad
-// alta los colores fuertes aparecen desde riesgos más bajos (y viceversa).
-// Rango recalibrado a pedido: 50% = aspecto suave por defecto, 100% = el antiguo
-// tope medio (no satura), 0% = aún más tenue que antes.
-export function riskFillColor(palette: HeatPaletteKey, intensity: number) {
-  const base = [0.0, 0.35, 0.6, 0.85, 1.0];
-  const scale = 2.0 - intensity; // 0→2.0 (muy suave) · 0.5→1.5 (default) · 1→1.0 (máximo)
-  const stops = base.map((s, i) => Math.min(1, s * scale) + i * 1e-6); // estrictamente creciente
-  const colors = HEAT_PALETTES[palette].colors;
-  const expr: unknown[] = ['interpolate', ['linear'], ['get', 'risk_norm']];
-  stops.forEach((s, i) => expr.push(s, colors[i]));
-  return expr;
-}
+export { HEAT_PALETTES, riskFillColor, paletteGradient, DEFAULT_RISK_PREFS } from '@nomadaai/shared';
+export type { HeatPaletteKey, RiskPrefs } from '@nomadaai/shared';
 
 // Compatibilidad: valores por defecto (paleta calor, intensidad media).
 export const RISK_FILL_COLOR = riskFillColor('calor', 0.5);
