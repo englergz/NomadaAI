@@ -6,17 +6,17 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 
 ## A. Cumplimiento
 
-### A.1 Legal y protección de datos — ⛔ BLOQUEANTE para publicar
+### A.1 Legal y protección de datos — ✅ RESUELTO (queda el borrado automatizado)
 
 | Requisito | Estado |
 |---|---|
-| Términos de uso con fecha de vigencia | ❌ no existen |
-| Política de privacidad con fecha de vigencia | ❌ no existe |
-| Aceptación explícita en el primer arranque (no premarcada) | ❌ |
-| Registro de qué versión aceptó cada usuario | ❌ |
-| Ley 1581/2012: finalidad, responsable, derechos del titular | ❌ documentar |
-| Canal de contacto y solicitud de borrado | ❌ |
-| Declarar que la app es gratuita y las donaciones voluntarias no dan funciones | ❌ |
+| Términos de uso con fecha de vigencia | ✅ v1.0.0, 2026-08-03 |
+| Política de privacidad con fecha de vigencia | ✅ v1.0.0, 2026-08-03 |
+| Aceptación explícita en el primer arranque (no premarcada) | ✅ verificado |
+| Registro de qué versión aceptó cada usuario | ✅ versión + fecha |
+| Ley 1581/2012: finalidad, responsable, derechos del titular | ✅ en la política |
+| Canal de contacto y solicitud de borrado | ⚠️ por correo (manual) |
+| Declarar que la app es gratuita y las donaciones voluntarias no dan funciones | ✅ en los términos |
 | Aviso de que el índice es orientativo y la IA puede equivocarse | ✅ visible en la app |
 
 > **Es lo único que impide publicar.** Para una prueba de funcionalidad con el
@@ -68,7 +68,7 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 | Recorrido con servicio en primer plano | ✅ | ✅ |
 | Segundo plano con la app cerrada | ✅ | ✅ |
 | Reanudar el viaje al reabrir | ✅ | ✅ |
-| Reenganche del servicio al reabrir | ❌ **abierto** | ✅ |
+| Reenganche del servicio al reabrir | ✅ **resuelto 2026-08-03** | ✅ |
 | Protección automática con la app cerrada | ✅ | ⚠️ sin probar |
 | Cambio de ciudad | ✅ | ⚠️ sin probar |
 | Canal de alertas con vibración | ✅ | ⚠️ sin probar |
@@ -92,9 +92,13 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 5. **Modal de ciudad por país** con estados disponible / próximamente / no disponible.
 
 ### B.3 Bugs abiertos
-6. **Android: el servicio de fondo no se reengancha** al reabrir con viaje en
-   curso. En iOS sí funciona con el mismo código. Siguiente paso: probar en
-   teléfono real concediendo el permiso por el diálogo del sistema.
+6. ~~Android: el servicio de fondo no se reengancha~~ — **RESUELTO**.
+   Causa: `hasStartedLocationUpdatesAsync` informa del REGISTRO de la tarea, que
+   sobrevive a que el sistema mate la app, no de que el servicio esté vivo. El
+   código preguntaba «¿ya corre?», recibía sí y no arrancaba nada (sin error y sin
+   aviso). En iOS no se veía porque allí el seguimiento sí sobrevive. Ahora al
+   reanudar se fuerza un ciclo limpio de parada y arranque. Verificado matando la
+   app y reabriendo: servicio en primer plano con tipo 0x8 (ubicación).
 7. **Animación de arranque decorativa**: tiene tope de 4 s pero no refleja la
    carga real (fuente, ajustes, ubicación, capa de riesgo).
 
