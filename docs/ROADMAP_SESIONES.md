@@ -25,6 +25,35 @@ barra, Ajustes responsive, banners auto-descarte. glyphs en el estilo (arregla �
 resourceUrl»). POIs nativos = círculos de color (iconos tipo web necesitan PNG con <Images/>).
 
 ## Cola de trabajo (en orden)
+### DRY · CÓDIGO COMPARTIDO WEB/MÓVIL (2026-08-03) — ✅ HECHO
+Origen: el usuario detectó que arreglábamos la barra de protección y las paletas en
+la web mientras el móvil seguía con la versión vieja. Peor: los λ HABÍAN DIVERGIDO
+(móvil 0.3/1.0/2.5 fijos vs web pct/20 con 5 niveles) → la misma función daba rutas
+distintas según la plataforma.
+- `packages/shared/src/risk.ts`: paletas, `riskFillColor`, `paletteGradient`,
+  `DEFAULT_RISK_PREFS`. Web y móvil IMPORTAN de aquí (ya no hay copias).
+- `packages/shared/src/protection.ts`: `DEFAULT_PROTECTION_LEVELS`, rampa de color,
+  `lambdaForLevel` (pct/20). El móvil ya consume `/config/app` (`api.appConfig()`),
+  igual que el escritorio → los niveles del panel admin valen en las dos.
+- REGLA: antes de arreglar algo en una plataforma, buscar el símbolo en la otra
+  (`grep -rn` en `apps/`); si está duplicado, subirlo a `packages/shared` y dejar
+  en cada app solo lo del entorno (localStorage vs AsyncStorage, componentes).
+
+### U7-AUTO · PROTECCIÓN AUTOMÁTICA EN SEGUNDO PLANO (2026-08-03) — ✅ VERIFICADO
+Tarea `nomadaai-autotrip-watch`: vigía de bajo consumo que corre con la app cerrada
+y, al detectar desplazamiento sostenido (≥4 m/s entre dos muestras), ABRE el viaje,
+asciende al seguimiento fino y avisa.
+- TRAMPA VERIFICADA EN EMULADOR: con `Accuracy.Balanced` Android usa el proveedor
+  fusionado (red) y NO entregó ni una muestra en 3 min de movimiento. Con
+  `Accuracy.High` + `timeInterval 30s` + `distanceInterval 80m` sí funciona y sigue
+  siendo mucho más barato que el seguimiento del viaje (1 s). Detección ≈1 min
+  (hacen falta dos muestras para estimar velocidad).
+- Traspaso verificado en ambos sentidos: al iniciar viaje el vigía se apaga; al
+  finalizar, vuelve a quedar armado.
+- PENDIENTE DE CONFIRMAR EN CAMPO: la notificación local «Protección activada» que
+  lanza la tarea headless no apareció en `dumpsys notification` durante la prueba;
+  la notificación PERSISTENTE del servicio sí (el usuario queda informado igual).
+
 ### U7-BG · SEGUNDO PLANO DEL RECORRIDO (2026-08-02) — implementado, falta prueba de campo
 Problema: la protección moría al bloquear el teléfono o cambiar de app.
 - `src/lib/background-trip.ts`: tarea `nomadaai-trip-location` definida en ámbito

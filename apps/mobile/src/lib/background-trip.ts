@@ -241,10 +241,15 @@ export async function startAutoTripWatch(notification: { title: string; body: st
     if (await Location.hasStartedLocationUpdatesAsync(AUTOTRIP_TASK)) return true;
     if (await Location.hasStartedLocationUpdatesAsync(TRIP_TASK)) return false; // ya hay viaje
     await Location.startLocationUpdatesAsync(AUTOTRIP_TASK, {
-      accuracy: Location.Accuracy.Balanced,
-      timeInterval: 60000,
-      distanceInterval: 150,
-      pausesUpdatesAutomatically: true,
+      // `Balanced` cae en el proveedor fusionado (red/wifi) y puede no entregar
+      // NINGUNA muestra — verificado en el emulador: 3 min moviéndose sin un solo
+      // aviso. `High` sí usa GPS; muestreado cada 30 s sigue siendo mucho más
+      // barato que el seguimiento fino del viaje (1 s), y detecta el arranque en
+      // ~1 minuto (necesita dos muestras para estimar velocidad).
+      accuracy: Location.Accuracy.High,
+      timeInterval: 30000,
+      distanceInterval: 80,
+      pausesUpdatesAutomatically: false,
       activityType: Location.ActivityType.AutomotiveNavigation,
       foregroundService: {
         notificationTitle: notification.title,
