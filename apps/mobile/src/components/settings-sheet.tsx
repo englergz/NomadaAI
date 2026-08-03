@@ -38,8 +38,8 @@ export const VEHICLES = [
   { key: 'truck', tKey: 'settings.vehicle.truck', icon: '🚚' },
 ] as const;
 
-export default function SettingsSheet({ visible, onClose, onHelp }: {
-  visible: boolean; onClose: () => void; onHelp: () => void;
+export default function SettingsSheet({ visible, onClose, onHelp, onLegal }: {
+  visible: boolean; onClose: () => void; onHelp: () => void; onLegal: () => void;
 }) {
   const t = useT();
   const scheme = useResolvedScheme();
@@ -226,6 +226,13 @@ export default function SettingsSheet({ visible, onClose, onHelp }: {
           />
         </View>
         </View>
+
+        <Pressable
+          onPress={onLegal}
+          style={({ pressed }) => [styles.resetBtn, { borderColor: c.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
+        >
+          <Text style={{ color: c.textSecondary, fontSize: 13, fontWeight: '600' }}>{t('legal.open')}</Text>
+        </Pressable>
 
         <Pressable
           onPress={onHelp}

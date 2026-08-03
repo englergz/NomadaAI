@@ -22,6 +22,10 @@ export interface Settings {
   vehicle: string | null; // vehículo predeterminado (moto/carro/bus/camion) — opcional (B.6.1)
   threshold: number;      // umbral de alerta anticipada sobre risk_norm (0–1)
   autoTrip: boolean;      // iniciar recorrido libre automáticamente al detectar movimiento
+  /** Versión de los términos que aceptó el usuario ('' = nunca aceptó). */
+  legalAccepted: string;
+  /** Cuándo los aceptó (ISO). Queda como constancia. */
+  legalAcceptedAt: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -36,6 +40,8 @@ export const DEFAULT_SETTINGS: Settings = {
   vehicle: 'car', // por defecto CARRO (lo más común); se cambia en Ajustes o por viaje
   threshold: 0.7,
   autoTrip: false,
+  legalAccepted: '',
+  legalAcceptedAt: '',
 };
 
 const KEY = 'nomadaai_settings_v1';
@@ -72,8 +78,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       });
     },
     reset: () => {
-      setSettings(DEFAULT_SETTINGS);
-      AsyncStorage.setItem(KEY, JSON.stringify(DEFAULT_SETTINGS)).catch(() => { /* ignore */ });
+      // La aceptación legal NO es una preferencia: restablecer no la borra.
+      setSettings((prev) => ({ ...DEFAULT_SETTINGS, legalAccepted: prev.legalAccepted, legalAcceptedAt: prev.legalAcceptedAt }));
+      setSettings((prev) => { AsyncStorage.setItem(KEY, JSON.stringify(prev)).catch(() => { /* ignore */ }); return prev; });
     },
   }), [settings, hydrated]);
 

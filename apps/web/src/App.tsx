@@ -10,6 +10,7 @@ import type {
 import { api } from "./lib/api";
 import { osmStyle, TUMACO_CENTER, TUMACO_ZOOM } from "./lib/mapStyle";
 import { HEAT_PALETTES, loadRiskPrefs, paletteGradient, riskFillColor, saveRiskPrefs, type HeatPaletteKey, type RiskPrefs } from "./lib/riskStyle";
+import { LEGAL_DOCS, LEGAL_EFFECTIVE_DATE, LEGAL_VERSION } from "@nomadaai/shared";
 import AdminPanel from "./components/AdminPanel";
 import ProtectionBar from "./components/ProtectionBar";
 
@@ -239,6 +240,7 @@ export default function App() {
   const [histSummary, setHistSummary] = useState<any>(null);            // agregados del usuario (DB)
   const [histGlobal, setHistGlobal] = useState<any>(null);              // contexto global (BI)
   const [showHelp, setShowHelp] = useState(false);
+  const [showLegal, setShowLegal] = useState(false);
   const [alertFilter, setAlertFilter] = useState<"all" | "proximidad" | "anticipada">("all"); // filtros del historial (como el móvil)
   const [dismissedBannerId, setDismissedBannerId] = useState(-1); // alerta del mapa: se auto-descarta
   const [showDownload, setShowDownload] = useState(false); // modal de descarga (tiendas)
@@ -946,6 +948,9 @@ export default function App() {
                 <button className="menu-row" onClick={() => { setShowHelp(true); setMenuOpen(false); }}>
                   <span className="menu-lbl"><Icon name="help" /> ¿Cómo funciona?</span>
                 </button>
+                <button className="menu-row" onClick={() => { setShowLegal(true); setMenuOpen(false); }}>
+                  <span className="menu-lbl"><Icon name="risk" /> Términos y privacidad</span>
+                </button>
                 {isAdmin && (
                   <button className="menu-row" onClick={() => { setShowAdmin(true); setMenuOpen(false); }}>
                     <span className="menu-lbl"><Icon name="follow" /> Panel admin</span>
@@ -1256,6 +1261,24 @@ export default function App() {
         </div>
       </div>
       {showDownload && <DownloadModal onClose={() => setShowDownload(false)} />}
+      {showLegal && (
+        <div className="help-overlay" onClick={() => setShowLegal(false)}>
+          <div className="help-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="help-x" onClick={() => setShowLegal(false)} title="Cerrar">✕</button>
+            <h2>Términos y privacidad</h2>
+            <p className="help-lead">Versión {LEGAL_VERSION} · vigente desde {LEGAL_EFFECTIVE_DATE}</p>
+            {LEGAL_DOCS.map((doc) => (
+              <div key={doc.id}>
+                <h3>{doc.title}</h3>
+                <p className="help-lead">{doc.intro}</p>
+                {doc.blocks.map((b) => (
+                  <p key={b.title}><b>{b.title}:</b> {b.body}</p>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }
