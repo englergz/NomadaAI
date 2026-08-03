@@ -9,7 +9,7 @@ import type {
 } from "@nomadaai/shared";
 import { api } from "./lib/api";
 import { osmStyle, TUMACO_CENTER, TUMACO_ZOOM } from "./lib/mapStyle";
-import { HEAT_PALETTES, loadRiskPrefs, riskFillColor, saveRiskPrefs, type HeatPaletteKey, type RiskPrefs } from "./lib/riskStyle";
+import { HEAT_PALETTES, loadRiskPrefs, paletteGradient, riskFillColor, saveRiskPrefs, type HeatPaletteKey, type RiskPrefs } from "./lib/riskStyle";
 import AdminPanel from "./components/AdminPanel";
 import ProtectionBar from "./components/ProtectionBar";
 
@@ -915,26 +915,23 @@ export default function App() {
                 </button>
               </div>
               <div className={`menu-riskcfg ${riskOn ? "" : "off"}`}>
+                <span className="menu-cap">Paleta</span>
                 <div className="menu-pal">
                   {(Object.keys(HEAT_PALETTES) as HeatPaletteKey[]).map((k) => (
                     <button key={k} className={`menu-pal-btn ${riskPrefs.palette === k ? "on" : ""}`}
                       onClick={() => setRiskPrefs({ ...riskPrefs, palette: k })}>
-                      <span className="menu-swatches">
-                        {[1, 2, 4].map((ci) => (
-                          <span key={ci} className="menu-swatch" style={{ background: HEAT_PALETTES[k].colors[ci].replace(/[\d.]+\)$/, "1)") }} />
-                        ))}
-                      </span>
-                      {HEAT_PALETTES[k].label}
+                      <span className="menu-ramp" style={{ backgroundImage: paletteGradient(k) }} />
+                      <span className="menu-pal-lbl">{HEAT_PALETTES[k].label}</span>
                     </button>
                   ))}
                 </div>
                 <div className="menu-slider">
-                  <span className="menu-cap">Intensidad · <b>{Math.round(riskPrefs.intensity * 100)}%</b></span>
+                  <span className="menu-cap"><span>Intensidad</span><b>{Math.round(riskPrefs.intensity * 100)}%</b></span>
                   <input className="range" type="range" min={0} max={100} step={5} value={Math.round(riskPrefs.intensity * 100)}
                     onChange={(e) => setRiskPrefs({ ...riskPrefs, intensity: Number(e.target.value) / 100 })} />
                 </div>
                 <div className="menu-slider">
-                  <span className="menu-cap">Opacidad de la capa · <b>{Math.round(riskPrefs.opacity * 100)}%</b></span>
+                  <span className="menu-cap"><span>Opacidad de la capa</span><b>{Math.round(riskPrefs.opacity * 100)}%</b></span>
                   <input className="range" type="range" min={10} max={100} step={5} value={Math.round(riskPrefs.opacity * 100)}
                     onChange={(e) => setRiskPrefs({ ...riskPrefs, opacity: Number(e.target.value) / 100 })} />
                 </div>
@@ -1249,7 +1246,7 @@ export default function App() {
                 ));
               })()}
             </div>
-            <button className="phone-cta" onClick={() => setShowDownload(true)}>Ir a la app móvil</button>
+            <button className="phone-cta" onClick={() => setShowDownload(true)}>Descargar app</button>
           </div>
         </div>
       </div>
@@ -1345,20 +1342,39 @@ function HelpPanel({ onClose }: { onClose: () => void }) {
 
 // ---------- modal de descarga (tiendas) ----------
 // Todo DESHABILITADO hasta publicar en tiendas y tener la web en línea.
+function AppleMark() {
+  return (
+    <svg className="dl-badge-ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M16.365 1.43c0 1.14-.42 2.2-1.26 3.03-.99.99-2.13 1.56-3.36 1.46-.03-1.1.42-2.24 1.23-3.06.87-.9 2.19-1.53 3.39-1.43zM20.9 17.1c-.6 1.38-.9 2-1.68 3.21-1.08 1.71-2.61 3.84-4.5 3.85-1.68.02-2.11-1.09-4.39-1.08-2.28.01-2.75 1.1-4.43 1.09-1.89-.01-3.33-1.94-4.41-3.65-3.03-4.79-3.35-10.4-1.48-13.39 1.33-2.12 3.43-3.36 5.4-3.36 2.01 0 3.27 1.1 4.93 1.1 1.61 0 2.59-1.1 4.91-1.1 1.76 0 3.62.96 4.95 2.61-4.35 2.38-3.64 8.59.7 10.72z" />
+    </svg>
+  );
+}
+
+function PlayMark() {
+  return (
+    <svg className="dl-badge-ic" viewBox="0 0 512 512" aria-hidden="true">
+      <path fill="#00c3ff" d="M47.6 14.2C43.5 18.5 41 25.2 41 33.8v444.4c0 8.6 2.5 15.3 6.6 19.6l1.5 1.4 249-249v-5.9l-249-249z" />
+      <path fill="#ffd400" d="M377 340.8l-83-83v-5.9l83-83 1.9 1.1 98.3 55.9c28.1 15.9 28.1 42 0 58l-98.3 55.8z" />
+      <path fill="#f9413e" d="M378.9 339.7L294 254.8 47.6 501.2c9.3 9.8 24.6 11 41.9 1.2z" />
+      <path fill="#00e676" d="M378.9 169.9L89.5 5.7C72.2-4.1 56.9-2.9 47.6 6.9L294 253.3z" />
+    </svg>
+  );
+}
+
 function DownloadModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="help-overlay" onClick={onClose}>
       <div className="dl-modal" onClick={(e) => e.stopPropagation()}>
         <button className="help-x" onClick={onClose} title="Cerrar">✕</button>
-        <div className="dl-brand"><img src="/favicon.png" alt="" className="brand-logo" /><span className="phone-wm" style={{ color: "var(--text)" }}>Nómada<span className="brand-ai">.AI</span></span></div>
+        <div className="dl-brand"><Brand size={18} /></div>
         <p className="dl-lead">Lleva tu protección contigo. Descarga la app en tu teléfono para el uso real en la calle.</p>
         <div className="dl-badges">
           <button className="dl-badge" disabled title="Próximamente">
-            <span className="dl-badge-ic"></span>
-            <span><small>Próximamente en</small><b>App Store</b></span>
+            <AppleMark />
+            <span><small>Próximamente en el</small><b>App Store</b></span>
           </button>
           <button className="dl-badge" disabled title="Próximamente">
-            <span className="dl-badge-ic">▶</span>
+            <PlayMark />
             <span><small>Próximamente en</small><b>Google Play</b></span>
           </button>
         </div>

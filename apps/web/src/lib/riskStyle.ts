@@ -29,6 +29,15 @@ export function riskFillColor(palette: HeatPaletteKey, intensity: number) {
   return expr;
 }
 
+// Vista previa de una paleta como degradado continuo (misma rampa que pinta el
+// mapa, pero opaca para que se lea igual en tema claro y oscuro).
+export function paletteGradient(k: HeatPaletteKey) {
+  const stops = HEAT_PALETTES[k].colors
+    .map((c) => c.replace(/[\d.]+\)$/, "1)"))
+    .map((c, i, a) => `${c} ${Math.round((i / (a.length - 1)) * 100)}%`);
+  return `linear-gradient(90deg, ${stops.join(", ")})`;
+}
+
 export interface RiskPrefs { palette: HeatPaletteKey; intensity: number; opacity: number }
 export const DEFAULT_RISK_PREFS: RiskPrefs = { palette: "semaforo", intensity: 0.5, opacity: 0.25 };
 
