@@ -33,7 +33,7 @@ export const DEFAULT_SETTINGS: Settings = {
   riskOn: true,
   satellite: false,
   poisOn: false,
-  vehicle: null,
+  vehicle: 'car', // por defecto CARRO (lo más común); se cambia en Ajustes o por viaje
   threshold: 0.7,
   autoTrip: false,
 };

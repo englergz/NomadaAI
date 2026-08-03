@@ -38,7 +38,7 @@ import type { RouteLines } from '@/components/risk-map.types';
 import { useT, type TKey } from '@/lib/i18n';
 import { useResolvedScheme, useSettings } from '@/lib/settings';
 import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
-import { Colors } from '@/constants/theme';
+import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { levelFor, ProximityTracker, zoneAt, type AlertLevel } from '@/lib/alerts';
 import { bearingDeg, coverageCity, distM, distToPath, searchPlaces, type Place } from '@/lib/geocode';
@@ -970,7 +970,7 @@ export default function MapScreen() {
       {/* Barra inferior: destino + prioridad + Ir seguro */}
       <View
         onLayout={(e) => setSheetH(e.nativeEvent.layout.height)}
-        style={[styles.sheet, { bottom: kbHeight, paddingBottom: (kbHeight ? 14 : insets.bottom + 14), backgroundColor: c.backgroundElement, borderColor: c.border }]}
+        style={[styles.sheet, { bottom: kbHeight, paddingBottom: (kbHeight ? 12 : insets.bottom + 2), backgroundColor: c.backgroundElement, borderColor: c.border }]}
       >
         {cityFull && results.length > 0 && !dest && (
           <FlatList
@@ -1167,7 +1167,7 @@ const styles = StyleSheet.create({
   citySuggestBtn: { flex: 1, borderRadius: 999, paddingVertical: 8, alignItems: 'center' },
   sheet: {
     position: 'absolute', left: 0, right: 0, gap: 10,
-    borderTopWidth: 1, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    borderTopWidth: 1, borderTopLeftRadius: Radii.sheet, borderTopRightRadius: Radii.sheet,
     paddingHorizontal: 16, paddingTop: 14,
   },
   results: { maxHeight: 200, borderBottomWidth: 1, marginBottom: 2 },

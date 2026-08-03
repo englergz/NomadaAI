@@ -79,7 +79,7 @@ const es = {
   'alert.attention.body.moto': 'Sigue la ruta sin paradas, casco puesto y sin exhibir el teléfono; comparte tu recorrido con alguien.',
 
   // Ajustes
-  'settings.title': 'Ajustes',
+  'settings.title': 'Configuración',
   'settings.vehicle': 'TU VEHÍCULO',
   'settings.vehicle.moto': 'Moto',
   'settings.vehicle.car': 'Carro',
