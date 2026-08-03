@@ -23,6 +23,7 @@ import ReportSheet from '@/components/report-sheet';
 import RiskMap from '@/components/risk-map';
 import SettingsSheet, { VEHICLES } from '@/components/settings-sheet';
 import NotificationsSheet from '@/components/notifications-sheet';
+import HelpSheet from '@/components/help-sheet';
 import ProtectionSlider from '@/components/protection-slider';
 import { hasUnseenAlerts, logAlert } from '@/lib/alert-log';
 import { notifyAlert, setupAlerts } from '@/lib/notify';
@@ -82,6 +83,7 @@ export default function MapScreen() {
   }, []);
   const { settings, set, hydrated } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showProtection, setShowProtection] = useState(false);
   // Notificaciones (historial de alertas) con puntico de «sin leer».
@@ -1105,7 +1107,9 @@ export default function MapScreen() {
         )}
       </View>
 
-      <SettingsSheet visible={showSettings} onClose={() => setShowSettings(false)} />
+      <HelpSheet visible={showHelp} onClose={() => setShowHelp(false)} />
+      <SettingsSheet visible={showSettings}
+        onHelp={() => { setShowSettings(false); setShowHelp(true); }} onClose={() => setShowSettings(false)} />
       <ReportSheet visible={showReport} onClose={() => setShowReport(false)} location={userLoc} city={city} />
       <ProtectionSheet visible={showProtection} onClose={() => setShowProtection(false)} />
       <CitySheet visible={showCity} current={city} onSelect={switchCity} onClose={() => setShowCity(false)} />

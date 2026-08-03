@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 
 import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
 import { Colors, Radii } from '@/constants/theme';
@@ -14,6 +15,21 @@ import { useT } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
 
 // La clave viaja a la API en español (categorías del modelo); solo el rótulo se traduce.
+// Cada categoría con un signo reconocible: el usuario elige de un vistazo, sin leer.
+const CAT_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  'robo': 'bag-remove-outline',
+  'atraco a mano armada': 'alert-circle-outline',
+  'hurto de vehículo': 'car-outline',
+  'riña': 'people-outline',
+  'acoso': 'eye-off-outline',
+  'presencia sospechosa': 'walk-outline',
+  'iluminación dañada': 'bulb-outline',
+  'vía en mal estado': 'construct-outline',
+  'accidente de tránsito': 'warning-outline',
+  'retén irregular': 'hand-left-outline',
+  'otro': 'ellipsis-horizontal-circle-outline',
+};
+
 const CATEGORIES = [
   'robo', 'atraco a mano armada', 'hurto de vehículo', 'riña', 'acoso',
   'presencia sospechosa', 'iluminación dañada', 'vía en mal estado',
@@ -91,7 +107,12 @@ export default function ReportSheet({
                   { borderColor: on ? c.accent : c.border, backgroundColor: on ? c.backgroundSelected : 'transparent' },
                 ]}
               >
-                <Text style={{ color: on ? c.accent : c.text, fontSize: 13, fontWeight: '600', textAlign: 'center' }}>
+                <Ionicons
+                  name={CAT_ICON[cat] ?? 'ellipsis-horizontal-circle-outline'}
+                  size={18}
+                  color={on ? c.accent : c.textSecondary}
+                />
+                <Text style={{ color: on ? c.accent : c.text, fontSize: 12.5, fontWeight: '600', textAlign: 'center' }}>
                   {t(`report.cat.${cat}`)}
                 </Text>
               </Pressable>
@@ -142,7 +163,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '800' },
   // Radios del sistema (Radii): controles 14, campo multilínea 14, botón píldora.
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  cat: { flexBasis: '48%', flexGrow: 1, borderWidth: 1, borderRadius: Radii.control, paddingVertical: 12, alignItems: 'center' },
+  cat: { flexBasis: '48%', flexGrow: 1, borderWidth: 1, borderRadius: Radii.control, paddingVertical: 11, alignItems: 'center', gap: 5 },
   input: { borderWidth: 1, borderRadius: Radii.control, padding: 12, fontSize: 14, minHeight: 64, textAlignVertical: 'top' },
   cta: { borderRadius: Radii.pill, paddingVertical: 13, alignItems: 'center' },
 });

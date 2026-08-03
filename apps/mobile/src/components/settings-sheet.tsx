@@ -37,7 +37,9 @@ export const VEHICLES = [
   { key: 'truck', tKey: 'settings.vehicle.truck', icon: '🚚' },
 ] as const;
 
-export default function SettingsSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export default function SettingsSheet({ visible, onClose, onHelp }: {
+  visible: boolean; onClose: () => void; onHelp: () => void;
+}) {
   const t = useT();
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
@@ -228,6 +230,13 @@ export default function SettingsSheet({ visible, onClose }: { visible: boolean; 
           />
         </View>
         </View>
+
+        <Pressable
+          onPress={onHelp}
+          style={({ pressed }) => [styles.resetBtn, { borderColor: c.border, opacity: pressed ? 0.7 : 1, marginTop: 22 }]}
+        >
+          <Text style={{ color: c.accent, fontSize: 13.5, fontWeight: '700' }}>{t('help.title')}</Text>
+        </Pressable>
 
         {/* Restablecer: pide confirmación porque borra TODAS las preferencias. */}
         <Pressable
