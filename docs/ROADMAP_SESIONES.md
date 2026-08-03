@@ -28,8 +28,18 @@ resourceUrl»). POIs nativos = círculos de color (iconos tipo web necesitan PNG
 ### PENDIENTES ABIERTOS (actualizado 2026-08-03) — leer antes de seguir
 Estado real de la lista «U7 próximo grande», corregido con lo verificado:
 1. Segundo plano del viaje — ✅ implementado y verificado en Android e iOS.
-   ⚠️ ABIERTO: al REABRIR con viaje en curso el servicio no se reengancha (hay
-   efecto de reconciliación + aviso en pantalla; falta hallar la causa raíz).
+   ⚠️ ABIERTO **solo en Android**: al REABRIR con viaje en curso el servicio no se
+   reengancha. VERIFICADO 2026-08-03 en iPhone 17 Pro con build nueva: **en iOS SÍ
+   funciona** (viaje reanudado y sin el aviso `map.bg.off`, o sea que
+   `resumeBackgroundTrip` devolvió true). Como el código es el mismo, la causa es
+   específica de Android. Hipótesis principal: el permiso ACCESS_BACKGROUND_LOCATION
+   se concedió con `adb shell pm grant` y `getBackgroundPermissionsAsync()` puede no
+   reportarlo igual que si lo hubiera concedido el usuario por el diálogo del
+   sistema. **Siguiente paso: probar en teléfono real concediendo el permiso a mano**
+   antes de seguir tocando código.
+   NOTA DE DEPURACIÓN: en release los `console.warn` se ELIMINAN del bundle; por eso
+   los diagnósticos no aparecían en logcat. La señal observable es el banner en
+   pantalla (que además le sirve al usuario: sabe que no está protegido).
 2. Fluidez de cámara (interpolación) — ✅ hecho.
 3. AutoTrip inteligente (15/30 min) — ✅ ya estaba hecho.
 4. Cambio de ciudad en nativo — ✅ FUNCIONA (verificado). Lo roto era el mapa que
