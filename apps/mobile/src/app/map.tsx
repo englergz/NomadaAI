@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+import { DEFAULT_PROTECTION_LEVELS, lambdaForLevel } from '@nomadaai/shared';
 import type { BuildRouteResponse, Coordinate, RiskZonesResponse } from '@nomadaai/shared';
 
 import BrandWordmark from '@/components/brand';
@@ -41,11 +42,15 @@ import { bearingDeg, coverageCity, distM, distToPath, searchPlaces, type Place }
 
 // Nivel de protección → λ (risk_weight) del backend. Naming de producto: habla del
 // valor (protegerte), no de la geometría de la ruta; empata con «Tu protección».
-const PRIORITIES = [
-  { key: 'map.prio.min', w: 0.3 },
-  { key: 'map.prio.balanced', w: 1.0 },
-  { key: 'map.prio.max', w: 2.5 },
-] as const;
+// Los NIVELES (porcentajes) los define el panel admin y llegan por GET /config/app,
+// igual que en el escritorio; λ del ruteo sale de lambdaForLevel(). Aquí solo
+// quedan las palabras que acompañan a los extremos y al centro.
+const PRIO_WORDS = ['map.prio.min', 'map.prio.balanced', 'map.prio.max'] as const;
+function prioWordKey(i: number, total: number) {
+  if (i === 0) return PRIO_WORDS[0];
+  if (i === total - 1) return PRIO_WORDS[2];
+  return PRIO_WORDS[1];
+}
 
 // Foto del usuario en el FAB de perfil (U4). Solo se monta con Clerk habilitado;
 // sin sesión (o sin foto) mantiene el icono de siempre.
@@ -125,7 +130,8 @@ export default function MapScreen() {
   const [results, setResults] = useState<Place[]>([]);
   const [searching, setSearching] = useState(false);
   const [dest, setDest] = useState<Place | null>(null);
-  const [priority, setPriority] = useState(1); // índice en PRIORITIES
+  // Índice del nivel de protección; arranca en el CENTRO de la escala (equilibrada).
+  const [priority, setPriority] = useState(Math.floor((DEFAULT_PROTECTION_LEVELS.length - 1) / 2));
   const [routing, setRouting] = useState(false);
   const [routes, setRoutes] = useState<RouteLines | null>(null);
   const searchSeq = useRef(0);
@@ -151,6 +157,21 @@ export default function MapScreen() {
   useEffect(() => { routesRef.current = routes; }, [routes]);
   const destRef = useRef<Place | null>(null);
   useEffect(() => { destRef.current = dest; }, [dest]);
+  // Niveles de protección configurables desde el panel admin (misma fuente que el
+  // escritorio). Si el servidor no responde, se usan los del contrato compartido.
+  const [protLevels, setProtLevels] = useState<number[]>(DEFAULT_PROTECTION_LEVELS);
+  const protLevelsRef = useRef(protLevels);
+  useEffect(() => { protLevelsRef.current = protLevels; }, [protLevels]);
+  useEffect(() => {
+    let alive = true;
+    api.appConfig()
+      .then((cfg) => {
+        const lv = cfg?.protection_levels;
+        if (alive && Array.isArray(lv) && lv.length >= 2) setProtLevels(lv);
+      })
+      .catch(() => { /* sin config del servidor seguimos con los valores por defecto */ });
+    return () => { alive = false; };
+  }, []);
   const lastRerouteRef = useRef(0);
   const reroutingRef = useRef(false);
   // Segundo plano: instantánea del viaje en disco para poder reanudarlo.
@@ -321,7 +342,7 @@ export default function MapScreen() {
           origin: origin as Coordinate,
           dest: target.coord,
           hour: new Date().getHours(),
-          risk_weight: PRIORITIES[prioIdx].w,
+          risk_weight: lambdaForLevel(protLevelsRef.current[prioIdx] ?? 50),
           type: effVehicle ?? undefined, // calles según el vehículo (opcional)
         }),
         // silent=recálculo por desvío: banner discreto, no interrumpe el viaje.
@@ -347,7 +368,8 @@ export default function MapScreen() {
       };
       const red = r.comparison?.exposure_reduction_pct ?? 0;
       const km = (r.distance_m / 1000).toFixed(1);
-      const prio = t(PRIORITIES[prioIdx].key);
+      const lv = protLevelsRef.current;
+      const prio = `${t(prioWordKey(prioIdx, lv.length))} (${lv[prioIdx] ?? 50}%)`;
       // EVITAR vs AVISAR: si el desvío no reduce exposición, no fingimos un desvío útil.
       // Siempre se muestran km y % para que se VEA el recálculo aunque el trazo coincida.
       if (silent) {
@@ -990,6 +1012,7 @@ export default function MapScreen() {
         </View>
         {/* Barra de protección estilo volumen (reemplaza los chips largos) */}
         <ProtectionSlider
+          levels={protLevels}
           value={priority}
           onChange={(v) => {
             setPriority(v);
