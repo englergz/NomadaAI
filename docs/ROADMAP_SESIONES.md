@@ -25,6 +25,37 @@ barra, Ajustes responsive, banners auto-descarte. glyphs en el estilo (arregla �
 resourceUrl»). POIs nativos = círculos de color (iconos tipo web necesitan PNG con <Images/>).
 
 ## Cola de trabajo (en orden)
+### PENDIENTES ABIERTOS (actualizado 2026-08-03) — leer antes de seguir
+Estado real de la lista «U7 próximo grande», corregido con lo verificado:
+1. Segundo plano del viaje — ✅ implementado y verificado en Android e iOS.
+   ⚠️ ABIERTO: al REABRIR con viaje en curso el servicio no se reengancha (hay
+   efecto de reconciliación + aviso en pantalla; falta hallar la causa raíz).
+2. Fluidez de cámara (interpolación) — ✅ hecho.
+3. AutoTrip inteligente (15/30 min) — ✅ ya estaba hecho.
+4. Cambio de ciudad en nativo — ✅ FUNCIONA (verificado). Lo roto era el mapa que
+   quedaba rotado al salir de navegación; corregido.
+5. Push con vibración y prioridad — ✅ canal MAX + vibración verificados.
+6. Vehículos 3D — ✅ hecho · Modal ciudad por país — PENDIENTE.
+7. Splash — PENDIENTE: aún aparece el icono por defecto antes del splash propio, y
+   la animación debe reflejar la carga REAL (no ser decorativa).
+8. Refactor de map.tsx (~2.000 líneas) — PENDIENTE · APK — ✅ 159 → 48,9 MB.
+9. iOS — ✅ verificado (build propia); ⚠️ el simulador quedó con build vieja: NO
+   asumir que lo verificado en Android vale para iOS (renderers y permisos
+   distintos). Recompilar iOS tras cada tanda.
+10. Ciberseguridad — parcial (no se loguean coords, borrado al finalizar); falta
+    cifrado del histórico local, rate-limit y flujo de borrado (Ley 1581).
+
+NUEVOS (feedback 2026-08-03):
+- **Legal**: aceptación de Términos y Privacidad con fecha oficial, versión
+  aceptada por usuario, y mención de donaciones voluntarias. Ver `DISENO_FUTURO.md`.
+- **Ayuda en móvil**: NO rehacer; portar el contenido de «¿Cómo funciona?» de la web.
+- **Ajustes**: botón «Restablecer configuración» (vuelve a valores por defecto).
+- **Reportar**: iconos ilustrativos por categoría + motivación del aporte comunitario.
+- **Onboarding de valor**: destacar reportar, protección automática e iniciar sesión.
+- **Círculos** (trabajo futuro, cimientos ahora): diseño completo en `DISENO_FUTURO.md`.
+- **Cobertura por grados**: navegar solo con modelo de riesgo (sin predicción) es
+  viable y abre ciudades nuevas; análisis y plan en `DISENO_FUTURO.md`.
+
 ### ⚠️ TRAMPA CRÍTICA · R8 vs SEGUNDO PLANO (2026-08-03) — resuelta, NO reintroducir
 Al activar `enableProguardInReleaseBuilds` para bajar el APK (159 MB → 49 MB), R8
 BORRÓ `expo.modules.adapters.react.apploader.RNHeadlessAppLoader`, que

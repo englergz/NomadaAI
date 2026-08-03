@@ -765,9 +765,14 @@ export default function MapScreen() {
     if (Platform.OS === 'web' || !onTrip) return;
     void (async () => {
       if (await isBackgroundTripRunning()) return;
-      await resumeBackgroundTrip({
+      const ok = await resumeBackgroundTrip({
         title: t('map.bg.notifTitle'), body: t('map.bg.notifBody'), color: c.accent,
       });
+      // Si no se pudo enganchar, el usuario TIENE que saberlo: creería que está
+      // protegido con la pantalla apagada y no lo estaría. (En release los
+      // console.warn se eliminan, así que el aviso en pantalla es además la única
+      // señal observable de este fallo.)
+      if (!ok) setBanner({ text: t('map.bg.off'), tone: 'warn' });
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onTrip]);

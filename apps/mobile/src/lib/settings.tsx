@@ -44,9 +44,11 @@ interface Ctx {
   settings: Settings;
   hydrated: boolean; // true cuando ya se leyeron los ajustes persistidos
   set: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
+  /** Vuelve a los valores de fábrica (Ajustes → Restablecer). */
+  reset: () => void;
 }
 
-const SettingsContext = createContext<Ctx>({ settings: DEFAULT_SETTINGS, hydrated: false, set: () => {} });
+const SettingsContext = createContext<Ctx>({ settings: DEFAULT_SETTINGS, hydrated: false, set: () => {}, reset: () => {} });
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -68,6 +70,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => { /* ignore */ });
         return next;
       });
+    },
+    reset: () => {
+      setSettings(DEFAULT_SETTINGS);
+      AsyncStorage.setItem(KEY, JSON.stringify(DEFAULT_SETTINGS)).catch(() => { /* ignore */ });
     },
   }), [settings, hydrated]);
 
