@@ -44,8 +44,18 @@ Problema: la protección moría al bloquear el teléfono o cambiar de app.
   prefijo de 120 puntos y se BORRA todo al finalizar el viaje.
 - Permiso «Siempre» se pide EN CONTEXTO al iniciar el recorrido; si se niega, el
   viaje sigue en primer plano y se avisa con banner (`map.bg.off`).
-- Verificado: prebuild Android/iOS genera permisos, servicio y plist correctos.
-  PENDIENTE: prueba en emulador/campo (pantalla apagada, app cerrada, reapertura).
+- Verificado: prebuild Android/iOS genera permisos, servicio y plist correctos
+  (ACCESS_BACKGROUND_LOCATION + FOREGROUND_SERVICE_LOCATION en el manifiesto;
+  `UIBackgroundModes: [fetch, location]` y textos de permiso en español en el plist).
+- NOTA DE ENTORNO (ahorra tiempo la próxima vez): en este monorepo el build DEBUG no
+  levanta con Metro porque la app pide `/index.bundle` y Metro sirve desde la raíz
+  del workspace (404). Para verificar, compilar con el bundle EMBEBIDO:
+  `./gradlew :app:assembleRelease` y, en iOS, `pod install` (requiere
+  `LANG=en_US.UTF-8`, si no CocoaPods peta con Encoding::CompatibilityError) +
+  `xcodebuild -workspace NmadaAI.xcworkspace -scheme NmadaAI -configuration Release
+  -sdk iphonesimulator -destination "id=<UDID>" CODE_SIGNING_ALLOWED=NO`.
+  Alternativa a futuro: instalar `expo-dev-client` para recuperar el live reload.
+- PENDIENTE: prueba de campo real (pantalla apagada en la calle, app deslizada).
 
 ### U5e · ESCRITORIO — cierre fino (2026-08-02) — ✅ HECHO
 - ✅ Vehículo PREDETERMINADO (Ajustes, persistido) separado del vehículo POR VIAJE:
