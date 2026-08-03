@@ -1,6 +1,7 @@
 // Wordmark de marca: «Nómada» + «.AI» SIEMPRE en azul de marca, tipografía Sora
 // (Google Fonts, OFL — geométrica, simple y diferencial; se carga en _layout).
 // Regla de marca: usar este componente en todo lugar donde aparezca el nombre solo.
+import { Sora_700Bold, useFonts } from '@expo-google-fonts/sora';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { Brand } from '@/constants/theme';
@@ -20,6 +21,14 @@ export default function BrandWordmark({
   const haloStyle = halo
     ? ({ textShadow: `0px 1px 6px ${halo}` } as unknown as import('react-native').TextStyle)
     : null;
+  // La marca NO se pinta hasta que Sora esté cargada. En Android, RN mide el texto
+  // con la fuente de reserva (más estrecha) y luego lo dibuja con Sora (más ancha):
+  // la caja queda corta y sale «Nóma . A». useFonts está cacheado, así que llamarlo
+  // aquí no vuelve a descargar nada; el hueco reservado evita el salto de layout.
+  const [fontReady] = useFonts({ Sora_700Bold });
+  if (!fontReady) {
+    return <View style={[styles.row, { height: size * 1.5, width: size * (withLogo ? 7.4 : 5.6) }]} />;
+  }
   return (
     <View style={styles.row}>
       {withLogo && (
