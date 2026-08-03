@@ -32,8 +32,11 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#eef2f7",
+          "image": "./assets/images/splash-blank.png",
+          "imageWidth": 1,
           "dark": {
-            "backgroundColor": "#0f141a"
+            "backgroundColor": "#0f141a",
+            "image": "./assets/images/splash-blank.png"
           }
         }
       ],
@@ -45,7 +48,8 @@
           "locationAlwaysAndWhenInUsePermission": "Con «Permitir siempre», Nómada.AI sigue cuidándote durante el recorrido aunque bloquees el teléfono o cambies de app, y detecta cuando empiezas a moverte. Solo se usa para avisarte del riesgo en el camino.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true,
-          "isIosBackgroundLocationEnabled": true
+          "isIosBackgroundLocationEnabled": true,
+          "androidForegroundServiceIcon": "./assets/images/android-icon-monochrome.png"
         }
       ],
       "expo-task-manager",
@@ -61,7 +65,14 @@
           }
         }
       ],
-      "./plugins/with-abi-splits"
+      "./plugins/with-abi-splits",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#2F81F7"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
