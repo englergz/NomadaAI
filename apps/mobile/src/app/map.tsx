@@ -531,6 +531,23 @@ export default function MapScreen() {
     }
   }
 
+  // Consume las posiciones que la tarea de fondo capturó sin pantalla. Se descarta
+  // lo que ya conocemos (la tarea también corre con la app abierta, así que la cola
+  // puede traer posiciones viejas) y solo la ÚLTIMA pasa por el evaluador completo:
+  // así el rastro queda continuo sin una lluvia de alertas atrasadas.
+  function applyQueuedPoints(queued: { lon: number; lat: number; t: number }[]) {
+    const pts = tripPtsRef.current;
+    const lastKnownT = pts.length ? pts[pts.length - 1].t : 0;
+    const fresh = queued.filter((p) => p.t > lastKnownT).sort((a, b) => a.t - b.t);
+    if (!fresh.length) return;
+    pts.push(...fresh.slice(0, -1));
+    if (pts.length > 120) pts.splice(0, pts.length - 120);
+    const last = fresh[fresh.length - 1];
+    lastMoveAtRef.current = Date.now();
+    idlePromptsRef.current = 0;
+    handlePosition([last.lon, last.lat]);
+  }
+
   // Instantánea del viaje en disco: permite REANUDAR si la app se cierra o el
   // sistema la mata durante el recorrido. Se escribe con freno (cada 10 s).
   function persistTrip() {
@@ -679,8 +696,7 @@ export default function MapScreen() {
       // Se consume lo capturado mientras la app estuvo cerrada.
       const queued = await drainQueuedPoints();
       if (!alive) return;
-      const last = queued[queued.length - 1];
-      if (last) handlePosition([last.lon, last.lat]);
+      applyQueuedPoints(queued);
       setBanner({ text: t('map.banner.tripResumed'), tone: 'info' });
     })();
     return () => { alive = false; };
@@ -696,16 +712,7 @@ export default function MapScreen() {
     if (Platform.OS === 'web') return;
     const sub = AppState.addEventListener('change', (state) => {
       if (state !== 'active' || !onTripStateRef.current) return;
-      void (async () => {
-        const queued = await drainQueuedPoints();
-        if (!queued.length) return;
-        const pts = tripPtsRef.current;
-        pts.push(...queued.slice(0, -1));
-        if (pts.length > 120) pts.splice(0, pts.length - 120);
-        const last = queued[queued.length - 1];
-        lastMoveAtRef.current = Date.now();
-        handlePosition([last.lon, last.lat]);
-      })();
+      void drainQueuedPoints().then(applyQueuedPoints);
     });
     return () => sub.remove();
     // eslint-disable-next-line react-hooks/exhaustive-deps
