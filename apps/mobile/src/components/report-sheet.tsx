@@ -7,6 +7,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
 import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
@@ -54,6 +55,9 @@ export default function ReportSheet({
   const [description, setDescription] = useState('');
   const [sending, setSending] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  // El campo de descripción quedaba TAPADO por el teclado: la hoja sube con él,
+  // mismo mecanismo que la barra inferior del mapa.
+  const kbHeight = useKeyboardHeight();
 
   async function send() {
     if (!category || sending) return;
@@ -90,7 +94,7 @@ export default function ReportSheet({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: c.backgroundElement, borderColor: c.border }]}>
+      <View style={[styles.sheet, { backgroundColor: c.backgroundElement, borderColor: c.border, marginBottom: kbHeight, paddingBottom: kbHeight ? 16 : 28 }]}>
         <View style={[styles.handle, { backgroundColor: c.border }]} />
         <Text style={[styles.title, { color: c.text }]}>{t('report.title')}</Text>
         <Text style={{ color: c.textSecondary, fontSize: 12, lineHeight: 17 }}>{t('report.intro')}</Text>

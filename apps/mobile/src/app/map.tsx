@@ -25,6 +25,7 @@ import SettingsSheet, { VEHICLES } from '@/components/settings-sheet';
 import NotificationsSheet from '@/components/notifications-sheet';
 import HelpSheet from '@/components/help-sheet';
 import ProtectionSlider from '@/components/protection-slider';
+import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { hasUnseenAlerts, logAlert } from '@/lib/alert-log';
 import { notifyAlert, setupAlerts } from '@/lib/notify';
 import {
@@ -73,14 +74,7 @@ export default function MapScreen() {
   const insets = useSafeAreaInsets();
   // Altura del teclado: la barra inferior (con el input y los resultados) sube por
   // encima del teclado en vez de quedar tapada.
-  const [kbHeight, setKbHeight] = useState(0);
-  useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => setKbHeight(e.endCoordinates.height));
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKbHeight(0));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
+  const kbHeight = useKeyboardHeight();
   const { settings, set, hydrated } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
