@@ -31,9 +31,10 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0B101A",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 120
+          "backgroundColor": "#eef2f7",
+          "dark": {
+            "backgroundColor": "#0f141a"
+          }
         }
       ],
       "@maplibre/maplibre-react-native",
