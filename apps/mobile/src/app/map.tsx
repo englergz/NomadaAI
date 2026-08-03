@@ -1180,7 +1180,7 @@ const styles = StyleSheet.create({
   sheet: {
     position: 'absolute', left: 0, right: 0, gap: 10,
     borderTopWidth: 1, borderTopLeftRadius: Radii.sheet, borderTopRightRadius: Radii.sheet,
-    paddingHorizontal: 16, paddingTop: 14,
+    paddingHorizontal: 16, paddingTop: 16,
   },
   results: { maxHeight: 200, borderBottomWidth: 1, marginBottom: 2 },
   resultRow: { paddingVertical: 9, paddingHorizontal: 10, gap: 2, borderRadius: Radii.control },
