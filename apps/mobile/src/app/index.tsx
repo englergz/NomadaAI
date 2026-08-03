@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import BootScreen from '@/components/boot-screen';
 import MapScreen from './map';
 import { ONBOARDED_KEY } from './welcome';
 
@@ -19,7 +20,9 @@ export default function Index() {
       .catch(() => setOnboarded(true)); // sin storage no bloqueamos la app
   }, []);
 
-  if (onboarded === null) return null; // un frame: evita parpadeo entre welcome y mapa
+  // Nunca `null` indefinido: si el almacenamiento tarda (o falla en silencio), la
+  // app se quedaba EN BLANCO sin salida. Se muestra la marca cargando.
+  if (onboarded === null) return <BootScreen />;
   if (!onboarded) return <Redirect href="/welcome" />;
   return <MapScreen />;
 }
