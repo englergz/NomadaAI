@@ -1143,7 +1143,7 @@ const styles = StyleSheet.create({
   inStack: { position: 'relative' },
   // Banner arriba, bajo el chip de ciudad.
   banner: {
-    position: 'absolute', left: 24, right: 24, borderWidth: 1, borderRadius: 16,
+    position: 'absolute', left: 24, right: 24, borderWidth: 1, borderRadius: Radii.card,
     paddingVertical: 8, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 8,
   },
   healthDot: { width: 7, height: 7, borderRadius: 4 },
@@ -1160,7 +1160,7 @@ const styles = StyleSheet.create({
   },
   citySuggest: {
     position: 'absolute', left: 24, right: 24, gap: 8,
-    borderWidth: 1.5, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14,
+    borderWidth: 1.5, borderRadius: Radii.control, paddingVertical: 10, paddingHorizontal: 14,
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
@@ -1171,7 +1171,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 14,
   },
   results: { maxHeight: 200, borderBottomWidth: 1, marginBottom: 2 },
-  resultRow: { paddingVertical: 9, paddingHorizontal: 6, gap: 2, borderRadius: 8 },
+  resultRow: { paddingVertical: 9, paddingHorizontal: 10, gap: 2, borderRadius: Radii.control },
   // Radios coherentes: todo control interactivo es píldora (999), como los FAB redondos.
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 999, paddingHorizontal: 16 },
   input: { flex: 1, paddingVertical: 12, fontSize: 15 },

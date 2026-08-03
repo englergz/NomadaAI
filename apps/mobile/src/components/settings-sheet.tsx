@@ -266,7 +266,7 @@ export default function SettingsSheet({ visible, onClose, onHelp }: {
 const styles = StyleSheet.create({
   resetBtn: {
     marginTop: 18, marginHorizontal: 16, marginBottom: 6, paddingVertical: 11,
-    borderWidth: 1, borderRadius: 12, alignItems: 'center',
+    borderWidth: 1, borderRadius: Radii.control, alignItems: 'center',
   },
   // B3: el backdrop cubre TODA la pantalla (también detrás de las esquinas curvas de la
   // hoja); antes terminaba en el borde superior de la hoja y se veía una línea recta.
