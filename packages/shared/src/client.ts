@@ -38,6 +38,19 @@ export class NomadaApi {
   }
 
   /**
+   * Borrado de los datos del usuario en el SERVIDOR (Ley 1581: derecho de
+   * supresión). Con token borra los del usuario autenticado; sin él, los del
+   * identificador anónimo del dispositivo.
+   */
+  deleteMyData(userId: string, city = "tumaco", token?: string | null) {
+    const q = new URLSearchParams({ city, user_id: userId });
+    return this.req<{ ok?: boolean; error?: string }>(`/history?${q}`, {
+      method: "DELETE",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+  }
+
+  /**
    * Config de producto que fija el panel admin (niveles de protección, etc.).
    * La consumen la app móvil y el escritorio: un solo sitio para cambiarlos.
    */
