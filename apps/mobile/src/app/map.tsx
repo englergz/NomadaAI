@@ -25,6 +25,7 @@ import SettingsSheet, { VEHICLES } from '@/components/settings-sheet';
 import NotificationsSheet from '@/components/notifications-sheet';
 import HelpSheet from '@/components/help-sheet';
 import LegalSheet from '@/components/legal-sheet';
+import PrivacySheet from '@/components/privacy-sheet';
 import ProtectionSlider from '@/components/protection-slider';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { hasUnseenAlerts, logAlert } from '@/lib/alert-log';
@@ -81,6 +82,7 @@ export default function MapScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showLegal, setShowLegal] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showProtection, setShowProtection] = useState(false);
   // Notificaciones (historial de alertas) con puntico de «sin leer».
@@ -1135,9 +1137,11 @@ export default function MapScreen() {
 
       <HelpSheet visible={showHelp} onClose={() => setShowHelp(false)} />
       <LegalSheet visible={showLegal} mode="read" onClose={() => setShowLegal(false)} />
+      <PrivacySheet visible={showPrivacy} city={city} onClose={() => setShowPrivacy(false)} />
       <SettingsSheet visible={showSettings}
         onHelp={() => { setShowSettings(false); setShowHelp(true); }}
-        onLegal={() => { setShowSettings(false); setShowLegal(true); }} onClose={() => setShowSettings(false)} />
+        onLegal={() => { setShowSettings(false); setShowLegal(true); }}
+        onPrivacy={() => { setShowSettings(false); setShowPrivacy(true); }} onClose={() => setShowSettings(false)} />
       <ReportSheet visible={showReport} onClose={() => setShowReport(false)} location={userLoc} city={city} />
       <ProtectionSheet visible={showProtection} onClose={() => setShowProtection(false)} />
       <CitySheet visible={showCity} current={city} onSelect={switchCity} onClose={() => setShowCity(false)} />

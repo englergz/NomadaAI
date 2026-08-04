@@ -6,7 +6,7 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 
 ## A. Cumplimiento
 
-### A.1 Legal y protección de datos — ✅ RESUELTO (queda el borrado automatizado)
+### A.1 Legal y protección de datos — ✅ RESUELTO
 
 | Requisito | Estado |
 |---|---|
@@ -15,12 +15,14 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 | Aceptación explícita en el primer arranque (no premarcada) | ✅ verificado |
 | Registro de qué versión aceptó cada usuario | ✅ versión + fecha |
 | Ley 1581/2012: finalidad, responsable, derechos del titular | ✅ en la política |
-| Canal de contacto y solicitud de borrado | ⚠️ por correo (manual) |
+| Canal de contacto y solicitud de borrado | ✅ borrado en la app + contacto |
 | Declarar que la app es gratuita y las donaciones voluntarias no dan funciones | ✅ en los términos |
 | Aviso de que el índice es orientativo y la IA puede equivocarse | ✅ visible en la app |
 
-> **Es lo único que impide publicar.** Para una prueba de funcionalidad con el
-> asesor no bloquea; para evaluar cumplimiento, sí.
+> Ya no hay bloqueantes legales. El borrado ejecuta en el dispositivo Y en el
+> servidor (`DELETE /history`), con doble confirmación: casilla no premarcada +
+> diálogo del sistema. Se conserva únicamente la constancia de aceptación legal,
+> que es prueba de un acto del usuario, no un dato personal que él aportó.
 
 ### A.2 Privacidad en el producto — ✅ en buen estado
 
@@ -34,7 +36,7 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 | Notificación persistente mientras se sigue la ubicación | ✅ verificado |
 | Permisos mínimos (sin «dibujar sobre otras apps» ni almacenamiento) | ✅ verificado en el manifiesto |
 | Cifrado del histórico local en reposo | ❌ pendiente |
-| Flujo de borrado de datos a petición | ❌ pendiente |
+| Flujo de borrado de datos a petición | ✅ en Configuración → Privacidad, doble confirmación |
 
 ### A.3 Seguridad técnica
 
@@ -80,10 +82,15 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 ## B. Pendientes por prioridad
 
 ### B.1 Bloqueantes para publicar
-1. **Términos y política de privacidad** con aceptación y versión registrada.
-2. **Flujo de borrado de datos** y contacto del responsable (Ley 1581).
+~~1. Términos y política de privacidad~~ — **RESUELTO** (v1.0.0, aceptación verificada).
+~~2. Flujo de borrado de datos~~ — **RESUELTO** (Configuración → Privacidad y opinión).
+
+**No quedan bloqueantes legales.**
 
 ### B.2 Funcionalidad prometida que falta
+2b. **Endpoint propio de opiniones**: hoy el formulario abre el correo con las
+   respuestas redactadas (funciona y es transparente, el usuario ve qué envía),
+   pero conviene un `POST /feedback` para agregarlas y medirlas.
 3. **Fotos en los reportes** (selector + almacenamiento de objetos + endpoint).
    Postgres no es sitio para archivos: aquí sí aplica un almacenamiento tipo
    Supabase Storage o R2.
