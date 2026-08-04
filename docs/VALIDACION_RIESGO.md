@@ -57,11 +57,36 @@ La **cobertura** se extendió a todas las manzanas pobladas (malla 425→**475 c
 temporal tiene un **piso nocturno** (la violencia dirigida no se anula de madrugada); su forma exacta
 es un **supuesto no calibrado** (pendiente de dato/cita). Resultado antes/después del primer arreglo:
 
-| Métrica | Antes | Después |
+| Métrica | Antes | Después (primer arreglo) |
 |---------|-------|---------|
 | corr(índice, tráfico `n_points`) | 0,96 | **0,68** |
 | corr(índice, población DANE) | 0,28 | **0,80** |
 | Niveles bajo / medio / **alto** | 342 / 82 / **1** | 213 / 149 / **63** |
+
+> ⚠️ **ESTA TABLA ES DE LA ETAPA DE 425 CELDAS, NO DEL MODELO ACTUAL.**
+> Los conteos 342/82/1 y 213/149/63 suman 425. Después vinieron DOS cambios que
+> alteran estas cifras: la ponderación por **percentil** (que equilibra a
+> propósito la influencia de cada factor) y la ampliación de la malla a **475**.
+>
+> **Cifras del modelo ACTUAL (475 celdas), recalculadas contra el endpoint en
+> producción el 2026-08-04:**
+>
+> | Métrica | Etapa 425 | **Modelo actual (475)** |
+> |---|---|---|
+> | corr(índice, población) | 0,80 | **0,32** |
+> | corr(índice, tráfico/actividad) | 0,68 | **0,07** |
+> | Niveles bajo / medio / alto | 213 / 149 / 63 | **332 / 95 / 48** |
+>
+> La bajada de las correlaciones **no es un empeoramiento, es el objetivo**: la
+> transformación a percentil hace que los **pesos** gobiernen la influencia de
+> cada factor en vez de su varianza, y por eso ningún factor domina el índice
+> (densidad 0,32 · periferia 0,36 · policía 0,34 · tráfico 0,07). Un índice con
+> correlación 0,80 con población sería, en la práctica, un mapa de población.
+>
+> **Para la tesis:** si se citan 0,68/0,80 hay que decir que son de la etapa
+> intermedia; si se quiere describir el modelo entregado, las cifras son las de
+> la columna «modelo actual». Verificable con:
+> `curl -s https://englergz-nomadaai.hf.space/risk/zones?city=tumaco`
 
 El mapa dejó de ser un mapa de tráfico, ahora lo gobierna la **densidad poblacional real** y los
 niveles son utilizables. La curva temporal (pico 20:00 ×1,79) se preservó.
