@@ -184,3 +184,41 @@ ofrece técnicas diseñadas justamente para eso.
 - Kruijt, D. (2008) / Banco Mundial (2001) — desigualdad y violencia en América Latina.
 - Centro de Estudios de Desarrollo Regional (CEDRE), Universidad de Nariño (2024). *Encuesta Socioeconómica de Tumaco 2024.*
 - Arteaga Botello, N. (2005) — enfoque comunitario/participativo de la seguridad.
+
+
+---
+
+## 5. Verificación de OE4 contra la malla actual (2026-08-04)
+
+Motivo: si la superficie de riesgo cambió (425 → 475 + ponderación por percentil),
+la **reducción de exposición** medida sobre esa superficie pudo cambiar también.
+
+**Reproducción del dato de la tesis.** El archivo `artifacts/eval/oe4_od_sweep.csv`
+(200 pares O-D) reproduce **exactamente** lo publicado: media **7,00 %**,
+IC 95 % **[6,44 · 7,56]**, **95,0 %** de rutas que mejoran. El número no está inventado
+ni mal transcrito.
+
+**Recálculo contra producción, con LOS MISMOS 70 viajes** (se reconstruyen origen y
+destino desde `/trajectories/{id}/track` y se piden rutas a `/route/build`):
+
+| | Reducción media | IC 95 % | Rutas que mejoran |
+|---|---|---|---|
+| Archivo de la tesis (mismos 70) | 4,95 % | [4,15 · 5,74] | 92,9 % |
+| **Malla actual (475), mismos 70** | **3,45 %** | [2,69 · 4,22] | **92,9 %** |
+
+**Lectura honesta:**
+
+1. El **95 % de rutas que mejoran se sostiene** (92,9 % en este subconjunto, en ambas
+   versiones): la afirmación cualitativa de OE4 es robusta al cambio de superficie.
+2. La **magnitud sí bajó**: ~3,5 % frente al 7,0 % publicado. Es coherente con la
+   reconstrucción del índice: al equilibrar los factores por percentil, el contraste
+   entre celdas se suaviza y **hay menos exposición que evitar por desvío**.
+3. **Advertencia de método:** los 70 viajes del subconjunto ya daban 4,95 % en el
+   archivo original (no 7,00 %), así que **parte de la diferencia es de muestreo**,
+   no del cambio de malla. El efecto atribuible a la nueva superficie es la caída de
+   **4,95 % → 3,45 %**, no de 7,00 % → 3,45 %.
+
+**Recomendación para la tesis:** volver a correr el barrido completo de 200 pares
+contra el modelo entregado y publicar ese número, en vez de citar el de la etapa
+anterior. Mientras tanto, lo defendible sin recalcular es la afirmación cualitativa
+(«la ruta segura reduce exposición en ~93 % de los casos»), no el −7,0 % exacto.
