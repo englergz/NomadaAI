@@ -5,50 +5,62 @@ cimientos se dejan puestos. Fecha: 2026-08-03.
 
 ---
 
-## 1. ¿Se puede navegar SIN el modelo de predicción de destino?
+## 1. Qué hace falta para que una ciudad esté disponible
 
-**Sí, y conviene.** Hoy el producto se comporta como si necesitara las dos piezas
-(riesgo + predicción) cuando en realidad cada una habilita cosas distintas. Esto
-importa de verdad: es lo que permite abrir ciudades nuevas (Cali, y las que sigan)
-mucho antes de tener trayectorias suficientes para entrenar predicción.
+> **CORRECCIÓN (2026-08-04).** La versión anterior de esta sección planteaba DOS
+> piezas (riesgo y predicción) y afirmaba que con solo riesgo ya había ruta segura.
+> **Era incorrecto**: el ruteo necesita el GRAFO VIAL, que es un tercer ingrediente
+> independiente. Verificado contra el backend: Cali tiene 4.268 celdas de riesgo
+> pero `/route/build` falla con «muy lejos de la red», mientras Tumaco responde con
+> ruta y comparación de exposición.
 
-### Qué puede hacer cada modelo por separado
+Son **tres ingredientes independientes**, y cada uno habilita cosas distintas:
 
-| Capacidad | Solo RIESGO | Solo PREDICCIÓN | Ambos (hoy, Tumaco) |
+| # | Ingrediente | Qué es | Qué habilita |
 |---|---|---|---|
-| Mapa de calor por hora/día | ✅ | ❌ | ✅ |
-| Ruta segura vs directa (λ configurable) | ✅ | ❌ | ✅ |
-| Recálculo al desviarse | ✅ | ❌ | ✅ |
-| Alerta **en zona** (estás entrando/dentro) | ✅ | ❌ | ✅ |
-| Alerta **de tramo** (la zona está sobre tu ruta trazada) | ✅ | ❌ | ✅ |
-| Alerta **anticipada sin destino declarado** | ❌ | ✅ | ✅ |
-| «Vas hacia X» en recorrido libre | ❌ | ✅ | ✅ |
-| Comparativa de exposición evitada | ✅ | ❌ | ✅ |
+| 1 | **Capa de riesgo** | Malla de celdas con riesgo por zona y hora | Mapa de calor · alertas **en zona** · recorrido libre protegido |
+| 2 | **Grafo vial** | Red de calles navegable (OSM) con el riesgo pesando las aristas | **Ruta segura vs directa** · recálculo al desviarse · alertas **de tramo** · comparativa de exposición evitada |
+| 3 | **Modelo de predicción** | Entrenado con trayectorias reales de esa ciudad | Alerta **anticipada sin destino declarado** · «vas hacia X» en recorrido libre |
 
-**Conclusión operativa:** con SOLO el modelo de riesgo la app es plenamente útil:
-navega, rutea evitando, recalcula, avisa en zona y avisa por tramo cuando hay
-destino elegido. Lo único que se pierde es la anticipación **cuando el usuario no
-dice a dónde va** (recorrido libre): ahí el aviso pasa de «en ~3 min entras en
-zona de riesgo» a «estás entrando en zona de riesgo».
+### Matriz real de capacidades
 
-**Solo con predicción y sin riesgo la app NO tiene producto**: sabría a dónde vas
-pero no tendría nada que advertir. La predicción es un multiplicador del riesgo,
-no un sustituto.
+| Capacidad | Solo 1 | 1 + 2 | 1 + 2 + 3 |
+|---|---|---|---|
+| Mapa de calor por hora | ✅ | ✅ | ✅ |
+| Alerta **en zona** (entras/estás dentro) | ✅ | ✅ | ✅ |
+| Recorrido libre protegido | ✅ | ✅ | ✅ |
+| Notificaciones | ✅ | ✅ | ✅ |
+| Buscar destino y **ruta segura** | ❌ | ✅ | ✅ |
+| Recálculo al desviarse | ❌ | ✅ | ✅ |
+| Comparativa de exposición evitada | ❌ | ✅ | ✅ |
+| Alerta **anticipada** sin destino declarado | ❌ | ❌ | ✅ |
 
-### Cómo aprovecharlo (propuesta de implementación)
-1. **Grados de cobertura por ciudad**, no un booleano. Hoy `cityFull = city === 'tumaco'`.
-   Cambiar a un descriptor que venga del backend:
-   `{ risk: true, routing: true, prediction: false }`.
-2. La UI **no oculta** funciones por falta de predicción: las activa igual y solo
-   ajusta el copy («En esta ciudad te avisamos al entrar en zona; la alerta
-   anticipada llega cuando el modelo aprenda las rutas de aquí»).
-3. En recorrido libre sin predicción, sustituir la anticipación por un **anillo de
-   proximidad**: avisar al acercarse a menos de N metros de una celda de riesgo
-   alto en el sentido de la marcha (usa rumbo + velocidad, no requiere modelo).
-4. Notificaciones: **sí funcionan** sin predicción (las de zona y las de tramo).
-   Solo se silencian las anticipadas por destino inferido.
+**Conclusiones que importan:**
 
----
+- El ingrediente 1 **por sí solo ya es un producto útil**: protege durante el
+  recorrido y avisa al entrar en zona. Es lo que hoy tiene Cali.
+- El 3 **no sirve solo**: sabría a dónde vas pero no tendría nada que advertirte.
+  Es un multiplicador del 1, no un sustituto.
+- El 2 es el que más valor añade sobre el 1, y **es el más barato de conseguir**:
+  el grafo vial se descarga de OpenStreetMap, no hay que entrenar nada ni recoger
+  trayectorias. **Para abrir una ciudad nueva, el orden correcto es 1 → 2 → 3.**
+
+### Estado por ciudad (verificado 2026-08-04)
+
+| Ciudad | 1 Riesgo | 2 Grafo vial | 3 Predicción |
+|---|---|---|---|
+| Tumaco | ✅ | ✅ | ✅ |
+| Cali | ✅ (4.268 celdas) | ❌ | ❌ |
+
+### Cómo lo refleja la app (ya implementado)
+
+`map.tsx` evalúa `canRoute` y `canPredict` por separado en vez de un booleano
+«ciudad completa». En una ciudad con solo riesgo se ofrece **recorrido libre** con
+avisos en zona, y el copy dice la verdad: «ya te protegemos… las rutas seguras
+llegan cuando la red vial de esta ciudad esté cargada».
+
+**Pendiente para que Cali quede completa:** cargar su grafo vial en el backend
+(paso 2). La predicción (paso 3) exige además recoger trayectorias de la ciudad.
 
 ## 2. «Círculos» — cuidarnos juntos (trabajo futuro, con cimientos ya)
 
