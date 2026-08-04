@@ -218,7 +218,28 @@ destino desde `/trajectories/{id}/track` y se piden rutas a `/route/build`):
    no del cambio de malla. El efecto atribuible a la nueva superficie es la caída de
    **4,95 % → 3,45 %**, no de 7,00 % → 3,45 %.
 
-**Recomendación para la tesis:** volver a correr el barrido completo de 200 pares
-contra el modelo entregado y publicar ese número, en vez de citar el de la etapa
-anterior. Mientras tanto, lo defendible sin recalcular es la afirmación cualitativa
-(«la ruta segura reduce exposición en ~93 % de los casos»), no el −7,0 % exacto.
+### Barrido COMPLETO recalculado (200 pares, malla 475) — 2026-08-04
+
+Se corrieron **los mismos 200 pares O-D** del archivo original (reconstruidos desde
+`/trajectories/{id}/track`), contra la superficie actual. IC por **bootstrap**
+(5.000 remuestreos, semilla 42). Los 200 se resolvieron: n=200 en ambas columnas.
+
+| | Reducción media | IC 95 % (bootstrap) | Rutas que mejoran |
+|---|---|---|---|
+| Archivo original (etapa previa) | 7,00 % | [6,45 · 7,55] | 95,0 % |
+| **Modelo entregado (malla 475)** | **5,24 %** | **[4,68 · 5,79]** | **95,0 %** |
+
+**Cifras para la tesis:** media **5,24 %**, IC 95 % **[4,68 · 5,79]**, **95,0 %** de
+rutas que mejoran.
+
+**Lecturas:**
+
+1. El **95,0 % de rutas que mejoran es idéntico** en ambas superficies. La afirmación
+   central de OE4 no depende de la reconstrucción del índice.
+2. La magnitud baja de 7,00 % a **5,24 %**, y el intervalo sigue siendo **estrecho**
+   (±0,55), o sea efecto preciso, no ruido. La caída es coherente con equilibrar los
+   factores por percentil: menos contraste entre celdas ⇒ menos exposición evitable
+   por desvío.
+3. La estimación previa de 3,45 % venía de un subconjunto de 70 viajes y **quedó
+   descartada**: con la muestra completa el valor es 5,24 %. Confirma que comparar
+   subconjuntos distintos induce error, no el cambio de malla.
