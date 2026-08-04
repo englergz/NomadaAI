@@ -62,32 +62,24 @@ Instalar en emulador o teléfono conectado:
 
 ## 4. iOS (simulador)
 
-```bash
-cd apps/mobile
-JAVA_HOME=$(/usr/libexec/java_home -v 21) npx expo prebuild --platform ios --no-install
-cd ios && LANG=en_US.UTF-8 pod install     # sin LANG, CocoaPods falla por codificación
-
-xcodebuild -workspace NmadaAI.xcworkspace -scheme NmadaAI \
-  -configuration Release -sdk iphonesimulator \
-  -destination "id=<UDID>" -derivedDataPath build CODE_SIGNING_ALLOWED=NO
-```
-
-Instalar y abrir en el simulador:
+**Un solo comando**, desde la raíz del repo (`app/`). Compila, instala LIMPIO y abre:
 
 ```bash
-xcrun simctl list devices available | grep iPhone      # obtener el UDID
-xcrun simctl install <UDID> apps/mobile/ios/build/Build/Products/Release-iphonesimulator/NmadaAI.app
-xcrun simctl launch <UDID> ai.nomada.app
+npm run ios
 ```
 
-Instalación **limpia** (como la recibe alguien nuevo):
+Resuelve el simulador solo (usa el que esté arrancado o arranca un iPhone),
+compila, desinstala la versión anterior, instala, concede ubicación y abre la app.
+
+> Si `pod install` avisa `Cannot find module 'expo-dev-client/package.json'`, es
+> inofensivo: expo-updates lo busca para el flujo de development build, que este
+> proyecto no usa. Los pods se instalan igual.
+
+Solo si necesitas regenerar el proyecto nativo (tras tocar app.json o plugins):
 
 ```bash
-xcrun simctl uninstall <UDID> ai.nomada.app     # iOS
-adb uninstall ai.nomada.app                      # Android
+cd apps/mobile && npx expo prebuild --platform ios --no-install && cd ios && LANG=en_US.UTF-8 pod install
 ```
-
----
 
 ## 5. Actualizaciones por aire (OTA)
 
