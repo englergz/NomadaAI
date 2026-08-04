@@ -232,7 +232,7 @@ const es = {
   'city.areYouIn': '¿Estás en {city}? Podemos cambiar el mapa.',
   'city.switch': 'Sí, cambiar',
   'city.stay': 'No, seguir aquí',
-  'city.riskOnly': 'En {city} hoy verás el mapa de riesgo. La predicción y las rutas seguras llegan cuando el pipeline de esta ciudad esté listo.',
+  'city.riskOnly': 'En {city} ya te protegemos: mapa de riesgo y avisos al entrar en zona durante tu recorrido. Las rutas seguras y la alerta anticipada llegan cuando la red vial de esta ciudad esté cargada.',
   'city.full': 'Riesgo, predicción y rutas',
   'city.partial': 'Solo mapa de riesgo',
 

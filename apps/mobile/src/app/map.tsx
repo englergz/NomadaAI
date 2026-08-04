@@ -96,7 +96,17 @@ export default function MapScreen() {
   const [showCity, setShowCity] = useState(false);
   const [citySuggest, setCitySuggest] = useState<CityKey | null>(null); // «¿Estás en X?»
   const [focus, setFocus] = useState<{ center: [number, number]; zoom: number } | null>(null);
-  const cityFull = city === DEFAULT_CITY;
+  // COBERTURA POR GRADOS (no un sí/no). Verificado contra el backend:
+  //   · riesgo   → todas las ciudades (Cali tiene 4.268 celdas)
+  //   · ruteo    → solo donde hay red vial cargada (hoy Tumaco; /route/build
+  //                falla en Cali con «muy lejos de la red»)
+  //   · predicción → solo donde hay trayectorias para entrenar (hoy Tumaco)
+  // El recorrido y las alertas EN ZONA solo necesitan riesgo + GPS, así que
+  // funcionan en Cali; lo único que se pierde sin predicción es la anticipación
+  // cuando el usuario no declara destino. Ver docs/DISENO_FUTURO.md §1.
+  const canRoute = city === DEFAULT_CITY;      // buscar destino y trazar ruta segura
+  const canPredict = city === DEFAULT_CITY;    // alerta anticipada sin destino
+  const cityFull = canRoute;                   // compatibilidad con el resto del archivo
 
   // Vehículo del viaje: por defecto el del perfil (Ajustes), cambiable en cada viaje (B.6.1).
   // undefined = usar el predeterminado · null = «sin vehículo» explícito para este viaje.
@@ -424,6 +434,7 @@ export default function MapScreen() {
   // Movimiento real → modelo: con velocidad sostenida (~≥15 km/h) el prefijo se envía a
   // /predict/online, que predice el destino y devuelve la ALERTA ANTICIPADA de riesgo.
   async function feedModel(speedMps: number) {
+    if (!canPredict) return; // sin modelo entrenado no hay alerta anticipada
     const now = Date.now();
     if (now - lastPredictRef.current < 15000) return; // máx. 1 llamada cada 15 s
     const pts = tripPtsRef.current.slice(-40);        // prefijo acotado (payload pequeño)
@@ -815,7 +826,9 @@ export default function MapScreen() {
   const onTripRef = useRef(onTrip);
   useEffect(() => { onTripRef.current = onTrip; }, [onTrip]);
   useEffect(() => {
-    if (!settings.autoTrip || onTrip || !cityFull) return; // sin pipeline no hay recorrido
+    // Basta con la capa de riesgo: el recorrido y las alertas en zona no
+    // dependen del modelo de predicción.
+    if (!settings.autoTrip || onTrip) return;
     let sub: Location.LocationSubscription | null = null;
     let prev: { lon: number; lat: number; t: number } | null = null;
     let cancelled = false;
@@ -841,7 +854,7 @@ export default function MapScreen() {
     })();
     return () => { cancelled = true; sub?.remove(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.autoTrip, onTrip, cityFull]);
+  }, [settings.autoTrip, onTrip]);
 
   // Sonda de desarrollo: permite inyectar posiciones para verificar alertas sin GPS.
   if (__DEV__ && Platform.OS === 'web') {
@@ -1070,11 +1083,19 @@ export default function MapScreen() {
         />
         </>)}
 
-        {!cityFull ? (
-          // Honestidad U3: en esta ciudad hoy solo hay capa de riesgo.
-          <Text style={{ color: c.textSecondary, fontSize: 12.5, lineHeight: 18, textAlign: 'center', paddingVertical: 6 }}>
-            {t('city.riskOnly', { city: CITIES[city].label })}
-          </Text>
+        {!cityFull && !onTrip ? (
+          // Honestidad U3: aquí no hay ruta segura todavía, PERO sí protección.
+          <>
+            <Text style={{ color: c.textSecondary, fontSize: 12.5, lineHeight: 18, textAlign: 'center', paddingVertical: 6 }}>
+              {t('city.riskOnly', { city: CITIES[city].label })}
+            </Text>
+            <Pressable
+              onPress={startTrip}
+              style={({ pressed }) => [styles.cta, styles.ctaGhost, { borderColor: c.accent, opacity: pressed ? 0.8 : 1 }]}
+            >
+              <Text style={{ color: c.accent, fontSize: 15, fontWeight: '700' }}>{t('map.cta.freeTrip')}</Text>
+            </Pressable>
+          </>
         ) : onTrip ? (
           <View style={styles.tripRow}>
             <View style={[styles.levelChip, { borderColor: levelUi[tripLevel].color }]}>
