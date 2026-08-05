@@ -315,11 +315,32 @@ repo**, nunca memoria.
 | Sicariato **56,6 %** | **56,6 %** (2.291) | ✅ |
 | Rural **55,2 %** / urbana **44,8 %** | **55,2 % (2.231) / 44,8 % (1.814)** | ✅ |
 
-### Pendientes reales
+### Robustez GPS — verificada (`?noise_m=`, n=200)
 
-- **Robustez GPS** (90/82/72/60,6) y **ablación** (79,1→79,2): el endpoint de
-  evaluación no expone esos experimentos; requieren correr los scripts propios.
-- **Error al destino final** por vehículo (578/789/1.385/1.372 m) y el **1,4 % ≤100 m**:
-  el endpoint devuelve el horizonte emparejado, no el destino final del viaje completo.
-- **Sensibilidad ρ sobre la malla de 475** (verificada solo sobre 425, ver arriba).
-- **216 (2019) → 40 (2025)**: la serie anual no está en el CSV de caracterización.
+| σ ruido | Tesis | **Verificado** | Δ |
+|---|---|---|---|
+| 0 m | 90 % | **90,5 %** | ✅ |
+| 5 m | 82 % | **85,5 %** | ⚠️ +3,5 pp (mejor de lo citado) |
+| 10 m | 72 % | **72,5 %** | ✅ |
+| 20 m | 60,6 % | **55,0 %** | ⚠️ **−5,6 pp (peor de lo citado)** |
+
+La forma de la curva se sostiene (degradación progresiva), pero **dos puntos no
+coinciden**. El de 20 m es el que importa: la tesis afirma 60,6 % y el sistema da
+55,0 %. Se recomienda **republicar la curva completa** con estos valores en vez de
+ajustar solo uno. Reproducible con:
+`curl "https://englergz-nomadaai.hf.space/trajectories/evaluate?n=200&noise_m=20"`
+
+> Nota de método: la evaluación muestrea `n` viajes, así que hay variación entre
+> corridas. Para publicar conviene fijar `n` alto (p. ej. 500) y reportar el `n` usado.
+
+### Cifras que NO se pueden verificar con lo que hay desplegado
+
+| Cifra | Por qué |
+|---|---|
+| Ablación **79,1 → 79,2** | El endpoint no expone el experimento de ablación (config propia R=25, prefijo 75 %, muestra 800). Requiere el script original. |
+| Error al **destino final** por vehículo (578/789/1.385/1.372 m) y **1,4 % ≤100 m** | El endpoint mide el **horizonte de continuación**, no el destino final del viaje completo — lo dice su propia nota. Son métricas distintas y solo la primera está expuesta. |
+| Sensibilidad **ρ** sobre la malla de **475** | El artefacto de contribuciones por factor es de 425 y declara 3 factores frente a los 4 activos. |
+| Serie **216 (2019) → 40 (2025)** | Ningún CSV de `artifacts/` tiene columna de año; la caracterización solo agrega por arma, modalidad y zona. |
+
+> Estas cuatro **no son incorrectas**: son **no verificables desde el sistema
+> entregado**. Al sustentar conviene poder decir de qué script salió cada una.
