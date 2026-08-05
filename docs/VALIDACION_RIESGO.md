@@ -362,10 +362,32 @@ Los artefactos originales SÍ están en el repo. Confirmado:
 
 | Cifra | Por qué |
 |---|---|
-| Ablación **79,1 → 79,2** | El endpoint no expone el experimento de ablación (config propia R=25, prefijo 75 %, muestra 800). Requiere el script original. |
+| ~~Ablación 79,1 → 79,2~~ | ✅ **VERIFICADA** — reproducida ejecutando `Research/analysis_v2/ablation_trajcl.py --sample 800 --lambda_emb 1.0`: **geom 79,1 % · geom+emb 79,2 %** (hit@50 m, n=800, semilla 7). Exacto, incluido el Δ nulo. |
 | ~~Error al destino final y 1,4 %~~ | ✅ **verificados** en `Research/analysis_v2/eval_fair_horizon.csv` (ver tabla arriba) |
 | Sensibilidad **ρ** sobre la malla de **475** | El artefacto de contribuciones por factor es de 425 y declara 3 factores frente a los 4 activos. |
 | ~~Serie 216 → 40~~ | ✅ **verificada** en `Research/analysis_v2/tumaco_homicidios_por_anio.csv` |
 
-> Estas cuatro **no son incorrectas**: son **no verificables desde el sistema
-> entregado**. Al sustentar conviene poder decir de qué script salió cada una.
+### Estado final de la validación
+
+**Verificado todo lo verificable.** La única cifra que queda sin comprobar es la
+**sensibilidad ρ sobre la malla de 475** (está comprobada sobre 425: ρ=0,998), y no
+por falta de script sino porque el artefacto de contribuciones por factor
+corresponde a la etapa anterior y declara 3 factores frente a los 4 activos.
+Regenerarlo con las 475 celdas cerraría el último punto.
+
+**Correcciones que la tesis debe aplicar** (todas medidas, ninguna supuesta):
+
+| Dónde | Dice | Debe decir |
+|---|---|---|
+| OE4 (Resumen, Resultados, Análisis, Conclusiones) | −7,0 % [6,4–7,6] | **5,24 % [4,68 · 5,79]** |
+| OE1 robustez GPS | 90/82/72/**60,6** | **90,5 / 85,5 / 72,5 / 55,0** |
+| OE3 alerta anticipada | 88,7 % (como global) | 88,7 % **en el escenario hora 20 / umbral 80 / look-ahead 150 m**; global 94,0 % |
+| OE3 anticipación | ~280 m y 25 s | **248 m media / 300 m mediana**; 21,8 s media / 24,6 s mediana |
+| OE1 destino final | 578 / 789 / 1.385 / 1.372 m | **548 / 770 / 1.361 / 1.368 m** |
+| OE1 acierto ≤50 m | 90 % (sin declarar fuente) | Declarar la medición: **90,5 %** (endpoint) o **86,5 %** (`eval_fair_horizon.csv`) |
+
+**Se mantienen sin cambio** (verificadas exactas): 95,0 % de rutas que mejoran ·
+642 m mediana al destino · 1,44 % ≤100 m · 91,9 % dirección · ablación 79,1→79,2 ·
+4.045 homicidios con 85,8 / 56,6 / 55,2-44,8 · serie 216→40 · Cali 4.268 y 0,593 ·
+malla 475 con niveles 332/95/48 y correlaciones 0,07/0,32 · 4.032 trayectorias ·
+45 escenarios · partición 3.226/806.
