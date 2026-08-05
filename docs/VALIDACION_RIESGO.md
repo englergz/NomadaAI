@@ -382,9 +382,23 @@ contribuciones por factor. Sobre 475 **no se puede calcular con lo que hay**:
   **no la sensibilidad a los pesos**. Reportarlo como hallazgo habría sido el mismo
   error que dar por bueno el 3,45 % de un subconjunto.
 
-**Para cerrarlo:** regenerar `tumaco_zonas_riesgo_rtm.csv` con las 475 celdas y las
-cuatro contribuciones (densidad · periferia · actividad · policía) ejecutando
-`Research/analysis_v2/build_risk_rtm.py`, y repetir el cálculo de ρ sobre ese archivo.
+**Por qué no basta con re-ejecutar el script** (comprobado 2026-08-04):
+`build_risk_rtm.py` lee `tumaco_zonas.csv`, que tiene **425 celdas**. Volver a
+correrlo reproduce el estado de 425, no el entregado. El índice de **475**
+(`tumaco_zonas_riesgo_v2.csv`) lo generó un proceso posterior que **no guardó las
+contribuciones por factor**, y la API (`app/data/risk.py`) solo **sirve** ese índice
+ya calculado: no lo recompone.
+
+**Lo que hace falta de verdad:** localizar (o rehacer) el proceso que produjo la
+malla de 475 y hacer que persista las cuatro contribuciones por celda. Sin eso, ρ
+sobre 475 **no es calculable a partir de este repositorio**. No es cuestión de correr
+un comando.
+
+**Qué se puede afirmar hoy con evidencia:** el ordenamiento del índice es robusto a
+perturbaciones de ±20 % en los pesos (**ρ media 0,998 · mínimo 0,9915**) sobre la
+malla de 425. Como ρ mide una propiedad del *método* de ponderación —no del tamaño
+de la malla— es razonable esperar el mismo comportamiento en 475, pero **eso es una
+expectativa, no una medición**, y así debe presentarse si se cita.
 
 **Correcciones que la tesis debe aplicar** (todas medidas, ninguna supuesta):
 
