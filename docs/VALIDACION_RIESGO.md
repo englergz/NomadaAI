@@ -369,11 +369,22 @@ Los artefactos originales SÍ están en el repo. Confirmado:
 
 ### Estado final de la validación
 
-**Verificado todo lo verificable.** La única cifra que queda sin comprobar es la
-**sensibilidad ρ sobre la malla de 475** (está comprobada sobre 425: ρ=0,998), y no
-por falta de script sino porque el artefacto de contribuciones por factor
-corresponde a la etapa anterior y declara 3 factores frente a los 4 activos.
-Regenerarlo con las 475 celdas cerraría el último punto.
+**Verificado todo lo verificable. Queda UNA cifra abierta: ρ sobre la malla de 475.**
+
+Comprobada sobre 425 (ρ media 0,998 · mínimo 0,9915) con el artefacto que guarda las
+contribuciones por factor. Sobre 475 **no se puede calcular con lo que hay**:
+
+- `tumaco_zonas_riesgo_v2.csv` (475 celdas) solo trae `poblacion_dane` y `n_points`;
+  faltan **periferia** y **policía**, dos de los cuatro factores activos.
+- Se intentó reconstruir el índice con los dos factores disponibles y **se descartó
+  el resultado**: la reconstrucción correlaciona **0,476** con el índice real, o sea
+  que no lo reproduce. El ρ que sale de ahí (0,47) mide el error de reconstrucción,
+  **no la sensibilidad a los pesos**. Reportarlo como hallazgo habría sido el mismo
+  error que dar por bueno el 3,45 % de un subconjunto.
+
+**Para cerrarlo:** regenerar `tumaco_zonas_riesgo_rtm.csv` con las 475 celdas y las
+cuatro contribuciones (densidad · periferia · actividad · policía) ejecutando
+`Research/analysis_v2/build_risk_rtm.py`, y repetir el cálculo de ρ sobre ese archivo.
 
 **Correcciones que la tesis debe aplicar** (todas medidas, ninguna supuesta):
 
