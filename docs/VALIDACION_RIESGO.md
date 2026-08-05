@@ -274,6 +274,27 @@ repo**, nunca memoria.
 | **45 escenarios** (hora × umbral × look-ahead) | ✅ 45 filas |
 | Niveles Cali | bajo 2.987 · medio 854 · alto 427 |
 
+### 🔴 Cerradas en esta pasada
+
+| Cifra | Valor verificado | Fuente | Veredicto |
+|---|---|---|---|
+| Cali · correlación socioeconómica **≈ 0,59** | **0,593** | `cali_zonas_riesgo_v2.csv` (n=4.268), corr(índice, vulnerabilidad) | ✅ **exacto** |
+| Sensibilidad **ρ ≈ 0,99** | **ρ media 0,998 · mínimo 0,9915** (200 perturbaciones ±20 % de los pesos) | `tumaco_zonas_riesgo_rtm.csv` | ✅ **se sostiene** |
+
+> ⚠️ **Matiz honesto sobre ρ:** el artefacto con las contribuciones por factor
+> (`tumaco_zonas_riesgo_rtm.csv`) tiene **425 celdas**, la etapa previa. El cálculo
+> confirma que el ordenamiento es robusto a perturbaciones de peso, pero **sobre la
+> malla de 425**. Para afirmarlo de la malla entregada habría que regenerar ese
+> artefacto con las 475 celdas y sus contribuciones por factor. Dado que ρ mide
+> estabilidad del *ranking* frente a los pesos —una propiedad del método, no del
+> tamaño de la malla— es razonable esperar el mismo resultado, pero **no está
+> verificado sobre 475**.
+>
+> Nota adicional: ese CSV guarda 3 contribuciones (`exp`, `socio`, `pop`) mientras la
+> configuración actual declara **4 factores activos** (densidad 0,35 · periferia 0,30
+> · actividad 0,20 · policía 0,15). Es otra señal de que el artefacto es de la etapa
+> anterior al rediseño.
+
 ### Pendientes de verificar (requieren correr scripts de entrenamiento)
 
 - **OE1 completo**: 90 % ≤50 m con IC [85–94], 96 % ≤100 m, 92 % dirección, error 8 m,
