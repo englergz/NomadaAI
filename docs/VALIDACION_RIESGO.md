@@ -333,14 +333,39 @@ ajustar solo uno. Reproducible con:
 > Nota de método: la evaluación muestrea `n` viajes, así que hay variación entre
 > corridas. Para publicar conviene fijar `n` alto (p. ej. 500) y reportar el `n` usado.
 
+### Verificadas contra `Research/analysis_v2/` (2026-08-04)
+
+Los artefactos originales SÍ están en el repo. Confirmado:
+
+| Cifra en la tesis | Valor verificado | Fuente | Veredicto |
+|---|---|---|---|
+| Destino final · **mot 578 m** | **548,1 m** (n=2.699) | `eval_fair_horizon.csv` | ⚠️ −30 m |
+| Destino final · **car 789 m** | **770,5 m** (n=1.101) | ídem | ⚠️ −19 m |
+| Destino final · **bus 1.385 m** | **1.361,5 m** (n=200) | ídem | ⚠️ −24 m |
+| Destino final · **camión 1.372 m** | **1.368,3 m** (n=29) | ídem | ✅ |
+| Destino final · **mediana global 642 m** | **642,0 m** | ídem | ✅ **exacto** |
+| Acierto ≤100 m al destino · **1,4 %** | **1,44 %** | ídem | ✅ **exacto** |
+| Dirección **<30° · 92 %** | **91,9 %** | ídem | ✅ |
+| Serie **216 (2019) → 40 (2025)** | **216 (2019) · 40 (2025)** | `tumaco_homicidios_por_anio.csv` | ✅ **exacto** |
+
+> Las medianas por vehículo están **20–30 m por encima** en la tesis. Diferencia
+> pequeña y en la dirección conservadora (el sistema es algo mejor), pero conviene
+> usar los valores reales: **548 / 770 / 1.361 / 1.368**.
+>
+> ⚠️ **Sobre el «~8 m»**: en este artefacto la mediana al horizonte emparejado es
+> **0,3 m**, y el acierto ≤50 m es **86,5 %** (no 90 %). El 90 % / ~8 m que reporta
+> la tesis coincide con el **endpoint de evaluación** (`/trajectories/evaluate`:
+> 90,5 % · 7,35 m), que usa muestreo y horizonte distintos. **Son dos mediciones
+> distintas del mismo concepto**: hay que declarar cuál se cita.
+
 ### Cifras que NO se pueden verificar con lo que hay desplegado
 
 | Cifra | Por qué |
 |---|---|
 | Ablación **79,1 → 79,2** | El endpoint no expone el experimento de ablación (config propia R=25, prefijo 75 %, muestra 800). Requiere el script original. |
-| Error al **destino final** por vehículo (578/789/1.385/1.372 m) y **1,4 % ≤100 m** | El endpoint mide el **horizonte de continuación**, no el destino final del viaje completo — lo dice su propia nota. Son métricas distintas y solo la primera está expuesta. |
+| ~~Error al destino final y 1,4 %~~ | ✅ **verificados** en `Research/analysis_v2/eval_fair_horizon.csv` (ver tabla arriba) |
 | Sensibilidad **ρ** sobre la malla de **475** | El artefacto de contribuciones por factor es de 425 y declara 3 factores frente a los 4 activos. |
-| Serie **216 (2019) → 40 (2025)** | Ningún CSV de `artifacts/` tiene columna de año; la caracterización solo agrega por arma, modalidad y zona. |
+| ~~Serie 216 → 40~~ | ✅ **verificada** en `Research/analysis_v2/tumaco_homicidios_por_anio.csv` |
 
 > Estas cuatro **no son incorrectas**: son **no verificables desde el sistema
 > entregado**. Al sustentar conviene poder decir de qué script salió cada una.
