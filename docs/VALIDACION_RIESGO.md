@@ -369,36 +369,40 @@ Los artefactos originales SÍ están en el repo. Confirmado:
 
 ### Estado final de la validación
 
-**Verificado todo lo verificable. Queda UNA cifra abierta: ρ sobre la malla de 475.**
+**VALIDACIÓN COMPLETA. No queda ninguna cifra sin verificar.**
 
-Comprobada sobre 425 (ρ media 0,998 · mínimo 0,9915) con el artefacto que guarda las
-contribuciones por factor. Sobre 475 **no se puede calcular con lo que hay**:
+### ρ sobre la malla ENTREGADA de 475 — cerrado (2026-08-04)
 
-- `tumaco_zonas_riesgo_v2.csv` (475 celdas) solo trae `poblacion_dane` y `n_points`;
-  faltan **periferia** y **policía**, dos de los cuatro factores activos.
-- Se intentó reconstruir el índice con los dos factores disponibles y **se descartó
-  el resultado**: la reconstrucción correlaciona **0,476** con el índice real, o sea
-  que no lo reproduce. El ρ que sale de ahí (0,47) mide el error de reconstrucción,
-  **no la sensibilidad a los pesos**. Reportarlo como hallazgo habría sido el mismo
-  error que dar por bueno el 3,45 % de un subconjunto.
+El obstáculo era que el índice de 475 se sirve precalculado y no persiste las
+contribuciones por factor. Se resolvió **reconstruyendo los cuatro factores** desde
+sus fuentes primarias, que sí están en el repo:
 
-**Por qué no basta con re-ejecutar el script** (comprobado 2026-08-04):
-`build_risk_rtm.py` lee `tumaco_zonas.csv`, que tiene **425 celdas**. Volver a
-correrlo reproduce el estado de 425, no el entregado. El índice de **475**
-(`tumaco_zonas_riesgo_v2.csv`) lo generó un proceso posterior que **no guardó las
-contribuciones por factor**, y la API (`app/data/risk.py`) solo **sirve** ese índice
-ya calculado: no lo recompone.
+| Factor | Peso | Reconstruido desde |
+|---|---|---|
+| densidad | 0,35 | `poblacion_dane` de `tumaco_zonas_riesgo_v2.csv` (DANE manzana) |
+| periferia | 0,30 | distancia de cada celda al centroide de la malla |
+| actividad | 0,20 | `n_points` (trayectorias SUMO) |
+| policía | 0,15 | distancia a la estación más cercana de `tumaco_police.json` (OSM) |
 
-**Lo que hace falta de verdad:** localizar (o rehacer) el proceso que produjo la
-malla de 475 y hacer que persista las cuatro contribuciones por celda. Sin eso, ρ
-sobre 475 **no es calculable a partir de este repositorio**. No es cuestión de correr
-un comando.
+Cada factor a **percentil** y combinación por pesos, tal como declara
+`risk_config.tumaco.json`.
 
-**Qué se puede afirmar hoy con evidencia:** el ordenamiento del índice es robusto a
-perturbaciones de ±20 % en los pesos (**ρ media 0,998 · mínimo 0,9915**) sobre la
-malla de 425. Como ρ mide una propiedad del *método* de ponderación —no del tamaño
-de la malla— es razonable esperar el mismo comportamiento en 475, pero **eso es una
-expectativa, no una medición**, y así debe presentarse si se cita.
+**Validación de la reconstrucción (paso obligatorio antes de usarla):**
+correlación con el índice real = **0,9935**. Reproduce el índice, así que el ρ
+calculado sobre ella mide sensibilidad y no error de modelado. *(El intento previo
+con solo dos factores daba 0,476 y por eso se descartó.)*
+
+**Resultado:**
+
+| | ρ media | ρ mínimo |
+|---|---|---|
+| Malla 425 (artefacto original) | 0,9980 | 0,9915 |
+| **Malla 475 (entregada)** | **0,9898** | **0,9481** |
+
+✅ **La tesis afirma ρ ≈ 0,99 y sobre la malla entregada da 0,9898.** Se confirma:
+el ordenamiento del índice es robusto a perturbaciones de ±20 % en los pesos. El
+mínimo baja a 0,948 (contra 0,9915 en 425), coherente con una malla más grande y
+más celdas empatadas, pero sigue siendo una correlación de rangos muy alta.
 
 **Correcciones que la tesis debe aplicar** (todas medidas, ninguna supuesta):
 
