@@ -243,3 +243,44 @@ rutas que mejoran.
 3. La estimación previa de 3,45 % venía de un subconjunto de 70 viajes y **quedó
    descartada**: con la muestra completa el valor es 5,24 %. Confirma que comparar
    subconjuntos distintos induce error, no el cambio de malla.
+
+
+---
+
+## 6. Verificación exhaustiva de cifras de la tesis (2026-08-04)
+
+Todas contra el sistema entregado. **Fuente = endpoint en producción o artefacto del
+repo**, nunca memoria.
+
+### 🔴 Dependen de la superficie de riesgo
+
+| Cifra en la tesis | Valor verificado | Veredicto |
+|---|---|---|
+| OE4 · reducción media **7,0 %** [6,4–7,6] | **5,24 %** [4,68 · 5,79] (200 pares, bootstrap, malla 475) | ⚠️ **actualizar** |
+| OE4 · **95 %** de rutas mejoran | **95,0 %** (idéntico) | ✅ se mantiene |
+| OE3 · alerta anticipada **88,7 %** | **88,7 %** en el escenario hora 20 / umbral 80 / look-ahead 150 m. El global del artefacto es **94,0 %** (n=4.032) y el barrido va de 0 a 97,2 % | ✅ correcto, pero **es un escenario concreto**: hay que decir cuál |
+| OE3 · anticipación **~280 m y 25 s** | media **248 m / 21,8 s**; mediana **300 m / 24,6 s** | ⚠️ **precisar si es media o mediana** (los 280 m no salen de ninguna de las dos) |
+| Cali · **4.268 celdas** | **4.268** | ✅ exacto |
+| Cali · correlación socioeconómica **≈ 0,59** | El endpoint expone `poblacion` (**0,056**) y `actividad` (**0,016**); no publica el factor socioeconómico | ❓ **no verificable desde producción** — hay que mirar el script de construcción de Cali |
+
+### 🟡 Confirmadas
+
+| Cifra | Valor verificado |
+|---|---|
+| Malla Tumaco **475 celdas** | ✅ 475 |
+| Niveles **332 / 95 / 48** | ✅ exacto |
+| Correlaciones **0,07 tráfico · 0,32 población** | ✅ exacto |
+| Trayectorias **4.032** | ✅ 4.032 filas en el artefacto |
+| **45 escenarios** (hora × umbral × look-ahead) | ✅ 45 filas |
+| Niveles Cali | bajo 2.987 · medio 854 · alto 427 |
+
+### Pendientes de verificar (requieren correr scripts de entrenamiento)
+
+- **OE1 completo**: 90 % ≤50 m con IC [85–94], 96 % ≤100 m, 92 % dirección, error 8 m,
+  robustez GPS (90/82/72/60,6), ablación 79,1→79,2, error a destino final por vehículo
+  y el 1,4 % ≤100 m. **No dependen de la malla de riesgo**, así que no se movieron con
+  el rebalanceo; conviene recalcularlos igual para poder citar `n` del bootstrap.
+- **Sensibilidad ρ ≈ 0,99**: exige recomputar el índice perturbando pesos. No hay
+  artefacto guardado; hay que correr el script de sensibilidad sobre la malla 475.
+- **Caracterización de homicidios** (4.045, 85,8 %, 56,6 %, 55,2/44,8, 216→40):
+  contrastar contra `oe2_homicidios_tumaco.csv`.
