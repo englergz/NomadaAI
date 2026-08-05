@@ -295,13 +295,31 @@ repo**, nunca memoria.
 > · actividad 0,20 · policía 0,15). Es otra señal de que el artefacto es de la etapa
 > anterior al rediseño.
 
-### Pendientes de verificar (requieren correr scripts de entrenamiento)
+### OE1 — verificado contra `/trajectories/evaluate` (2026-08-04, n=200)
 
-- **OE1 completo**: 90 % ≤50 m con IC [85–94], 96 % ≤100 m, 92 % dirección, error 8 m,
-  robustez GPS (90/82/72/60,6), ablación 79,1→79,2, error a destino final por vehículo
-  y el 1,4 % ≤100 m. **No dependen de la malla de riesgo**, así que no se movieron con
-  el rebalanceo; conviene recalcularlos igual para poder citar `n` del bootstrap.
-- **Sensibilidad ρ ≈ 0,99**: exige recomputar el índice perturbando pesos. No hay
-  artefacto guardado; hay que correr el script de sensibilidad sobre la malla 475.
-- **Caracterización de homicidios** (4.045, 85,8 %, 56,6 %, 55,2/44,8, 216→40):
-  contrastar contra `oe2_homicidios_tumaco.csv`.
+| Cifra en la tesis | Valor verificado | Veredicto |
+|---|---|---|
+| Acierto ≤50 m **90 %**, IC **[85–94]** | **90,5 %**, IC **[86,0 · 94,5]** | ✅ |
+| Acierto ≤100 m **~96 %** | **96,5 %** | ✅ |
+| Error mediano **~8 m** | **7,35 m** (media 18,26 · p90 48,4) | ✅ |
+| Partición **80/20** | **3.226 train / 806 test** | ✅ |
+| Mejora sobre línea recta | **+17,0 pp** (90,5 % vs 73,5 %) | ✅ |
+| Comparación con Markov | **+54,0 pp** (90,5 % vs 36,5 %) | ✅ |
+
+### OE2 — caracterización de homicidios verificada contra `oe2_homicidios_tumaco.csv`
+
+| Cifra | Valor verificado | Veredicto |
+|---|---|---|
+| **4.045** homicidios | **4.045** (total consistente en las tres dimensiones) | ✅ |
+| Arma de fuego **85,8 %** | **85,8 %** (3.472) | ✅ |
+| Sicariato **56,6 %** | **56,6 %** (2.291) | ✅ |
+| Rural **55,2 %** / urbana **44,8 %** | **55,2 % (2.231) / 44,8 % (1.814)** | ✅ |
+
+### Pendientes reales
+
+- **Robustez GPS** (90/82/72/60,6) y **ablación** (79,1→79,2): el endpoint de
+  evaluación no expone esos experimentos; requieren correr los scripts propios.
+- **Error al destino final** por vehículo (578/789/1.385/1.372 m) y el **1,4 % ≤100 m**:
+  el endpoint devuelve el horizonte emparejado, no el destino final del viaje completo.
+- **Sensibilidad ρ sobre la malla de 475** (verificada solo sobre 425, ver arriba).
+- **216 (2019) → 40 (2025)**: la serie anual no está en el CSV de caracterización.
