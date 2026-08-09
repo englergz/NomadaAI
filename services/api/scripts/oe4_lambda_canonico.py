@@ -31,7 +31,13 @@ from statistics import fmean, median
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "https://englergz-nomadaai.hf.space").rstrip("/")
 N_PAIRS = int(sys.argv[2]) if len(sys.argv) > 2 else 40
 HOURS = [6, 12, 18, 20, 22]
-LAMBDAS = [0.0, 1.0, 2.0, 3.0, 5.0]
+# λ = 2.5 es EL DEFAULT REAL DEL PRODUCTO: ambos clientes arrancan la barra de
+# protección en 50 % y `lambdaForLevel(pct) = pct/20` → 50/20 = 2.5.
+# λ = 5.0 es el TOPE de la barra (100 %), no un valor arbitrario.
+# Se puede acotar con la variable OE4_LAMBDAS para correr pasadas suplementarias.
+import os as _os
+LAMBDAS = [float(x) for x in _os.environ["OE4_LAMBDAS"].split(",")] \
+    if _os.environ.get("OE4_LAMBDAS") else [0.0, 1.0, 2.0, 2.5, 3.0, 5.0]
 SEED = 7          # misma semilla que el muestreo de evaluate (T1)
 N_BOOT = 2000
 
@@ -104,7 +110,7 @@ def main() -> None:
     if not rows:
         print("Sin resultados (¿API caída?)."); return
 
-    out = Path(__file__).resolve().parents[1] / "artifacts" / "eval" / "oe4_lambda_canonico.csv"
+    out = Path(__file__).resolve().parents[1] / "artifacts" / "eval" / (_os.environ.get("OE4_OUT") or "oe4_lambda_canonico.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))

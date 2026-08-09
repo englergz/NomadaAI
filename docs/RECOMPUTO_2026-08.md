@@ -93,11 +93,17 @@ Dos amplitudes distintas, y la tesis debe citar **la efectiva**:
 | Primer piso → artefacto servido | `rebuild_risk_full.py:52` `night_floor + (1-night_floor)·HOUR_REL` | **×1,408** |
 | Segundo piso → lo que ve el usuario | `risk.py:117` `rn = sp·(0,5 + 0,5·tf)` | **×1,170** |
 
-La modulación nocturna se aplasta dos veces, casi con seguridad sin querer. **No se ha
-tocado el código**: corregirlo mueve la superficie de riesgo y con ella T4, T5 y las
-figuras 4, 6 y 10. Requiere decisión explícita y aviso a la sesión de escritura. Mientras
-tanto, la cifra que debe citar la tesis es la **efectiva, ×1,170**, que es la que gobierna
-lo que el usuario realmente recibe.
+La modulación nocturna se aplasta dos veces, casi con seguridad sin querer.
+
+> **DECISIÓN TOMADA — Opción A: no se corrige.** `/route/build` consume el mismo
+> `state.risk`, así que **la exposición medida en T4 sale de la superficie doblemente
+> aplastada**. Corregir el doble piso ahora obligaría a repetir T4 (1.000 llamadas), T5 y
+> las figuras 4, 6 y 10, en cascada y a semanas de la entrega. Se documenta como
+> comportamiento del sistema entregado y **T4 queda válido tal cual**.
+>
+> Redacción honesta para la tesis: *«la modulación temporal efectiva del sistema entregado
+> es ×1,17»*. El defecto de diseño queda registrado aquí para trabajo futuro. **El código
+> no se ha tocado.**
 
 ### 1.3 · T6b — factor socioeconómico (PARCIAL, sin conclusión)
 
