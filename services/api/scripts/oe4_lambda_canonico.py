@@ -136,7 +136,7 @@ def main() -> None:
               f"{(fmean(ex) if ex else 0):>6.1f}%")
     print(f"\nCSV: {out}")
     print("λ=5.0 es el MÁXIMO alcanzable (prioridad de seguridad total); "
-          "el valor por defecto del producto es λ=0.0.")
+          "el DEFAULT REAL del producto es λ=2.5 (barra al 50 %).")
 
 
 if __name__ == "__main__":
