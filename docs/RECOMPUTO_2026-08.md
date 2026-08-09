@@ -24,8 +24,12 @@ Backend medido: `https://englergz-nomadaai.hf.space` · malla servida de Tumaco:
 | **T3** | Amplitud de la curva horaria **×1,79** | **×1,170 efectiva** (la que gobierna alertas y niveles) · **×1,408** en el campo `risk` servido | ver §1.2 | `/tmp/curva_horaria.json` · `662a4cd1f05f0feff…` |
 | **T3** | Hora pico | **19:00** (valle 03:00) | idem | idem |
 | **T6b** | «El factor socioeconómico aporta» *(afirmado sin evidencia)* | **ρ(con, sin) = 0,4335 en Tumaco · 0,8612 en Cali** | ver §1.3 | endpoint `/risk/zones` ambas ciudades |
+| **T5** | Anticipación media global | **276,7 m** (39 escenarios con alerta) | ver §1.5 | `sweep_alerta.csv` · 45 filas |
+| **T5** | Anticipación en segundos **24,6 s** | **24,9 s a 40 km/h** — es una **media**, no mediana | idem | idem |
+| **T5** | Anticipación **21,8 s** | **No existe** en ninguna combinación | idem | idem |
 | **T9** | ρ de sensibilidad ≈ **0,99** | **0,9898** (mínimo 0,9481) sobre la malla servida de 475 | `docs/VALIDACION_RIESGO.md` §6 | reconstrucción validada a corr **0,9935** |
 | **T10** | Niveles 332 bajo / 95 medio / 48 alto | **Tautológicos — confirmado** | ver §1.4 | `risk.py:38-45` |
+| **T12** | Los dos barridos citados como uno | **Son experimentos distintos: 45 escenarios ≠ 200 rutas (40 pares × 5 h)** | ver §1.6 | ambos CSV |
 
 ### 1.1 · T1 — desglose por tipo (nuevo, no estaba en la tesis)
 
@@ -104,6 +108,56 @@ Sobre 475 celdas eso es 47,5 / 95 / 332,5 → los **48 / 95 / 332** reportados.
 decisión de diseño («se calibró para que el nivel alto sea la minoría transitable»),
 nunca como resultado. El propio comentario del código ya lo dice.
 
+### 1.5 · T5 — una sola configuración de alerta, con las etiquetas correctas
+
+```bash
+python3 -c "
+import csv,statistics as st
+rs=[r for r in csv.DictReader(open('Research/analysis_v2/sweep_alerta.csv'))
+    if float(r['antic_media_m'] or 0)>0]
+print(len(rs),'escenarios con alerta ·',
+      round(st.mean([float(r['antic_media_m']) for r in rs]),1),'m media global')"
+```
+
+El barrido tiene **45 filas** = 5 horas × 3 umbrales × 3 lookahead. **39 tienen alerta**
+(las 6 de las 06:00 con umbral 80/100 dan 0 %, porque a esa hora ninguna celda supera el
+umbral). Las cifras de la tesis estaban mezclando filas distintas:
+
+| Cifra citada | Qué es realmente | Fila exacta |
+|---|---|---|
+| **88,7 %** | `pct_anticipadas` | hora 20 · umbral 80 |
+| **129,0 m** | media de anticipación **a lookahead 150** | hora 20 · umbral 80 · look **150** |
+| **248 m** | media de anticipación **a lookahead 300** — *otra fila* | hora 20 · umbral 80 · look **300** |
+| **94 %** | `pct_con_riesgo`, **no** una tasa de alerta | hora 20 · umbral 80 |
+| **24,6 s** | la **media** global (276,7 m) convertida a ~40 km/h → **24,9 s** | global, no una fila |
+| **21,8 s** | **no existe** en ninguna de las 45 combinaciones | — |
+
+**Configuración coherente recomendada para la tesis** (una sola fila, todo de la misma):
+hora 20 · umbral 80 · lookahead 150 → **88,7 % de alertas anticipadas · 129,0 m de
+anticipación media · sobre un 94,0 % de trayectos que atraviesan riesgo.**
+
+> **Hallazgo nuevo (mismo defecto que T10).** En **los 39 escenarios**, la mediana de
+> anticipación es **exactamente igual al lookahead** (150/300/500). Es decir, más de la
+> mitad de las alertas se disparan al máximo del horizonte configurado: **la mediana está
+> topada por el parámetro y no es un resultado empírico.** Debe reportarse la **media**
+> (que sí varía: 128–150 m según hora y umbral) y decir explícitamente que la mediana
+> satura. Citar «mediana de anticipación 300 m» es citar el ajuste, no una medición.
+
+### 1.6 · T12 — los dos barridos son experimentos distintos
+
+| Barrido | Archivo | Filas | Diseño |
+|---|---|---|---|
+| **Alertas** | `Research/analysis_v2/sweep_alerta.csv` | **45** | 5 horas × 3 umbrales × 3 lookahead, sobre 4.032 puntos |
+| **OE4 / rutas** | `services/api/artifacts/eval/oe4_od_sweep.csv` | **200** | **40 pares O-D × 5 horas** |
+
+```bash
+tail -n +2 services/api/artifacts/eval/oe4_od_sweep.csv | cut -d, -f1 | sort -u | wc -l   # → 40
+```
+
+No comparten unidad de análisis, ni muestra, ni parámetros. Presentarlos como un solo
+barrido es un error de redacción; deben ir en secciones separadas. De aquí sale además
+la corrección de T4: **n efectivo = 40, no 200.**
+
 ---
 
 ## 2. Cambio de código aplicado (T1)
@@ -130,13 +184,46 @@ Nada de lo siguiente se estimó. Se declara qué falta y por qué.
 |---|---|---|---|
 | **T2** | Dirección <30°, FDE por tipo, ≤100 m | **Pendiente** | `Research/analysis_v2/eval_fair_horizon.py` no tiene split train/test, ni semilla, ni auto-exclusión (4.029 filas, mediana 0,31 m). Hay que rehacerlo **sobre los 806 ids de test** con `exclude_id`. Las cifras hoy publicadas (91,9 % dirección, 642,0 m, 1,44 %) **provienen de ese archivo y no son válidas** hasta rehacerlo. |
 | **T4** | OE4 canónico, bootstrap por clúster, curva λ | **Pendiente** | Hay **tres valores en circulación (5,24 / 7,00 / 6,2)** y ninguno es definitivo. El bootstrap debe ser **por clúster** (40 pares O-D × 5 horas ⇒ n_eff = 40, no 200), y falta la curva λ ∈ {0,1,2,3,5} declarando que λ=5,0 es el máximo y 0,0 el defecto. |
-| **T5** | Configuración de alerta coherente | **Pendiente** | Las etiquetas están cruzadas: 129,0 m es lookahead 150 y 248 m es lookahead 300; 94 % es `pct_con_alerta/pct_con_riesgo`; 24,6 s es **media**, no mediana; **21,8 s no existe** en ninguna corrida. |
 | **T7** | Robustez GPS σ ∈ {0,5,10,20} | **Pendiente** | `destination.py` usa `Random(hash(tid) & 0xFFFF)`: sin `PYTHONHASHSEED=0` el ruido **no es reproducible entre procesos**. Hay que fijarlo en el Dockerfile antes de medir. |
 | **T8** | Contribuciones por factor | **Pendiente** | Deben regenerarse sobre 475 con los 4 factores, distinguiendo **contribución** (cuota de varianza) de **correlación**, y explicando por qué actividad pesa 0,20 con correlación 0,07. |
 | **T11** | «95 % de funcionalidad operativa» | **Pendiente — recomendación: retirar** | No hay definición operativa ni instrumento que lo mida. Si no se define un denominador, no es una cifra: es una impresión. |
-| **T12** | Los dos barridos | **Pendiente** | Hay que separarlos explícitamente: **45 escenarios de alerta** ≠ **40 pares O-D**. Hoy se citan como si fueran el mismo experimento. |
-| **T13** | Columnas arma / modalidad | **No recomputable** | El crudo `HOMICIDIO_20251031.csv` tiene **8 columnas y no incluye arma ni modalidad**, y suma **4.018**, no los 4.045 publicados. Las cifras de arma/modalidad **no tienen fuente trazable en el repo**; o aparece el archivo original o deben retirarse. |
+| **T13** | Columnas arma / modalidad · total 4.045 · 85,8 % masculino · 55,2/44,8 | **No recomputable — ver §3.1** | Ni el crudo ni el derivado reproducen las cifras, y el derivado contiene datos que el crudo no tiene. |
 | **C4** | Proyección de percepción | **Reclasificar a «pendiente de revalidar»** | La evaluación crítica tiene razón: si la proyección parte del % de reducción de exposición, **depende de T4**, que está abierto con tres valores en circulación. No puede darse por cerrada mientras OE4 no lo esté. |
+
+### 3.1 · T13 en detalle — problema de trazabilidad, no solo de cifra
+
+```bash
+head -1 Research/analysis_v2/data_sources/HOMICIDIO_20251031.csv | tr ',' '\n'
+# → 8 columnas: FECHA HECHO, COD_DEPTO, DEPARTAMENTO, COD_MUNI, MUNICIPIO, ZONA, SEXO, CANTIDAD
+```
+
+Hay **tres totales distintos** y ninguno es el publicado:
+
+| Fuente | Total Tumaco | Observación |
+|---|---|---|
+| Crudo versionado `HOMICIDIO_20251031.csv` | **4.018** | corte al 31/10/2025 |
+| Derivado `tumaco_homicidios_por_anio.csv` | **4.027** | **incluye 12 registros de 2026** |
+| **Publicado en la tesis** | **4.045** | **sin fuente localizable en el repo** |
+
+**Lo más grave no es la diferencia de 27, es esto:** el derivado tiene una fila
+`2026,12`, pero el crudo versionado está fechado **31/10/2025** y no contiene ningún
+registro de 2026. El derivado **no se generó a partir del crudo que está en el repo**,
+sino de otra descarga que no quedó versionada. Mientras eso no se resuelva, la cadena
+crudo → derivado → tesis está rota, y ninguna cifra de esta sección es auditable.
+
+Además, recomputando directamente sobre el crudo:
+
+| Cifra publicada | Recomputado sobre el crudo | Estado |
+|---|---|---|
+| 85,8 % masculino | **91,1 %** (3.661/4.018) | **no reproduce** |
+| 55,2 % / 44,8 % urbano-rural | **45,0 % urbana / 55,0 % rural** | magnitud correcta, **pero verificar que las etiquetas no estén invertidas** en el documento |
+| Serie anual 2019 = 216 | **216** | ✅ reproduce |
+| Arma / modalidad | **columna inexistente** | **sin fuente: retirar** |
+
+> **Recomendación.** (a) Retirar arma/modalidad salvo que aparezca el archivo original.
+> (b) Volver a descargar el crudo, versionarlo con sha256 en `GOLDEN.md` y regenerar el
+> derivado desde él. (c) Revisar en el documento si el 55,2 % está etiquetado como urbano
+> —sería una inversión—, porque el dato real es 55,0 % **rural**. (d) Corregir 85,8 → 91,1 %.
 
 ---
 
