@@ -24,6 +24,9 @@ Backend medido: `https://englergz-nomadaai.hf.space` · malla servida de Tumaco:
 | **T3** | Amplitud de la curva horaria **×1,79** | **×1,170 efectiva** · ×1,408 servida · ×2,381 en `HOUR_REL` crudo (**piso nocturno aplicado dos veces — bug**) | ver §1.2 | `docs/artefactos_curva_horaria_2026-08.json` · `662a4cd1f05f0feff…` |
 | **T3** | Hora pico | **19:00** (valle 03:00) | idem | idem |
 | **T6b** | «Inerte en Tumaco, discriminante en Cali» | **PARCIAL — sin conclusión.** Tumaco: ρ = 0,9623 (**inerte, confirma esa mitad**) pero sobre malla de 425 y modelo antiguo. **Cali no medible desde lo publicado.** | ver §1.3 | `tumaco_zonas_riesgo_rtm.csv` · 425 celdas |
+| **T4** | OE4 «reducción de exposición» (5,24 / 6,2 / 7,00 en circulación) | **4,92 % · IC95 [3,34–6,66] a λ=2,5** (default real). Tope λ=5,0: 5,70 % [4,06–7,40] | `python3 services/api/scripts/oe4_lambda_canonico.py` | `oe4_lambda_canonico.csv` · `6020af32172021a2…` |
+| **T4** | IC95 de OE4 (±0,5 pp) | **2,1× más ancho** con bootstrap por clúster: [5,81–8,27] sobre el mismo artefacto | idem | `oe4_od_sweep.csv` · `4f714482ea4b0bf7…` |
+| **T4** | *(no existía)* sobrecosto de distancia | **1,5 % a λ=2,5** · 3,0 % a λ=5,0 | idem | idem |
 | **T5** | Anticipación media global | **276,7 m** (39 escenarios con alerta) | ver §1.5 | `sweep_alerta.csv` · 45 filas |
 | **T5** | Anticipación en segundos **24,6 s** | **24,9 s a 40 km/h** — es una **media**, no mediana | idem | idem |
 | **T5** | Anticipación **21,8 s** | **No existe** en ninguna combinación | idem | idem |
@@ -266,6 +269,58 @@ No comparten unidad de análisis, ni muestra, ni parámetros. Presentarlos como 
 barrido es un error de redacción; deben ir en secciones separadas. De aquí sale además
 la corrección de T4: **n efectivo = 40, no 200.**
 
+### 1.8 · T4 — OE4 canónico: curva λ y bootstrap por clúster
+
+```bash
+python3 services/api/scripts/oe4_lambda_canonico.py
+# artefacto: services/api/artifacts/eval/oe4_lambda_canonico.csv
+# sha256 = 6020af32172021a23f7194dc631bb56a8b09463e624384065eead0b2d892d4df
+```
+
+1.200 filas = **40 pares O-D × 5 horas × 6 valores de λ**, pares fijados con semilla 7.
+**n efectivo = 40**, no 200: el bootstrap remuestrea pares completos arrastrando sus 5 horas.
+
+| λ | Qué es | Reducción media | **IC95 (clúster, n_eff=40)** | Mediana | Mejoran | Sobrecosto dist. |
+|---|---|---|---|---|---|---|
+| 0,0 | sin ponderación — **ancla** | 0,00 % | [0,00 · 0,00] | 0,00 | 0,0 % | 0,0 % |
+| 1,0 | | 3,32 % | [1,87 · 5,04] | 0,45 | 97,5 % | 0,3 % |
+| 2,0 | | 4,56 % | [2,95 · 6,36] | 1,80 | 97,5 % | 1,1 % |
+| **2,5** | **default real del producto** | **4,92 %** | **[3,34 · 6,66]** | 3,00 | 97,5 % | 1,5 % |
+| 3,0 | | 4,98 % | [3,43 · 6,71] | 3,05 | 97,5 % | 1,6 % |
+| 5,0 | tope de la barra | 5,70 % | [4,06 · 7,40] | 3,70 | 97,5 % | 3,0 % |
+
+**Cifra titular de OE4 para la tesis: 4,92 % [3,34 – 6,66], λ = 2,5.** Es lo que recibe el
+usuario de fábrica: ambos clientes arrancan la barra de protección al 50 % y
+`lambdaForLevel(pct) = pct/20` (`packages/shared/src/protection.ts`), verificado en
+`apps/web/src/App.tsx:217` y `apps/mobile/src/app/map.tsx:371`. **λ = 5,0 es el tope**
+de la barra, no el valor de operación; **λ = 0,0 da 0,00 % por construcción** y sirve de
+ancla de validez del montaje.
+
+#### Por qué había «tres cifras en circulación» — resuelto
+
+El artefacto original, recomputado con **ambos** métodos de bootstrap:
+
+| Método sobre `oe4_od_sweep.csv` (λ=5,0) | Media | IC95 | Ancho |
+|---|---|---|---|
+| **Por fila** (lo publicado, n=200) | 7,00 % | [6,42 · 7,57] | 1,15 pp |
+| **Por clúster** (correcto, n_eff=40) | 7,00 % | **[5,81 · 8,27]** | **2,46 pp** |
+
+**El intervalo correcto es 2,1× más ancho.** Con él, las cifras dejan de ser
+contradictorias: **7,00 % y 5,24 % caen ambas dentro del IC de la corrida canónica a
+λ=5,0** ([4,06 · 7,40]). No eran mediciones incompatibles, sino **la misma cantidad sobre
+muestras distintas de pares O-D**, con una variabilidad real de ~2,5 pp que el bootstrap
+por fila ocultaba.
+
+> **El problema nunca fue que los números no cuadraran: fue que un IC de ±0,5 pp fabricaba
+> una precisión inexistente.** Mismo patrón que T5 y T10 — un artefacto del método
+> presentado como resultado. La corrección honesta no es elegir una de las tres cifras,
+> es **publicar el intervalo verdadero**.
+
+**Material nuevo que la tesis no tiene:** el **sobrecosto de distancia** (0,3 % → 3,0 %
+según λ) es el contrapeso honesto de la reducción de exposición, y responde por adelantado
+a la pregunta obvia de sustentación: *«¿cuánto más largo es el camino seguro?»*.
+A λ=2,5 la respuesta es **1,5 % más de distancia a cambio de 4,92 % menos de exposición.**
+
 ### 1.7 · Guarda de integridad para fusionar corridas (OE4)
 
 OE4 se mide en **dos pasadas** contra el mismo Space: λ ∈ {0, 1, 2, 3, 5} primero y
@@ -316,12 +371,11 @@ Nada de lo siguiente se estimó. Se declara qué falta y por qué.
 | # | Qué | Estado | Motivo |
 |---|---|---|---|
 | **T2** | Dirección <30°, FDE por tipo, ≤100 m | **Pendiente** | `Research/analysis_v2/eval_fair_horizon.py` no tiene split train/test, ni semilla, ni auto-exclusión (4.029 filas, mediana 0,31 m). Hay que rehacerlo **sobre los 806 ids de test** con `exclude_id`. Las cifras hoy publicadas (91,9 % dirección, 642,0 m, 1,44 %) **provienen de ese archivo y no son válidas** hasta rehacerlo. |
-| **T4** | OE4 canónico, bootstrap por clúster, curva λ | **Pendiente** | Hay **tres valores en circulación (5,24 / 7,00 / 6,2)** y ninguno es definitivo. El bootstrap debe ser **por clúster** (40 pares O-D × 5 horas ⇒ n_eff = 40, no 200), y falta la curva λ ∈ {0,1,2,3,5} declarando que λ=5,0 es el máximo y 0,0 el defecto. |
 | **T7** | Robustez GPS σ ∈ {0,5,10,20} | **Pendiente** | `destination.py` usa `Random(hash(tid) & 0xFFFF)`: sin `PYTHONHASHSEED=0` el ruido **no es reproducible entre procesos**. Hay que fijarlo en el Dockerfile antes de medir. |
 | **T8** | Contribuciones por factor | **Pendiente** | Deben regenerarse sobre 475 con los 4 factores, distinguiendo **contribución** (cuota de varianza) de **correlación**, y explicando por qué actividad pesa 0,20 con correlación 0,07. |
 | **T11** | «95 % de funcionalidad operativa» | **Pendiente — recomendación: retirar** | No hay definición operativa ni instrumento que lo mida. Si no se define un denominador, no es una cifra: es una impresión. |
 | **T13** | Columnas arma / modalidad · total 4.045 · 85,8 % masculino · 55,2/44,8 | **No recomputable — ver §3.1** | Ni el crudo ni el derivado reproducen las cifras, y el derivado contiene datos que el crudo no tiene. |
-| **C4** | Proyección de percepción | **Reclasificar a «pendiente de revalidar»** | La evaluación crítica tiene razón: si la proyección parte del % de reducción de exposición, **depende de T4**, que está abierto con tres valores en circulación. No puede darse por cerrada mientras OE4 no lo esté. |
+| **C4** | Proyección de percepción | **DESBLOQUEADA** | Dependía de T4, que ya está cerrado. La proyección debe rehacerse partiendo de **4,92 % [3,34–6,66] (λ=2,5)**, no de 5,24 / 6,2 / 7,00, y arrastrar el intervalo. |
 
 ### 3.1 · T13 en detalle — problema de trazabilidad, no solo de cifra
 
