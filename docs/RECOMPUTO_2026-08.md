@@ -21,9 +21,9 @@ Backend medido: `https://englergz-nomadaai.hf.space` · malla servida de Tumaco:
 | **T1** | FDE mediana global | **7,70 m** · IC95 [7,0–8,5] | idem | idem |
 | **T1** | Mejora vs. línea recta | **+13,4 pp** (74,1 % → 87,5 %) | idem | idem |
 | **T1** | Mejora vs. Markov | **+47,5 pp** (40,0 % → 87,5 %) | idem | idem |
-| **T3** | Amplitud de la curva horaria **×1,79** | **×1,170 efectiva** (la que gobierna alertas y niveles) · **×1,408** en el campo `risk` servido | ver §1.2 | `/tmp/curva_horaria.json` · `662a4cd1f05f0feff…` |
+| **T3** | Amplitud de la curva horaria **×1,79** | **×1,170 efectiva** · ×1,408 servida · ×2,381 en `HOUR_REL` crudo (**piso nocturno aplicado dos veces — bug**) | ver §1.2 | `docs/artefactos_curva_horaria_2026-08.json` · `662a4cd1f05f0feff…` |
 | **T3** | Hora pico | **19:00** (valle 03:00) | idem | idem |
-| **T6b** | «El factor socioeconómico aporta» *(afirmado sin evidencia)* | **ρ(con, sin) = 0,4335 en Tumaco · 0,8612 en Cali** | ver §1.3 | endpoint `/risk/zones` ambas ciudades |
+| **T6b** | «El factor socioeconómico discrimina el riesgo» | **ρ(con, sin) = 0,9623** — apenas discrimina; **contradice la tesis** | ver §1.3 | `tumaco_zonas_riesgo_rtm.csv` · 425 celdas |
 | **T5** | Anticipación media global | **276,7 m** (39 escenarios con alerta) | ver §1.5 | `sweep_alerta.csv` · 45 filas |
 | **T5** | Anticipación en segundos **24,6 s** | **24,9 s a 40 km/h** — es una **media**, no mediana | idem | idem |
 | **T5** | Anticipación **21,8 s** | **No existe** en ninguna combinación | idem | idem |
@@ -67,10 +67,37 @@ Dos amplitudes distintas, y la tesis debe citar **la efectiva**:
 - **Efectiva**: `risk.py:117` hace `rn = sp*(0,5 + 0,5·tf)`, que comprime el rango a
   0,855–1,000 → **×1,170**. Ésta es la que decide niveles y alertas.
 
-**Corrección a la auditoría:** el hallazgo original decía que la curva son «24 literales
-escritos a mano en `build_risk_spatiotemporal.py:11` sin script de derivación». **No es
-así en el código servido**: `risk.py:86-90` la deriva del propio artefacto
-(`hmean[h]/peak`, media de riesgo por hora sobre el pico). Es reproducible, no literal.
+> ⚠️ **RETRACTACIÓN (2026-08-09).** Una versión previa de este documento «corregía» a la
+> auditoría diciendo que la curva no son literales escritos a mano porque `risk.py:86-90`
+> la deriva del artefacto (`hmean[h]/peak`). **El mecanismo es cierto pero la conclusión
+> era falsa.** El eje horario del artefacto viene de `rebuild_risk_full.py:45` (y su
+> gemelo `rebuild_risk_city.py:29`), que es **un segundo diccionario de 24 literales
+> escritos a mano**, distinto de `_BASE`:
+>
+> ```python
+> HOUR_REL = {0: .55, 1: .50, 2: .45, 3: .42, ... 19: 1.0, 20: 1.0, 21: .98, 22: .90, 23: .75}
+> ```
+>
+> Verificado: `0,5 + 0,5·HOUR_REL[3] = 0,710`, que es **exactamente** el valle que se mide
+> en el artefacto servido. Derivar una normalización de un archivo cuya dimensión horaria
+> se escribió a mano no es derivar del dato. El comentario del script dice «respaldo
+> citable: CEJ + INMLCF», pero **ningún script lee CEJ ni Forensis**.
+> **La conclusión de la auditoría se sostiene: es un supuesto de diseño, no un resultado**,
+> y así debe declararse en la tesis.
+
+**Bug detectado: `NIGHT_FLOOR = 0.5` se aplica DOS VECES.**
+
+| Etapa | Dónde | Amplitud pico/valle |
+|---|---|---|
+| `HOUR_REL` puro | `rebuild_risk_full.py:45` (1,0 / 0,42) | **×2,381** |
+| Primer piso → artefacto servido | `rebuild_risk_full.py:52` `night_floor + (1-night_floor)·HOUR_REL` | **×1,408** |
+| Segundo piso → lo que ve el usuario | `risk.py:117` `rn = sp·(0,5 + 0,5·tf)` | **×1,170** |
+
+La modulación nocturna se aplasta dos veces, casi con seguridad sin querer. **No se ha
+tocado el código**: corregirlo mueve la superficie de riesgo y con ella T4, T5 y las
+figuras 4, 6 y 10. Requiere decisión explícita y aviso a la sesión de escritura. Mientras
+tanto, la cifra que debe citar la tesis es la **efectiva, ×1,170**, que es la que gobierna
+lo que el usuario realmente recibe.
 
 ### 1.3 · T6b — Cali no circular (el de mayor valor estratégico)
 
@@ -78,17 +105,57 @@ Mide cuánto reordena el factor socioeconómico el ranking de riesgo, comparando
 **con** y **sin** ese factor (pesos renormalizados). No usa la vulnerabilidad como
 referencia, así que **no es circular**.
 
-| Ciudad | n celdas | ρ(con socioec., sin socioec.) | Lectura |
-|---|---|---|---|
-| **Tumaco** | 475 | **0,4335** | el factor **reordena** el mapa |
-| **Cali** | 4.268 | **0,8612** | el factor **casi no cambia** el mapa |
+> ⚠️ **RETRACTACIÓN COMPLETA (2026-08-09).** Una versión previa reportaba
+> **ρ = 0,4335 en Tumaco vs 0,8612 en Cali** y lo presentaba como «el aporte original, y
+> sale a favor». **Las dos cosas estaban mal** y la sesión de escritura **no debe usar
+> esos números.**
+>
+> **Error 1 — el test estaba roto.** Reconstruí el factor socioeconómico desde
+> `poblacion` y lo convertí a percentil, pero **174 de 475 celdas (36,6 %) tienen
+> `poblacion = 0`**. Percentilar una variable con esa masa de empates reparte percentiles
+> distintos entre valores idénticos, y el desempate lo decide **el orden de la lista, no
+> el dato**. Control pedido por la evaluación crítica — sustituir el factor por ruido con
+> los mismos empates: **ρ = 0,627**, es decir, el «reordenamiento» se producía igual con
+> puro azar. La cifra 0,4335 medía mi propio artefacto de cálculo.
+>
+> **Error 2 — interpretación invertida.** Aunque el número hubiera sido válido, menor ρ
+> significa **más** reordenamiento, lo que contradice al Resumen, la Discusión y las
+> Conclusiones. No «salía a favor».
 
-> **Este es el aporte original que hoy se afirma sin evidencia, y sale a favor.** En
-> Tumaco quitar el factor socioeconómico cambia el orden de riesgo de forma sustancial
-> (ρ=0,43); en Cali el índice queda casi igual (ρ=0,86), porque los factores geométricos
-> dominan en una malla metropolitana. Es decir: **el componente socioeconómico es
-> necesario precisamente en la ciudad del estudio**, y sería prescindible en una capital.
-> Es un resultado defendible y no autocumplido.
+**Test correcto, sobre el artefacto real** (`tumaco_zonas_riesgo_rtm.csv`, 425 celdas),
+usando las columnas de contribución ya publicadas en vez de reconstruir nada:
+
+```bash
+python3 -c "
+import csv
+rs=list(csv.DictReader(open('Research/analysis_v2/tumaco_zonas_riesgo_rtm.csv')))
+con=[float(r['contrib_exp'])+float(r['contrib_socio'])+float(r['contrib_pop']) for r in rs]
+sin=[float(r['contrib_exp'])+float(r['contrib_pop']) for r in rs]"
+```
+
+| Medida | Valor |
+|---|---|
+| ρ(contribuciones, índice publicado) — **validación de la descomposición** | **0,9959** |
+| **ρ(CON socio, SIN socio)** | **0,9623** |
+| Peso de `socio` en el **valor** del índice | **88,1 %** |
+| Desviación típica de `contrib_socio` | **0,0144** (11 valores distintos; 56,7 % exactamente iguales) |
+
+> **El resultado real, y es incómodo:** el factor socioeconómico aporta el **88 % de la
+> magnitud** del índice pero **casi nada a la discriminación entre celdas** (ρ = 0,96 al
+> quitarlo). Es, en la práctica, **un desplazamiento casi constante**: sube el número de
+> todas las celdas casi por igual y apenas cambia cuál es más peligrosa que cuál. La
+> variable `socio` tiene media 0,9929 y desviación 0,0373, con el 56,7 % de las celdas
+> exactamente en 1,0.
+>
+> **Esto contradice lo que hoy afirma la tesis.** No se puede sostener que el componente
+> socioeconómico discrimina el riesgo en Tumaco. Lo defendible es lo contrario, dicho
+> con franqueza: **el ordenamiento del riesgo lo produce la exposición, no el
+> socioeconómico**, y este último actúa como nivel de base. Si se quiere mantener la
+> afirmación, hace falta una variable socioeconómica **con varianza real** —la actual
+> está saturada en su techo— y volver a medir.
+>
+> **Cali queda fuera de esta comparación** hasta rehacerla con la misma configuración de
+> factores y sin reconstrucción (T6 sigue abierto por eso).
 
 ### 1.4 · T10 — los niveles son tautológicos (confirmado por escrito)
 
@@ -215,15 +282,25 @@ Además, recomputando directamente sobre el crudo:
 
 | Cifra publicada | Recomputado sobre el crudo | Estado |
 |---|---|---|
-| 85,8 % masculino | **91,1 %** (3.661/4.018) | **no reproduce** |
-| 55,2 % / 44,8 % urbano-rural | **45,0 % urbana / 55,0 % rural** | magnitud correcta, **pero verificar que las etiquetas no estén invertidas** en el documento |
+| **85,8 % arma de fuego** | **NO RECOMPUTABLE** — la columna no existe | **sin fuente: retirar** |
+| 55,2 % rural / 44,8 % urbano | **RURAL 55,0 % / URBANA 45,0 %** | ✅ reproduce · etiquetas **correctas** |
 | Serie anual 2019 = 216 | **216** | ✅ reproduce |
 | Arma / modalidad | **columna inexistente** | **sin fuente: retirar** |
 
+> ⚠️ **CORRECCIÓN A UNA VERSIÓN ANTERIOR DE ESTE DOCUMENTO (2026-08-09).** Una versión
+> previa decía «el 85,8 % masculino es en realidad 91,1 %». **Era un error mío y habría
+> introducido una falsedad en la tesis.** Son **dos variables distintas**:
+> el **91,1 %** es `SEXO = MASCULINO` (3.661/4.018), que sí se recomputa; el **85,8 %**
+> publicado es **arma de fuego**, y esa columna **no existe en el crudo** — por eso T13
+> es no recomputable. Una cifra **no sustituye** a la otra. Si se quiere, el 91,1 %
+> puede añadirse como dato nuevo, pero **el 85,8 % debe retirarse, no reemplazarse**.
+>
+> Igualmente se retira la sospecha de etiquetas invertidas en el reparto urbano-rural:
+> **no están invertidas**, el 55,2 % es rural y es correcto.
+
 > **Recomendación.** (a) Retirar arma/modalidad salvo que aparezca el archivo original.
 > (b) Volver a descargar el crudo, versionarlo con sha256 en `GOLDEN.md` y regenerar el
-> derivado desde él. (c) Revisar en el documento si el 55,2 % está etiquetado como urbano
-> —sería una inversión—, porque el dato real es 55,0 % **rural**. (d) Corregir 85,8 → 91,1 %.
+> derivado desde él, para cerrar el hueco de los 12 registros de 2026.
 
 ---
 
