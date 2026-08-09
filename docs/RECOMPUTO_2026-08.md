@@ -23,7 +23,7 @@ Backend medido: `https://englergz-nomadaai.hf.space` · malla servida de Tumaco:
 | **T1** | Mejora vs. Markov | **+47,5 pp** (40,0 % → 87,5 %) | idem | idem |
 | **T3** | Amplitud de la curva horaria **×1,79** | **×1,170 efectiva** · ×1,408 servida · ×2,381 en `HOUR_REL` crudo (**piso nocturno aplicado dos veces — bug**) | ver §1.2 | `docs/artefactos_curva_horaria_2026-08.json` · `662a4cd1f05f0feff…` |
 | **T3** | Hora pico | **19:00** (valle 03:00) | idem | idem |
-| **T6b** | «El factor socioeconómico discrimina el riesgo» | **ρ(con, sin) = 0,9623** — apenas discrimina; **contradice la tesis** | ver §1.3 | `tumaco_zonas_riesgo_rtm.csv` · 425 celdas |
+| **T6b** | «Inerte en Tumaco, discriminante en Cali» | **PARCIAL — sin conclusión.** Tumaco: ρ = 0,9623 (**inerte, confirma esa mitad**) pero sobre malla de 425 y modelo antiguo. **Cali no medible desde lo publicado.** | ver §1.3 | `tumaco_zonas_riesgo_rtm.csv` · 425 celdas |
 | **T5** | Anticipación media global | **276,7 m** (39 escenarios con alerta) | ver §1.5 | `sweep_alerta.csv` · 45 filas |
 | **T5** | Anticipación en segundos **24,6 s** | **24,9 s a 40 km/h** — es una **media**, no mediana | idem | idem |
 | **T5** | Anticipación **21,8 s** | **No existe** en ninguna combinación | idem | idem |
@@ -99,7 +99,7 @@ figuras 4, 6 y 10. Requiere decisión explícita y aviso a la sesión de escritu
 tanto, la cifra que debe citar la tesis es la **efectiva, ×1,170**, que es la que gobierna
 lo que el usuario realmente recibe.
 
-### 1.3 · T6b — Cali no circular (el de mayor valor estratégico)
+### 1.3 · T6b — factor socioeconómico (PARCIAL, sin conclusión)
 
 Mide cuánto reordena el factor socioeconómico el ranking de riesgo, comparando el índice
 **con** y **sin** ese factor (pesos renormalizados). No usa la vulnerabilidad como
@@ -140,22 +140,57 @@ sin=[float(r['contrib_exp'])+float(r['contrib_pop']) for r in rs]"
 | Peso de `socio` en el **valor** del índice | **88,1 %** |
 | Desviación típica de `contrib_socio` | **0,0144** (11 valores distintos; 56,7 % exactamente iguales) |
 
-> **El resultado real, y es incómodo:** el factor socioeconómico aporta el **88 % de la
-> magnitud** del índice pero **casi nada a la discriminación entre celdas** (ρ = 0,96 al
-> quitarlo). Es, en la práctica, **un desplazamiento casi constante**: sube el número de
-> todas las celdas casi por igual y apenas cambia cuál es más peligrosa que cuál. La
-> variable `socio` tiene media 0,9929 y desviación 0,0373, con el 56,7 % de las celdas
-> exactamente en 1,0.
->
-> **Esto contradice lo que hoy afirma la tesis.** No se puede sostener que el componente
-> socioeconómico discrimina el riesgo en Tumaco. Lo defendible es lo contrario, dicho
-> con franqueza: **el ordenamiento del riesgo lo produce la exposición, no el
-> socioeconómico**, y este último actúa como nivel de base. Si se quiere mantener la
-> afirmación, hace falta una variable socioeconómica **con varianza real** —la actual
-> está saturada en su techo— y volver a medir.
->
-> **Cali queda fuera de esta comparación** hasta rehacerla con la misma configuración de
-> factores y sin reconstrucción (T6 sigue abierto por eso).
+**Lectura correcta de este número:** ρ ≈ 0,96 significa que el factor **casi no reordena**
+el mapa de Tumaco — es decir, **es inerte allí**. Eso es exactamente lo que afirma la
+tesis para Tumaco («territorio homogéneo»), así que **esta mitad la confirma**. El factor
+aporta el 88 % de la magnitud pero actúa como desplazamiento cuasi-constante
+(desv. 0,0144), no como discriminador.
+
+> ⚠️ **SEGUNDA RETRACTACIÓN (2026-08-09), sobre la conclusión, no sobre el número.**
+> Una versión previa concluía «esto contradice lo que afirma la tesis» y «lo defendible
+> es lo contrario». **Era un error de lectura**: primero el test roto me hizo decir que
+> contradecía, y después mantuve la conclusión por inercia aunque el test bueno decía lo
+> opuesto. **ρ ≈ 0,96 = inerte = lo que la tesis sostiene para Tumaco.**
+
+### T6b NO TIENE CONCLUSIÓN TODAVÍA — medición parcial
+
+Aunque el número es correcto, **está medido sobre el modelo equivocado**:
+
+| | Medido aquí | Modelo entregado |
+|---|---|---|
+| Malla | `tumaco_zonas_riesgo_rtm.csv` · **425 celdas** | **475 celdas** |
+| Factores | 3 contribuciones (`exp`, `socio`, `pop`) del modelo antiguo de `risk_weights.json` (exp 0,30 · socio 0,25 · crime 0,20 · poi 0,15 · pop 0,10) | 4 factores: densidad 0,35 · periferia 0,30 · actividad 0,20 · policía 0,15, **con socio deshabilitado** |
+
+No es el mismo índice ni la misma malla. Por eso **no transfiere** ninguna conclusión sobre
+qué produce el ordenamiento: `exp` es un factor del modelo de 425 que ya no existe como tal
+en el entregado.
+
+**Y falta la mitad que importa: Cali.** Los artefactos entregados no traen descomposición:
+
+```
+cali_zonas_riesgo_v2.csv   → cell_id, lon, lat, poblacion_dane, vulnerabilidad, indice, nivel
+tumaco_zonas_riesgo_v2.csv → cell_id, lon, lat, poblacion_dane, n_points, indice, nivel
+```
+
+Ninguno tiene columnas `contrib_*`, así que el test no se puede correr sobre Cali desde lo
+publicado. **La afirmación de la tesis es comparativa** —inerte en Tumaco, discriminante en
+Cali— y ahora mismo solo hay un lado.
+
+**Entregable real de T6b (pendiente):** regenerar **ambas ciudades** con
+`rebuild_risk_city.py` emitiendo la descomposición por factor **sobre las mallas
+entregadas** (475 y 4.268), y correr ρ(con, sin) en las dos.
+
+> **Advertencia para cuando llegue el resultado:** si Cali también sale ≈0,96, la
+> afirmación de generalización **se cae entera** y hay que rebajarla a «portabilidad
+> técnica»: el marco se transfiere, el contraste socioeconómico no se sostiene. Sería un
+> resultado legítimo y publicable, pero hay que descubrirlo ahora, no en la sustentación.
+
+#### Test reconstruido — DESCARTADO FORMALMENTE
+
+El test que reconstruía los factores desde `poblacion` (**ρ = 0,4105 real vs 0,6162 de
+control**) queda **invalidado y no debe usarse**: los empates de `poblacion = 0` (36,6 %
+de las celdas) fabricaban el reordenamiento. Se deja constancia aquí únicamente para que
+**no queden dos números vivos para la misma pregunta**.
 
 ### 1.4 · T10 — los niveles son tautológicos (confirmado por escrito)
 
