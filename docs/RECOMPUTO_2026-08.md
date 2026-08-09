@@ -266,6 +266,31 @@ No comparten unidad de análisis, ni muestra, ni parámetros. Presentarlos como 
 barrido es un error de redacción; deben ir en secciones separadas. De aquí sale además
 la corrección de T4: **n efectivo = 40, no 200.**
 
+### 1.7 · Guarda de integridad para fusionar corridas (OE4)
+
+OE4 se mide en **dos pasadas** contra el mismo Space: λ ∈ {0, 1, 2, 3, 5} primero y
+λ = 2,5 después. La selección de pares O-D es determinista (semilla 7), pero **la
+superficie de riesgo no lo es si el Space se redesplegó entremedio** — y eso metería un
+salto artificial justo en λ = 2,5, que es la cifra titular.
+
+```bash
+python3 services/api/scripts/huella_backend.py                      # antes de cada pasada
+python3 services/api/scripts/huella_backend.py --check huella_backend.json   # después
+```
+
+**Huella registrada antes de la fusión (2026-08-09):**
+
+```
+n_trajectories=4032 · n_train=3226 · n_test=806
+n_segments=1215776  · n_corridors=47788
+/risk/zones?hour=20 → 475 celdas · max_risk=81.18 · niveles 332/95/48
+sha256[:16] = 8aa90d5f4465c5c3
+```
+
+Coincide campo por campo con la línea base medida de forma independiente por la
+evaluación crítica. **Si tras la segunda pasada la huella no coincide, la corrida de
+λ = 2,5 se rehace junto con el resto**, no se fusiona.
+
 ---
 
 ## 2. Cambio de código aplicado (T1)
