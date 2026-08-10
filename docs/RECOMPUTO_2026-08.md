@@ -353,6 +353,40 @@ plano.
 > no de la aplicación completa**. Una cifra pequeña y verdadera resiste la sustentación;
 > una grande sin denominador, no.
 
+### 1.10 · C4 / Figura 14 — el −36,2 % NO se reproduce
+
+```bash
+python3 services/api/scripts/oe4_busqueda_maximo.py   # 100 pares × 4 horas, λ=5.0
+```
+
+Dos búsquedas independientes, **1.600 evaluaciones de ruta en total**:
+
+| Fuente | Rutas | Máximo | ≥36 % | ≥30 % | ≥20 % |
+|---|---|---|---|---|---|
+| Barrido canónico (40 pares × 5 h × 6 λ) | 1.200 | **19,30 %** | 0 | 0 | 0 |
+| Búsqueda amplia (100 pares × 4 h, λ=5,0) | 400 | **19,30 %** | **0** | **0** | **0** |
+
+**El máximo es idéntico en ambas** (`mot2551`, 19,30 %), y es el mismo en todos los λ ≥ 1
+—por eso λ=2,5 no necesita prueba aparte—. **El techo no depende de la muestra**: se
+estabiliza en 19,30 %.
+
+**Aplica la salida nº 3 de las tres previstas:** el −36,2 % **no se reproduce** y **nada
+supera el 30 %** (ni siquiera el 20 %). El campo medido es el mismo
+(`comparison.exposure_reduction_pct`, `apps/web/src/App.tsx:696`), así que la comparación
+es legítima y la conclusión no admite escapatoria metodológica.
+
+**Para escritura:**
+1. El **−36,2 % sale del pie de la Figura 14 y de la Lista de Figuras.** No es reproducible
+   con ningún par O-D del sistema ni con ninguna configuración de λ.
+2. **Desdoblar el pie** en cualquier caso: hoy junta dos magnitudes distintas en una frase
+   con un solo número visible — el panel muestra `exposure_reduction_avg_pct` (promedio
+   acumulado en operación, `App.tsx:1088` y `1164`), mientras que el 36,2 % era un recorrido
+   único. Son cosas distintas.
+3. La figura se **reetiqueta como captura ilustrativa de operación, sin cifra en el pie**.
+4. Ahora sí puede declararse **C4 no alcanzado**, con respaldo: **0 de 1.600 rutas ≥30 %**,
+   techo estable en 19,30 %. Es un **límite del territorio, no del método** —la geometría
+   vial de Tumaco ofrece pocas alternativas— y así es defendible en sustentación.
+
 ### 1.7 · Guarda de integridad para fusionar corridas (OE4)
 
 OE4 se mide en **dos pasadas** contra el mismo Space: λ ∈ {0, 1, 2, 3, 5} primero y
