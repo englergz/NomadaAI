@@ -720,6 +720,66 @@ documento hoy no tiene.
 > mientras tanto, **citar de §1.13 solo los porcentajes** (0,0 % / 65,8 %), que no estan
 > afectados.
 
+### 1.17 · T2 — direccion, FDE al destino y precision, SOBRE EL TEST
+
+Las cifras publicadas salen de `eval_fair_horizon.py`, que **no tiene particion train/test
+ni auto-exclusion**: evalua las 4.029 trayectorias del corpus, incluidas las que el modelo
+indexo. Su mediana de 0,31 m delata la fuga -- es el modelo recuperando trayectorias que
+ya conocia.
+
+```bash
+python services/api/scripts/t2_destino_direccion.py https://englergz-nomadaai.hf.space 100
+```
+
+| Cifra | Publicado | **Sobre el TEST** | IC95 |
+|---|---|---|---|
+| **Direccion correcta (<=30 grados)** | 91,9 % | **65,0 %** | [55,0 - 74,0] |
+| FDE mediana al destino | 642,0 m | **597,3 m** | [527,1 - 721,3] |
+| Precision <=100 m | 1,44 % | **1,00 %** | [0,0 - 3,0] |
+
+**FDE al destino por tipo** (mediana):
+
+| Tipo | n | Mediana |
+|---|---|---|
+| mot | 74 | 518,5 m |
+| car | 20 | 923,2 m |
+| bus | 5 | 1.471,4 m |
+| truck | 1 | 1.671,3 m |
+
+**La direccion cae 26,9 puntos** (91,9 % -> 65,0 %): es la cifra mas afectada por la fuga.
+La FDE mediana y el <=100 m se mueven poco, lo que tiene sentido -- la fuga inflaba sobre
+todo el acierto de rumbo.
+
+> **Auto-exclusion garantizada por construccion:** `destination.py` indexa el KDTree
+> **solo con `train_ids`**, asi que ninguna trayectoria de test esta en el indice y no
+> puede recuperarse a si misma. No hace falta un `exclude_id` explicito.
+
+> **LIMITACION DECLARADA: n=100, no 806.** `/trajectories/sample` topa en 100 y no expone
+> la lista completa de ids de test, asi que el IC es mas ancho de lo que seria con la
+> muestra entera. **La conclusion no cambia** -- el 91,9 % queda muy fuera de [55,0 - 74,0] --
+> pero la cifra definitiva deberia medirse sobre las 806. Requiere exponer los ids de test
+> en la API. **No se estima el valor sobre 806: se declara pendiente.**
+
+### 1.18 · OE3 — nivel alto SIN el sesgo de anticipacion cero
+
+Repetida la corrida de §1.13 con el conteo corregido. **Estas cifras SI son citables**:
+
+| Hora | Cruza nivel alto | **Anticipados** | Mediana (solo anticipados) |
+|---|---|---|---|
+| 06:00 | **0,0 %** | -- | -- |
+| 12:00 | 30,4 % | **84,5 %** | 2.314,4 m (278,8 s) |
+| 18:00 | 60,4 % | **73,6 %** | 2.360,1 m (284,3 s) |
+| **20:00** | **65,8 %** | **71,6 %** | **2.391,1 m (288,1 s)** |
+| 22:00 | 59,2 % | **77,9 %** | 1.874,5 m (225,8 s) |
+
+**El motor anticipa MEJOR las zonas de nivel alto que las de precaucion**: 71,6 % frente
+al 58,7 %, con una mediana de 2.391 m (288 s) frente a 756 m (91 s). Tiene sentido -- las
+zonas altas son minoria y estan mas concentradas, asi que es raro que un recorrido empiece
+justo dentro de una.
+
+> Es la mejor noticia de OE3 y conviene decirla: **cuando el peligro es serio, el aviso
+> llega con casi cinco minutos de margen en el 71,6 % de los casos.**
+
 ### 1.7 · Guarda de integridad para fusionar corridas (OE4)
 
 OE4 se mide en **dos pasadas** contra el mismo Space: λ ∈ {0, 1, 2, 3, 5} primero y
@@ -823,7 +883,7 @@ Nada de lo siguiente se estimó. Se declara qué falta y por qué.
 
 | # | Qué | Estado | Motivo |
 |---|---|---|---|
-| **T2** | Dirección <30°, FDE por tipo, ≤100 m | **Pendiente** | `Research/analysis_v2/eval_fair_horizon.py` no tiene split train/test, ni semilla, ni auto-exclusión (4.029 filas, mediana 0,31 m). Hay que rehacerlo **sobre los 806 ids de test** con `exclude_id`. Las cifras hoy publicadas (91,9 % dirección, 642,0 m, 1,44 %) **provienen de ese archivo y no son válidas** hasta rehacerlo. |
+| **T2** | Dirección <30°, FDE por tipo, ≤100 m | **RECOMPUTADO — §1.17.** Dirección 91,9 % → **65,0 %** [55,0-74,0] | `Research/analysis_v2/eval_fair_horizon.py` no tiene split train/test, ni semilla, ni auto-exclusión (4.029 filas, mediana 0,31 m). Hay que rehacerlo **sobre los 806 ids de test** con `exclude_id`. Las cifras hoy publicadas (91,9 % dirección, 642,0 m, 1,44 %) **provienen de ese archivo y no son válidas** hasta rehacerlo. |
 | **T7** | Robustez GPS σ ∈ {0,5,10,20} | **Pendiente** | `destination.py` usa `Random(hash(tid) & 0xFFFF)`: sin `PYTHONHASHSEED=0` el ruido **no es reproducible entre procesos**. Hay que fijarlo en el Dockerfile antes de medir. |
 | **T8** | Contribuciones por factor | **Pendiente** | Deben regenerarse sobre 475 con los 4 factores, distinguiendo **contribución** (cuota de varianza) de **correlación**, y explicando por qué actividad pesa 0,20 con correlación 0,07. |
 | **T11 / C5** | «95 % de funcionalidad operativa» | **MEDIDO — §1.9 y §1.15.** El 95 % se retira; la cifra real es **29/29 pruebas** (21 cliente movil + 8 humo sobre `/route/build`). |
