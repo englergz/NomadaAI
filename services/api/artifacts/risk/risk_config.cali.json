@@ -1,0 +1,81 @@
+{
+  "city": "cali",
+  "version": 1,
+  "night_floor": 0.5,
+  "comment": "Segunda ciudad del framework IRU. Mismo esquema que risk_config.tumaco.json: Σ de pesos se renormaliza sobre los factores ACTIVOS; un factor disabled aporta 0 y su 'motivo' es la decisión trazable. El contraste entre este archivo y el de Tumaco ES la evidencia de que el marco es configurable por contexto: los mismos factores, habilitados de forma distinta según lo que el territorio permite medir.",
+  "malla": {
+    "celdas": 4268,
+    "cell_m": 150,
+    "artefacto": "cali_zonas_riesgo_v2.csv"
+  },
+  "verificacion": {
+    "fecha": "2026-08-10",
+    "pesos": "Los pesos son los valores por defecto de rebuild_risk_city.py, con el que se generó esta ciudad pasándolos por bandera. Verificado empíricamente: reconstruir el índice con densidad 0.30 + socioeconómico 0.30 + periferia 0.25 (omitiendo policía, que exige redescargar OSM) da correlación 0.9610 con el `indice` entregado — consistente con estos pesos, y el residuo lo explica el factor policía.",
+    "correlaciones": {
+      "indice_vs_densidad": 0.589,
+      "indice_vs_vulnerabilidad": 0.593,
+      "indice_vs_periferia": 0.437
+    }
+  },
+  "factors": {
+    "densidad": {
+      "enabled": true,
+      "weight": 0.3,
+      "temporal_profile": "flat",
+      "fuente": "DANE censo manzana"
+    },
+    "socioeconomico": {
+      "enabled": true,
+      "weight": 0.3,
+      "temporal_profile": "flat",
+      "motivo": "ACTIVADO, al contrario que en Tumaco. La variable presenta dispersión real: 93 valores distintos sobre 4.268 celdas, la moda cubre solo el 26,7 %, desviación 0,2815 — 6,2 veces la de Tumaco (0,0458, con el 96,3 % de las zonas en un único valor). La decisión de habilitarlo aquí y deshabilitarlo allá es una medición, no una preferencia.",
+      "fuente": "DANE manzana / estrato predominante"
+    },
+    "periferia": {
+      "enabled": true,
+      "weight": 0.25,
+      "temporal_profile": "flat",
+      "fuente": "geometría de la malla (centroide ponderado por población)"
+    },
+    "policia": {
+      "enabled": true,
+      "weight": 0.15,
+      "temporal_profile": "flat",
+      "fuente": "OSM amenity=police"
+    },
+    "actividad": {
+      "enabled": false,
+      "weight": 0.2,
+      "temporal_profile": "flat",
+      "motivo": "Sin dato: no hay corpus de trayectorias para Cali. En Tumaco este factor sale de las 4.032 trayectorias SUMO; aquí no existe equivalente. Es la asimetría inversa a la del factor socioeconómico, y por eso los dos índices de ciudad NO son comparables factor a factor.",
+      "fuente": "trayectorias (no disponibles)"
+    },
+    "pois_riesgo": {
+      "enabled": false,
+      "weight": 0.1,
+      "temporal_profile": "nightlife",
+      "motivo": "No verificado para Cali. En Tumaco se descartó por escasez (2 POIs); en una capital probablemente hay volumen suficiente, pero no se ha medido. Activar exige un conteo Overpass previo.",
+      "fuente": "Overpass amenity=bar/pub/nightclub, shop=alcohol"
+    },
+    "iluminacion": {
+      "enabled": false,
+      "weight": 0.1,
+      "temporal_profile": "night_up",
+      "motivo": "No verificado para Cali. Requiere conteo OSM de street_lamp / lit=* antes de decidir.",
+      "fuente": "OSM / VIIRS"
+    },
+    "delito_reportado": {
+      "enabled": false,
+      "weight": 0.2,
+      "temporal_profile": "flat",
+      "motivo": "Mismo límite que en Tumaco: los homicidios abiertos carecen de coordenada y hora; espacializable solo con DIJIN o reporte ciudadano.",
+      "fuente": "DIJIN / F_report(z,t)"
+    }
+  },
+  "capacidades": {
+    "riesgo": true,
+    "grafo_vial": false,
+    "prediccion_destino": false,
+    "nota": "Cali tiene capa de riesgo pero no grafo vial ni modelo de predicción: ofrece mapa de calor, alertas en zona y recorrido libre protegido, no ruta segura ni alerta anticipada sin destino. Ver DISENO_FUTURO.md §1."
+  }
+}
