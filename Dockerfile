@@ -40,6 +40,12 @@ ENV CLERK_ISSUER=https://maximum-monitor-98.clerk.accounts.dev
 ENV PORT=7860
 # En HF Spaces el plan free tiene RAM holgada; cargamos todas las trayectorias.
 ENV MAX_TRAJECTORIES=0
+# ESTE es el Dockerfile que construye Hugging Face (el Space es sdk:docker, app_port 7860).
+# Sin esto, iterar cualquier `set` de cadenas da un orden distinto en cada arranque del
+# contenedor: con la MISMA semilla, cada reinicio devolvía otros pares O-D en
+# /trajectories/sample. El código ya es determinista por sí mismo (blake2b + sorted()),
+# así que esto es defensa en profundidad — pero es el que cuenta en producción.
+ENV PYTHONHASHSEED=0
 
 EXPOSE 7860
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]

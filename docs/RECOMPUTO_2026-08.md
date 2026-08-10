@@ -12,14 +12,18 @@ Backend medido: `https://englergz-nomadaai.hf.space` · malla servida de Tumaco:
 
 ---
 
-> ⛔ **BLOQUEANTE (2026-08-09): T4 y T7 hay que REHACERLOS tras redesplegar.**
+> ⛔ **BLOQUEANTE (2026-08-09): OE1 (T1/T2), T4 y T7 hay que REHACERLOS tras redesplegar.**
 > Se encontró la **causa raíz** de que barridos «con semilla fija» dieran resultados
 > distintos: `destination.py` iteraba `set`s de cadenas antes de barajar, y el orden de un
 > `set` depende del salt de hash del proceso. **Con la misma semilla, cada reinicio del
 > Space devolvía otros pares O-D.** Arreglado (§2.1), pero **el arreglo exige redesplegar**
-> y **el barrido canónico de T4 debe repetirse después**: si se congela ahora, nadie que
-> reproduzca el comando obtendrá estos números — que es exactamente el reproche que originó
-> esta auditoría. Las **medias siguen siendo estimadores insesgados**; lo que no es válido
+> y **los barridos deben repetirse después**: si se congelan ahora, nadie que reproduzca el
+> comando obtendrá estos números — que es exactamente el reproche que originó esta auditoría.
+>
+> **El alcance incluye OE1**, no solo T4/T7: `destination.py:141` cambia el orden de
+> construcción del KDTree, y ese orden decide el desempate cuando dos vecinos están a igual
+> distancia. **Las predicciones pueden moverse.** El **87,5 %** de T1 quedaría medido sobre
+> un backend distinto del que queda desplegado, así que hay que **remedirlo**. Las **medias siguen siendo estimadores insesgados**; lo que no es válido
 > es la reproducibilidad puntual ni ninguna afirmación de máximo.
 
 ## 1. Cifras recomputadas
@@ -489,8 +493,18 @@ Misma semilla: **antes tres listas distintas, después idénticas.**
 de barajar con semilla 42 → **el 80/20 y los 3.226/806 son correctos**. `/trajectories/evaluate`
 usa `sorted(test_ids)` → estable; su problema era otro (T1).
 
-**Test de aceptación tras redesplegar:** dos llamadas a `/trajectories/sample?n=40`
-**tras reiniciar el Space** deben devolver la misma lista.
+**Test de aceptación — entre REINICIOS, no dentro del mismo proceso.**
+
+> ⚠️ Una versión previa proponía «dos llamadas seguidas deben dar la misma lista». **Ese
+> test no prueba nada**: dentro de un mismo proceso el orden de un `set` siempre fue
+> estable, y ya pasaba ANTES del arreglo. El fallo ocurría **entre reinicios**.
+
+1. Con el Space arriba, guardar la lista de `/trajectories/sample?n=40`.
+2. **Factory rebuild** desde Settings del Space — no un restart: el `ENV` del Dockerfile
+   exige reconstruir la imagen.
+3. Volver a pedir la lista. **Tienen que ser idénticas.**
+
+Solo si coinciden puede congelarse el barrido canónico.
 
 > **Efecto en la tesis:** §Validez y confiabilidad dice hoy «las particiones y los cálculos
 > usan semilla fija». La partición sí; los barridos y la prueba de ruido, no.
