@@ -720,45 +720,56 @@ documento hoy no tiene.
 > mientras tanto, **citar de §1.13 solo los porcentajes** (0,0 % / 65,8 %), que no estan
 > afectados.
 
-### 1.17 · T2 — direccion, FDE al destino y precision, SOBRE EL TEST
+### 1.17 · T2 — direccion y FDE, con el HORIZONTE EMPAREJADO
 
-Las cifras publicadas salen de `eval_fair_horizon.py`, que **no tiene particion train/test
-ni auto-exclusion**: evalua las 4.029 trayectorias del corpus, incluidas las que el modelo
-indexo. Su mediana de 0,31 m delata la fuga -- es el modelo recuperando trayectorias que
-ya conocia.
+> **RETRACTACION DOBLE (2026-08-10). Ni habia fuga, ni el 65,0 % era correcto.**
+>
+> **(a) No habia fuga de datos.** La evaluacion critica retiro su propio hallazgo C2:
+> `trajcl_predict_clean.py` **ya excluia la propia trayectoria** (`cid == self_id ->
+> continue`). Partiendo `eval_fair_horizon.csv` por la particion real: **TRAIN 92,0 % vs
+> TEST 91,6 %** -- sin diferencia. La mediana de 0,31 m no era firma de auto-recuperacion,
+> sino consecuencia de que el corpus es una simulacion SUMO donde muchos viajes comparten
+> tramos. **Lo real es un error de ETIQUETA**: la tesis presenta cifras de las 4.029
+> trayectorias dentro de un parrafo que dice «conjunto de prueba no visto».
+>
+> **(b) Mi 65,0 % era un error de definicion, no un hallazgo.** Comparaba el rumbo al
+> **ultimo vertice de la polilinea predicha** contra el rumbo al **destino final** de la
+> trayectoria real. Pero la prediccion esta **truncada al horizonte** (~195 m) mientras
+> `truth` es la continuacion completa (mediana ~900 m): **razon de arcos 0,21**. Eran
+> rumbos hacia puntos a distancias distintas. **El 65,0 % NO debe citarse.**
+
+**Medicion correcta**, caminando `truth` hasta acumular el mismo arco que la prediccion
+(misma definicion que `eval_fair_horizon.py:69`):
 
 ```bash
 python services/api/scripts/t2_destino_direccion.py https://englergz-nomadaai.hf.space 100
 ```
 
-| Cifra | Publicado | **Sobre el TEST** | IC95 |
-|---|---|---|---|
-| **Direccion correcta (<=30 grados)** | 91,9 % | **65,0 %** | [55,0 - 74,0] |
-| FDE mediana al destino | 642,0 m | **597,3 m** | [527,1 - 721,3] |
-| Precision <=100 m | 1,44 % | **1,00 %** | [0,0 - 3,0] |
+| Metrica | Publicado | **Emparejado (test)** | IC95 | Solo-test del auditor |
+|---|---|---|---|---|
+| **Direccion <=30 grados** | 91,9 % | **90,0 %** | [84,0 - 95,0] | **91,6 %** |
+| FDE mediana al horizonte | -- | **9,3 m** | [7,4 - 10,2] | -- |
+| Precision <=100 m (horizonte) | -- | **92,0 %** | [86,0 - 97,0] | -- |
+| Precision <=100 m (destino final) | 1,44 % | **1,00 %** | [0,0 - 3,0] | 1,49 % |
 
-**FDE al destino por tipo** (mediana):
+**Las dos mediciones independientes coinciden: el 91,6 % del auditor cae dentro de
+[84,0 - 95,0].** Y la FDE al horizonte (9,3 m) es coherente con la mediana global de
+7,70 m ya cerrada en T1.
 
-| Tipo | n | Mediana |
-|---|---|---|
-| mot | 74 | 518,5 m |
-| car | 20 | 923,2 m |
-| bus | 5 | 1.471,4 m |
-| truck | 1 | 1.671,3 m |
+> **Ojo a dos magnitudes que no deben mezclarse:** el **92,0 %** es precision <=100 m
+> **al horizonte emparejado**; el **1,00 %** es <=100 m **al destino final del viaje**.
+> Son preguntas distintas -- «cuan bien predice los proximos 200 m» frente a «cuan bien
+> adivina donde termina el viaje»-- y la segunda es, logicamente, mucho mas dificil.
 
-**La direccion cae 26,9 puntos** (91,9 % -> 65,0 %): es la cifra mas afectada por la fuga.
-La FDE mediana y el <=100 m se mueven poco, lo que tiene sentido -- la fuga inflaba sobre
-todo el acierto de rumbo.
+**Para la tesis:** las tres cifras de C2 **no se recomputan, se reetiquetan**. Reportar
+**91,6 % · 1,49 % · 644,1 m** (los valores solo-test del `eval_fair_horizon.csv`) diciendo
+de donde salen, o los emparejados de esta tabla. Lo que no puede quedar es una cifra de las
+4.029 presentada como «conjunto de prueba no visto».
 
-> **Auto-exclusion garantizada por construccion:** `destination.py` indexa el KDTree
-> **solo con `train_ids`**, asi que ninguna trayectoria de test esta en el indice y no
-> puede recuperarse a si misma. No hace falta un `exclude_id` explicito.
-
-> **LIMITACION DECLARADA: n=100, no 806.** `/trajectories/sample` topa en 100 y no expone
-> la lista completa de ids de test, asi que el IC es mas ancho de lo que seria con la
-> muestra entera. **La conclusion no cambia** -- el 91,9 % queda muy fuera de [55,0 - 74,0] --
-> pero la cifra definitiva deberia medirse sobre las 806. Requiere exponer los ids de test
-> en la API. **No se estima el valor sobre 806: se declara pendiente.**
+> **LIMITACION: n=100.** `/trajectories/sample` topa en 100. La salida limpia es **anadir
+> el error angular a `/trajectories/evaluate`**, que ya itera `sorted(test_ids)`, ya corre
+> el predictor desplegado y admite n hasta 2000: OE1 entero -- acierto, mediana y direccion --
+> saldria de UNA fuente, UN modelo y UNA muestra de 805. **Pendiente.**
 
 ### 1.18 · OE3 — nivel alto SIN el sesgo de anticipacion cero
 
@@ -883,7 +894,7 @@ Nada de lo siguiente se estimó. Se declara qué falta y por qué.
 
 | # | Qué | Estado | Motivo |
 |---|---|---|---|
-| **T2** | Dirección <30°, FDE por tipo, ≤100 m | **RECOMPUTADO — §1.17.** Dirección 91,9 % → **65,0 %** [55,0-74,0] | `Research/analysis_v2/eval_fair_horizon.py` no tiene split train/test, ni semilla, ni auto-exclusión (4.029 filas, mediana 0,31 m). Hay que rehacerlo **sobre los 806 ids de test** con `exclude_id`. Las cifras hoy publicadas (91,9 % dirección, 642,0 m, 1,44 %) **provienen de ese archivo y no son válidas** hasta rehacerlo. |
+| **T2** | Dirección <30°, FDE por tipo, ≤100 m | **§1.17 — no habia fuga: es un error de ETIQUETA.** Dirección emparejada **90,0 %** [84,0-95,0], coincide con el 91,6 % solo-test | `Research/analysis_v2/eval_fair_horizon.py` no tiene split train/test, ni semilla, ni auto-exclusión (4.029 filas, mediana 0,31 m). Hay que rehacerlo **sobre los 806 ids de test** con `exclude_id`. Las cifras hoy publicadas (91,9 % dirección, 642,0 m, 1,44 %) **provienen de ese archivo y no son válidas** hasta rehacerlo. |
 | **T7** | Robustez GPS σ ∈ {0,5,10,20} | **Pendiente** | `destination.py` usa `Random(hash(tid) & 0xFFFF)`: sin `PYTHONHASHSEED=0` el ruido **no es reproducible entre procesos**. Hay que fijarlo en el Dockerfile antes de medir. |
 | **T8** | Contribuciones por factor | **Pendiente** | Deben regenerarse sobre 475 con los 4 factores, distinguiendo **contribución** (cuota de varianza) de **correlación**, y explicando por qué actividad pesa 0,20 con correlación 0,07. |
 | **T11 / C5** | «95 % de funcionalidad operativa» | **MEDIDO — §1.9 y §1.15.** El 95 % se retira; la cifra real es **29/29 pruebas** (21 cliente movil + 8 humo sobre `/route/build`). |

@@ -102,17 +102,30 @@ def main() -> None:
             continue
         aqui = pre[-1]
         dest_real = tru[-1]
-        # El candidato es la POLILÍNEA del vecino recuperado; el destino predicho es
-        # su último vértice, no un campo `point` (que no existe en la respuesta).
         coords = cand[0].get("coordinates") or []
-        if len(coords) < 1:
+        if len(coords) < 2:
             continue
         dest_pred = coords[-1]
-        ang = _ang(_bearing(aqui, dest_pred), _bearing(aqui, dest_real))
+
+        # EMPAREJAR LA LONGITUD DE ARCO — misma definición que eval_fair_horizon.py:69.
+        # La polilínea predicha está truncada al horizonte (~195 m) mientras que `truth`
+        # es la continuación COMPLETA (mediana ~900 m; razón de arcos 0,21). Comparar sus
+        # extremos mide el rumbo a puntos a distancias distintas, no el acierto de rumbo.
+        # Se camina `truth` hasta acumular el mismo arco que la prediccion.
+        arco_pred = sum(_m(coords[i - 1], coords[i]) for i in range(1, len(coords)))
+        acc_t = 0.0
+        ref_real = tru[-1]
+        for k in range(1, len(tru)):
+            acc_t += _m(tru[k - 1], tru[k])
+            if acc_t >= arco_pred:
+                ref_real = tru[k]
+                break
+        ang = _ang(_bearing(aqui, dest_pred), _bearing(aqui, ref_real))
         rows.append({
             "id": tid, "type": d.get("type"),
             "ang_deg": round(ang, 2),
-            "fde_dest_m": round(_m(dest_pred, dest_real), 2),
+            "fde_horizonte_m": round(_m(dest_pred, ref_real), 2),
+            "fde_dest_final_m": round(_m(dest_pred, dest_real), 2),
             "horizon_m": d.get("horizon_m"),
         })
 
@@ -124,17 +137,17 @@ def main() -> None:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys())); w.writeheader(); w.writerows(rows)
 
     ang = [r["ang_deg"] for r in rows]
-    fde = [r["fde_dest_m"] for r in rows]
+    fde = [r["fde_horizonte_m"] for r in rows]
     dir_ok = [100.0 if a <= 30 else 0.0 for a in ang]
     le100 = [100.0 if x <= 100 else 0.0 for x in fde]
 
     print(f"\n===== T2 · SOBRE EL TEST (n={len(rows)}) · fallos={fallos} =====")
     print(f"Dirección correcta (≤30°):  {fmean(dir_ok):.1f} %   IC95 {_ci(dir_ok, fmean)}")
-    print(f"FDE al destino, mediana:    {median(fde):.1f} m     IC95 {_ci(fde, median)}")
+    print(f"FDE al HORIZONTE emparejado: {median(fde):.1f} m     IC95 {_ci(fde, median)}")
     print(f"Precisión ≤100 m:           {fmean(le100):.2f} %   IC95 {_ci(le100, fmean)}")
     print("\nFDE al destino POR TIPO:")
     for t in sorted({r["type"] for r in rows}):
-        v = [r["fde_dest_m"] for r in rows if r["type"] == t]
+        v = [r["fde_horizonte_m"] for r in rows if r["type"] == t]
         print(f"  {t:6s} n={len(v):4d}  mediana {median(v):8.1f} m")
     print(f"\nCSV: {OUT}")
     print("Auto-exclusión garantizada: el KDTree se indexa SOLO con train_ids, "
