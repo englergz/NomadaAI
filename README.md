@@ -36,8 +36,9 @@ predice a dónde se dirige un trayecto, estima el **riesgo por zona, hora y día
 Nace como **Trabajo de Grado** de la **Maestría en Gestión de Tecnologías de la Información y del
 Conocimiento (MGTIC)**, Facultad de Ingeniería, **Universidad de Nariño**, con **Tumaco** como caso de
 estudio: una ciudad con alta necesidad de seguridad y **escasez de datos** — el contexto donde este
-enfoque aporta más. Su valor no es un modelo atado a Tumaco, sino un **marco replicable y configurable**
-para cualquier ciudad.
+enfoque aporta más. Su valor no es un modelo atado a Tumaco, sino un **marco configurable por
+contexto**: cada factor del riesgo se habilita y pondera según la ciudad, y esa decisión queda
+registrada —con su motivo medido— en un archivo versionado por ciudad.
 
 > **Autor:** Engler González Prado · `englergonzalez@udenar.edu.co`
 >
@@ -54,19 +55,42 @@ para cualquier ciudad.
 
 ## Resultados clave
 
-| Objetivo | Resultado |
-|---|---|
-| **OE1 · Predicción de destino** | **90 % de acierto a ≤50 m** (IC 95 % [85–94]) sobre conjunto no visto; **72–82 %** bajo ruido GPS realista. |
-| **OE2 · Riesgo por zona×hora×día** | Índice RTM **multivariable, configurable y auditable**; ordenamiento espacial **robusto (ρ≈0,99)**. |
-| **OE3 · Ruta segura + alerta** | Ruteo ponderado por riesgo + **alerta anticipada** (≈88,7 % de avisos antes de entrar a la zona). |
-| **OE4 · Efectividad** | **−7,0 % de exposición** (IC 95 % [6,4–7,6]); la ruta segura mejora en el **95 %** de los casos. |
-| **Replicabilidad** | Marco de riesgo replicado en **Cali** (allí el factor socioeconómico discrimina; en Tumaco es homogéneo). |
+Todas las cifras se miden sobre el **sistema desplegado** y se reproducen con el comando indicado.
 
-> **Nota de honestidad.** El alcance aprobado es sobre **datos simulados** (SUMO); las cifras se
-> reportan en ese entorno. El IRU es un **índice fundamentado, no un predictor validado** contra
-> microdato georreferenciado. La validación con GPS/delito real y el estudio de percepción con usuarios
-> son el paso siguiente — y se resuelven con el **bucle de reporte ciudadano** de la app, no solo con la
-> DIJIN. Detalle en [docs/CRITICA_Y_MEJORAS.md](docs/CRITICA_Y_MEJORAS.md).
+| Objetivo | Resultado | Cómo reproducirlo |
+|---|---|---|
+| **OE1 · Predicción de destino** | **87,5 % de acierto a ≤50 m** (IC 95 % [85,2–89,8]) sobre las **805** trayectorias del conjunto de prueba; ≤100 m: 92,7 %; error mediano 7,70 m; dirección correcta (<30°) 92,4 % [90,7–94,3]. Bajo ruido GPS de 5–10 m —el rango típico de un teléfono— el acierto cae a **63,7–77,4 %**. | `GET /trajectories/evaluate?n=806`<br/>(robustez: `&noise_m=5`, `=10`, `=20`) |
+| **OE2 · Riesgo por zona×hora×día** | Índice RTM **multivariable, configurable y auditable** sobre **475 celdas** de 150 m; ordenamiento espacial robusto a perturbaciones de los pesos (**ρ = 0,9898**, mínimo 0,9481). | `GET /risk/zones?hour=20` |
+| **OE3 · Ruta segura + alerta** | Ruteo ponderado por riesgo + alerta evaluada **en el punto de operación real** (umbral = percentil 0,70): a la hora pico, **99,1 %** de los recorridos recibe aviso de precaución y **65,8 %** cruza zona de nivel alto; de los avisos, el **58,7 %** precede a la entrada, con mediana de **756 m (91 s)**. | `services/api/scripts/oe3_alerta_punto_operacion.py` |
+| **OE4 · Efectividad** | En la **configuración de fábrica** (λ = 2,5): **−4,84 % de exposición** (IC 95 % [3,62–6,22], bootstrap por conglomerados sobre 40 pares O-D) con **1,7 %** de sobrecosto de distancia; mejora el **100 %** de los recorridos. En el ajuste máximo (λ = 5): −5,88 % con 3,7 % de sobrecosto. | `services/api/scripts/oe4_lambda_canonico.py` |
+| **Portabilidad** | El marco se ejecuta también sobre **Cali** (4.268 celdas) con configuración propia de factores. Ver la nota de alcance más abajo. | `GET /risk/zones?city=cali` |
+
+> **Nota de alcance y limitaciones.** Se declaran aquí con el mismo detalle que en el documento.
+>
+> - **Datos simulados.** El alcance aprobado opera sobre trayectorias generadas con **SUMO**; las
+>   cifras se reportan en ese entorno. La validación con GPS real es trabajo pendiente.
+> - **El IRU es un índice de exposición, no un predictor validado.** Los datos abiertos de homicidios
+>   carecen de coordenada y hora, así que no existe verdad-terreno contra la cual validarlo. Por eso
+>   **el indicador de precisión >85 % de OE2 y el de identificación del 69 % de OE3 quedan sin
+>   alcanzar**, y se declaran como tales.
+> - **La modulación horaria es un supuesto de diseño**, coherente con el patrón nocturno documentado
+>   a escala nacional pero **no calibrado con dato horario local**. Su amplitud efectiva en el sistema
+>   desplegado es de ×1,17 sobre la media diaria.
+> - **El indicador de mejora ≥30 % de OE4 no se alcanza**: ninguna de las 1.200 rutas evaluadas reduce
+>   la exposición en esa cuantía. No es una deficiencia del ruteo —que mejora todos los recorridos—
+>   sino del margen que ofrece la red vial del municipio.
+> - **Sobre Cali: es portabilidad técnica, no evidencia de validez del marco.** Lo que sí está medido
+>   es que la variable socioeconómica es **cuasi-degenerada en Tumaco** (96,3 % de zonas comparten un
+>   valor, σ = 0,046) y **dispersa en Cali** (93 valores distintos, σ = 0,282, seis veces mayor) — por
+>   eso el factor se desactiva allá y se activa acá, y esa decisión queda registrada con su motivo en
+>   `risk_config.<ciudad>.json`. La prueba de si el factor **reordena** el mapa resultó no concluyente
+>   (ρ con/sin factor: Tumaco 0,9841, dentro del piso de ruido; Cali 0,8491, efecto débil).
+> - **La dirección del efecto de OE4 está garantizada por construcción**: Dijkstra minimiza un coste
+>   que ya incorpora el riesgo, así que la ruta recomendada nunca puede ser más expuesta que la
+>   directa. Lo que se contrasta empíricamente es la **magnitud**.
+>
+> Detalle en [docs/RECOMPUTO_2026-08.md](docs/RECOMPUTO_2026-08.md) (cada cifra con su comando y el
+> hash de su artefacto) y en [docs/CRITICA_Y_MEJORAS.md](docs/CRITICA_Y_MEJORAS.md).
 
 ## Cómo funciona
 
@@ -80,7 +104,15 @@ para cualquier ciudad.
 3. **Ruta segura + alerta (OE3)** — grafo vial ponderado `peso = distancia·(1 + λ·riesgo)` (Dijkstra
    sobre `networkx`); política **evitar cuando hay alternativa, avisar cuando el tramo es inevitable**;
    alertas graduadas por conducta.
-4. **Evaluación (OE4)** — train/test 80/20 reproducible, IC 95 % por bootstrap, barrido de escenarios.
+4. **Evaluación (OE4)** — partición train/test 80/20 con semilla fija, intervalos de confianza al 95 %
+   por bootstrap, y **bootstrap por conglomerados** en el barrido origen-destino (las 200 rutas son 40
+   pares × 5 horas, así que el *n* efectivo es 40, no 200).
+
+**Reproducibilidad.** Toda iteración de conjuntos está ordenada y el ruido GPS usa un hash estable
+(`blake2b`), de modo que **una misma semilla produce el mismo resultado entre reinicios del servicio**.
+Los artefactos de evaluación están versionados con su `sha256` en
+[`services/api/scripts/GOLDEN.md`](services/api/scripts/GOLDEN.md), y cada cifra publicada arriba
+lleva el comando que la regenera.
 
 ## Documentación
 
@@ -89,10 +121,11 @@ para cualquier ciudad.
 | [docs/METODOLOGIA.md](docs/METODOLOGIA.md) | Paradigma, 4 objetivos, fases, datos y variables, evaluación |
 | [docs/MODELO_PREDICCION.md](docs/MODELO_PREDICCION.md) | OE1 — predicción de destino (k-vecinos+rumbo, FDE, IC 95 %, robustez GPS) |
 | [docs/MODELO_RIESGO.md](docs/MODELO_RIESGO.md) | OE2 — IRU como **framework configurable**: factores, pesos, factores OFF en Tumaco y por qué |
-| [docs/VALIDACION_RIESGO.md](docs/VALIDACION_RIESGO.md) | OE2 — validación posible sin microdato (sensibilidad ρ≈0,99, patrón temporal citado) |
+| [docs/VALIDACION_RIESGO.md](docs/VALIDACION_RIESGO.md) | OE2 — validación posible sin microdato (sensibilidad ρ = 0,9898, patrón temporal citado) |
+| [docs/RECOMPUTO_2026-08.md](docs/RECOMPUTO_2026-08.md) | **Cada cifra publicada con su comando, su artefacto y su hash** — incluidas las retiradas y por qué |
 | [docs/CUMPLIMIENTO.md](docs/CUMPLIMIENTO.md) | Tablero prometido→hecho→cumplido por objetivo/indicador |
 | [docs/CRITICA_Y_MEJORAS.md](docs/CRITICA_Y_MEJORAS.md) | Autocrítica sin sesgo (grietas científicas y de producto) |
-| [docs/HALLAZGOS_Y_DESAFIOS.md](docs/HALLAZGOS_Y_DESAFIOS.md) | Hallazgos, desafíos, generalización (réplica Cali) |
+| [docs/HALLAZGOS_Y_DESAFIOS.md](docs/HALLAZGOS_Y_DESAFIOS.md) | Hallazgos, desafíos y alcance de la portabilidad (ejecución sobre Cali) |
 | [docs/REFERENCIAS.md](docs/REFERENCIAS.md) | Bibliografía IEEE consolidada |
 | [docs/PLAN_PRODUCTO.md](docs/PLAN_PRODUCTO.md) | Producto/app (Android·iOS), panel de admin, guion de sustentación |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arquitectura, stack, contrato de API, modelo de datos |
