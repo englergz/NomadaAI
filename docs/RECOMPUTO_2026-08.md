@@ -434,6 +434,60 @@ barrido construido sobre ese endpoint —incluido el OE4 canónico— explora so
 No invalida las medias (el pool no está sesgado por exposición), pero **sí impide afirmar
 máximos o techos**. Para eso hace falta un endpoint de muestreo real sobre los 4.032.
 
+### 1.11 · C8 / OE3 — la alerta, remedida sobre la MALLA ENTREGADA
+
+Las cifras publicadas (88,7 % · 94,0 % · 280,3 m) salen de
+`Research/analysis_v2/eval_anticipatory_alert.py`, que lee la malla **de 425 celdas a
+250 m** de la etapa de desarrollo, con la curva horaria ×1,79. La tesis documenta la
+zonificación como **475 celdas a 150 m** y declara amplitud ×1,17.
+
+Los dos artefactos **ni siquiera comparten esquema de `cell_id`**: `ix*100000+iy`
+(p. ej. `1500063`) frente a secuencial (`53`). `rz.get(cell_of(x,y))` devolvería **0,0 en
+toda la malla entregada** — no da otro resultado, es que no puede leerla.
+
+**Se eligió la opción A (remedir), no la B (declararlo)**, y fue lo correcto: la malla
+entregada tiene **otra escala** (`max_risk = 81,18`), así que los umbrales 60/80/100 del
+barrido viejo **no son trasladables**. Con umbral 80 el `% con riesgo` cae de **94,0 % a
+4,6 %**. Declararlo como «pendiente» habría dejado en pie unas cifras que no describen el
+sistema entregado.
+
+```bash
+/tmp/.oe3venv/bin/python services/api/scripts/oe3_alerta_malla_entregada.py     --hours 6,12,20,22 --thr 40,50,60,70 --lookahead 150,300,500
+# artefacto: artifacts/eval/oe3_alerta_malla475.csv
+```
+
+No reimplementa `cell_of`: la malla entregada trae `lon`/`lat` por celda, así que **resuelve
+el riesgo por proximidad espacial** (rejilla + media diagonal), quedando independiente del
+esquema de ids. Corre sobre las **4.032 trayectorias · 1.526.430 puntos · 475 celdas**.
+
+#### Configuración coherente recomendada — y reproduce el 88,7 %
+
+| | Publicado (malla 425) | **Malla entregada (475)** |
+|---|---|---|
+| Configuración | h=20 · thr=80 · look=150 | **h=22 · thr=70 · look=150** |
+| **% anticipadas** | 88,7 % | **88,7 %** ✅ |
+| Anticipación media | 129,0 m | **133,4 m** |
+| % de trayectos con riesgo | 94,0 % | **23,6 %** |
+
+**La tasa de anticipación se sostiene**: el motor de alerta avisa con la misma eficacia.
+Lo que cambia radicalmente es **cuántos trayectos atraviesan riesgo alto** (94,0 % → 23,6 %),
+y eso es consecuencia directa de la compresión de la superficie ya documentada en T3.
+
+**Lectura honesta:** el 94,0 % describía una superficie con amplitud ×1,79 y celdas de
+250 m. Sobre el sistema realmente entregado, **menos de una cuarta parte de los recorridos
+atraviesa una zona de riesgo alto** — lo cual es *mejor* noticia de producto y peor titular.
+
+#### Efecto de la hora, que antes no se veía
+
+Con umbral 70, a las **06:00 y 12:00 ninguna celda lo supera** (0,0 %); a las 20:00 lo hace
+el 37,0 % y a las 22:00 el 23,6 %. La modulación horaria **sí discrimina** sobre la malla
+entregada, pese a la compresión.
+
+> **Sin partición train/test, y es correcto.** La alerta es una **regla evaluada sobre
+> recorridos observados**, no un modelo aprendido: no hay nada que pueda filtrarse del
+> corpus. Por eso usa los 4.032 desplazamientos y no las 806 de prueba. Debe decirse
+> explícitamente en la tesis para que la pregunta no llegue en sustentación.
+
 ### 1.7 · Guarda de integridad para fusionar corridas (OE4)
 
 OE4 se mide en **dos pasadas** contra el mismo Space: λ ∈ {0, 1, 2, 3, 5} primero y
