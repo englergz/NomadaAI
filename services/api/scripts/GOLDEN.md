@@ -86,3 +86,11 @@ sha256(artifacts/eval/c5_humo_route_build.csv)     = ca8e07e2639ae8189812e2ef842
 sha256(artifacts/eval/t2_destino_direccion.csv)  = 819df55f328e3dd33e2fb3526b0e9d051618ab99744ce9957cbf3b2acd311340
 sha256(artifacts/eval/oe3_alerta_nivel_alto.csv) = a028246359666416af0f23c153efe25838d4053cb9c2a2e18a6a0c8e5b679a36
 ```
+
+
+## T6b-B — factor socioeconomico (2026-08-10)
+
+```
+sha256(artifacts/eval/t6b_socioeconomico.csv) = 87b9cfb0b286f958748425ba1b5e538cb8c9f6b2a546b622e190c55e7b726182
+```
+Reproducir: `python services/api/scripts/t6b_socioeconomico.py`
