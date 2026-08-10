@@ -166,3 +166,83 @@ desplegado**. Es la única vía posible, pero obliga a una distinción en el tex
 
 Confundirlas reintroduce el defecto de C3: un experimento de laboratorio narrado como
 propiedad del producto.
+
+
+---
+
+# RESULTADO DE T6b-B (2026-08-10)
+
+Ejecutado con el criterio de arriba **ya congelado y commiteado**. El veredicto se lee de
+la tabla, no se reinterpreta.
+
+```bash
+python services/api/scripts/t6b_socioeconomico.py
+# artefacto: artifacts/eval/t6b_socioeconomico.csv
+# sha256 = 87b9cfb0b286f958748425ba1b5e538cb8c9f6b2a546b622e190c55e7b726182
+```
+
+Configuracion **identica en ambas ciudades** (guarda nº 3): densidad 0,35 · periferia 0,30 ·
+socioeconomico 0,30. Se omite `policia` en las dos -- exige redescargar OSM y no esta en los
+artefactos entregados; omitirlo simetricamente mantiene la comparacion valida.
+
+| Ciudad | n | Valores distintos | % moda | Desviacion | **rho(con, sin)** | Veredicto | Piso de ruido | ¿Se distingue del azar? |
+|---|---|---|---|---|---|---|---|---|
+| **Tumaco** | 301 | 10 | 96,3 % | 0,0458 | **0,9841** | **INERTE** (>=0,95) | 0,9734 [0,9634-0,9841] | **NO — dentro del ruido** |
+| **Cali** | 4.268 | 93 | 26,7 % | 0,2815 | **0,8491** | **EFECTO DEBIL** (0,80-0,95) | 0,8140 [0,8077-0,8201] | Si, **por encima** |
+
+## Veredicto, leido de la tabla congelada
+
+La tabla dice: *«Cualquier par en la banda 0,80-0,95 -> **No concluyente**. Se reporta el
+numero y se declara que el contraste no alcanza para sostener la afirmacion comparativa.»*
+**Cali cae en esa banda (0,8491). El veredicto es NO CONCLUYENTE.**
+
+Lo que si queda establecido, por partes:
+
+**1. La mitad Tumaco se CONFIRMA.** rho = 0,9841 >= 0,95: el factor es **inerte** alli, que
+es exactamente lo que la tesis afirma («territorio homogeneo»). Y ademas **no se distingue
+del piso de ruido** [0,9634-0,9841]: con esa variable, cualquier reordenamiento que
+produzca es indistinguible del azar. Es la confirmacion mas fuerte posible de «inerte» —
+no es que aporte poco, es que su aporte no se separa del ruido.
+
+**2. La mitad Cali NO alcanza para sostener «discriminante».** rho = 0,8491 esta en la
+banda de efecto debil, no por debajo de 0,80. El factor **si mueve el ranking** (0,85 esta
+lejos de 1,0), pero no lo suficiente para afirmar que discrimina en el sentido que la tesis
+necesita.
+
+**3. Un hallazgo que no estaba previsto y merece decirse.** En Cali el factor real reordena
+**MENOS que una variable aleatoria con su misma distribucion** (0,8491 frente a un piso de
+0,8140, y por encima de su IC95). Eso significa que el factor socioeconomico **esta
+parcialmente correlacionado con densidad y periferia**: su aporte marginal es real pero
+**redundante en parte** con lo que los otros factores ya capturan. Un ruido puro con la
+misma forma reordenaria mas, precisamente porque no comparte estructura con ellos.
+
+## Consecuencia para el aporte de la tesis
+
+**La afirmacion B —«el mismo marco discrimina en una ciudad y no en la otra, evidencia de
+validez del marco»— NO se sostiene con esta evidencia.** Hay que rebajarla.
+
+**La afirmacion A sigue intacta y es la que hay que defender:** el marco es **configurable
+por contexto con criterio medido**. La variable socioeconomica es cuasi-degenerada en
+Tumaco (96,3 % de zonas en un valor, desviacion 0,0458) y dispersa en Cali (93 valores,
+desviacion 0,2815, 6,2 veces mayor); por eso se desactiva alla y se activa aca, y la
+decision quedo **registrada por adelantado** en `risk_config.tumaco.json` con su motivo,
+antes de esta auditoria. Ahora esta ademas **medida y confirmada**.
+
+Redaccion propuesta para el capitulo de replicabilidad:
+
+> El indice se concibe como un marco configurable por contexto: cada factor se habilita y
+> pondera segun la ciudad, y la decision queda registrada en un archivo versionado por
+> ciudad con su motivo. En Tumaco el factor socioeconomico se desactiva porque la variable
+> es cuasi-degenerada —el 96,3 % de las zonas comparte un unico valor, con una dispersion
+> 6,2 veces menor que la de Cali—, y se verifico que su inclusion no reordena el mapa
+> (rho = 0,98, indistinguible del azar). En Cali, donde la variable si presenta variacion,
+> su inclusion reordena el indice de forma apreciable (rho = 0,85) aunque parcialmente
+> redundante con densidad y periferia. **El aporte se formula, por tanto, como criterio de
+> configuracion medido y no como evidencia de validez externa del marco**, que exigiria un
+> contraste mas nitido del observado.
+
+> **LIMITES DECLARADOS.** (a) Tumaco se evalua sobre **301 de 475 celdas (63,4 %)**, las que
+> tienen dato socioeconomico. (b) El indice aqui calculado **NO es el desplegado**: T6b
+> responde una pregunta metodologica sobre el territorio, no describe el producto — el
+> indice entregado de Tumaco no incluye el factor en absoluto. (c) Se omite `policia` en
+> ambas ciudades.

@@ -41,7 +41,7 @@ Backend medido: `https://englergz-nomadaai.hf.space` · malla servida de Tumaco:
 | **T1** | Mejora vs. Markov | **+47,5 pp** (40,0 % → 87,5 %) | idem | idem |
 | **T3** | Amplitud de la curva horaria **×1,79** | **×1,170 efectiva** · ×1,408 servida · ×2,381 en `HOUR_REL` crudo (**piso nocturno aplicado dos veces — bug**) | ver §1.2 | `docs/artefactos_curva_horaria_2026-08.json` · `662a4cd1f05f0feff…` |
 | **T3** | Hora pico | **19:00** (valle 03:00) | idem | idem |
-| **T6b** | «Inerte en Tumaco, discriminante en Cali» | **PARCIAL — sin conclusión.** Tumaco: ρ = 0,9623 (**inerte, confirma esa mitad**) pero sobre malla de 425 y modelo antiguo. **Cali no medible desde lo publicado.** | ver §1.3 | `tumaco_zonas_riesgo_rtm.csv` · 425 celdas |
+| **T6b** | «Inerte en Tumaco, discriminante en Cali» | **CERRADO — NO CONCLUYENTE.** Tumaco ρ=0,9841 (**inerte, confirmado, dentro del ruido**); Cali ρ=0,8491 (**efecto débil, no alcanza para «discriminante»**). La afirmación B se rebaja; la A queda intacta | `docs/T6B_CRITERIO.md` | `t6b_socioeconomico.csv` · `87b9cfb0b286f958…` |
 | **T4** | OE4 «reducción de exposición» (5,24 / 6,2 / 7,00 en circulación) | **4,84 % · IC95 [3,62–6,22] a λ=2,5** (default real, **verificado de forma cruzada**). Tope λ=5,0: 5,88 % [4,42–7,39] | `python3 services/api/scripts/oe4_lambda_canonico.py` | `oe4_lambda_canonico.csv` · `586432d572a289cb…` |
 | **T4** | IC95 de OE4 (±0,5 pp) | **2,1× más ancho** con bootstrap por clúster: [5,81–8,27] sobre el mismo artefacto | idem | `oe4_od_sweep.csv` · `4f714482ea4b0bf7…` |
 | **T4** | *(no existía)* sobrecosto de distancia | **1,7 % a λ=2,5** · 3,7 % a λ=5,0 | idem | idem |
