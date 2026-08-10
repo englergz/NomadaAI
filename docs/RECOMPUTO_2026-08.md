@@ -874,6 +874,45 @@ el factor aporta el **13,8 % de la varianza** del indice pese a su «0,07».
 > caen fuera de [0,1]. Por eso la fila se llama **resto** y no se afirma que sea el factor
 > policia. Su contribucion (0,2264) es un techo, no una medicion del factor.
 
+### 1.20 · Figuras 6, 7 y 8 — regeneradas sobre el sistema entregado
+
+Las tres originales salen del prototipo y **contradicen al texto ya corregido**:
+
+| Figura | Original | Problema |
+|---|---|---|
+| 6 | `risk_hour_curve.png` | muestra amplitud x1,79; el texto dice **x1,17** |
+| 7 | `sweep_alerta.png` | umbrales 60/80/100 sobre `risk` **crudo**; el punto de operacion real es `threshold_norm = 0,70` |
+| 8 | `eval_alerta_anticipada.png` | muestra el **88,7 %**, cifra ya RETIRADA del texto |
+
+```bash
+python services/api/scripts/figuras_6_7_8.py
+```
+
+| Nueva | sha256 | Que muestra |
+|---|---|---|
+| `fig6_curva_horaria.png` | `846badc013987650…` | |
+| `fig7_umbral_cobertura.png` | `46546ce6f7f5187c…` | |
+| `fig8_alerta_operacion.png` | `b1698a693b3ff93a…` | |
+
+**Figura 6** — las DOS curvas juntas: el factor servido (x1,408) y la **modulacion
+efectiva** (x1,170), que es la que gobierna niveles y alertas. Hace visible el doble piso
+nocturno en vez de esconderlo.
+
+**Figura 7** — sustituye el barrido de umbrales por lo que de verdad explica el
+comportamiento: **cuanto territorio cubre cada umbral a cada hora**. A las 06:00 ninguna
+celda alcanza el nivel alto; a las 20:00 lo hace el 10,1 %, y el umbral de precaucion
+abarca el 30,1 %. Es la figura que responde por adelantado a «¿un aviso que suena en 99 de
+cada 100 viajes que informa?».
+
+**Figura 8** — dos paneles: (a) cobertura de la alerta por hora, con las tres magnitudes
+que no deben confundirse —recibe aviso / cruza nivel alto / el aviso PRECEDE—; (b)
+anticipacion mediana **solo de los avisos que preceden**.
+
+> **Detalle de honestidad grafica:** en 8b las 06:00 quedan **en blanco** para nivel alto,
+> no en cero. A esa hora no hay ningun aviso de ese tipo, y dibujar un 0 diria «avisa con
+> 0 m de margen» cuando lo cierto es «no hay aviso que medir». Va anotado en la propia
+> figura.
+
 ### 1.7 · Guarda de integridad para fusionar corridas (OE4)
 
 OE4 se mide en **dos pasadas** contra el mismo Space: λ ∈ {0, 1, 2, 3, 5} primero y

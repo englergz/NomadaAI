@@ -102,3 +102,13 @@ Reproducir: `python services/api/scripts/t6b_socioeconomico.py`
 sha256(artifacts/eval/t8_contribuciones.csv) = 6b0bda5a8e9634da67dd4dd5b096e7d2b5460466b45f0ff977c1c389d045220a
 ```
 Reproducir: `python services/api/scripts/t8_contribuciones.py`
+
+
+## Figuras 6, 7 y 8 regeneradas (2026-08-10)
+
+```
+sha256(artifacts/figuras/fig6_curva_horaria.png) = 846badc0139876501bb4ef0a9a2d79aaf3e2a49a0af00803477c2ae0274dd064
+sha256(artifacts/figuras/fig7_umbral_cobertura.png) = 46546ce6f7f5187cc11da4ca55e8d8955563b9da12461886458d1bfc1269b0ce
+sha256(artifacts/figuras/fig8_alerta_operacion.png) = b1698a693b3ff93a5ca28a2fdde5f31a473d83d2ffa06457ba794c92069c6c6d
+```
+Reproducir: `python services/api/scripts/figuras_6_7_8.py`
