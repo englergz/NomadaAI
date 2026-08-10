@@ -61,3 +61,43 @@ dos mitades.
 
 **El veredicto se toma leyendo esta tabla, no reinterpretando el número.** Si el resultado
 es el incómodo, se reporta el incómodo.
+
+---
+
+# HALLAZGO PREVIO A LA MEDICIÓN (2026-08-09)
+
+**La guarda nº 3 falla antes de calcular nada: las dos ciudades NO usan el mismo modelo.**
+
+```bash
+head -1 services/api/artifacts/risk/tumaco_zonas_riesgo_v2.csv
+head -1 services/api/artifacts/risk/cali_zonas_riesgo_v2.csv
+```
+
+| Ciudad | Celdas | Columnas del artefacto entregado |
+|---|---|---|
+| **Tumaco** | 475 | `cell_id, lon, lat, poblacion_dane, **n_points**, indice, nivel` |
+| **Cali** | 4.268 | `cell_id, lon, lat, poblacion_dane, **vulnerabilidad**, indice, nivel` |
+
+**El índice entregado de Tumaco se construye con `n_points` (actividad, derivada de
+trayectorias). El de Cali, con `vulnerabilidad` (el factor socioeconómico).** No son el
+mismo índice con distinta ciudad: son **dos modelos distintos**.
+
+Consecuencias, en orden de gravedad:
+
+1. **El índice entregado de Tumaco no contiene factor socioeconómico en absoluto.** Por
+   tanto **no se puede medir si «es inerte allí»**: no está. La mitad de la afirmación
+   referida a Tumaco no es que sea falsa — es que **no es evaluable sobre lo entregado**.
+2. **La afirmación comparativa de la tesis contrasta dos índices hechos con ingredientes
+   distintos.** Un contraste así no puede atribuirse al territorio: puede deberse
+   íntegramente a que los modelos difieren.
+3. **La guarda nº 3 obliga a descartar cualquier ρ calculado sobre estos artefactos**,
+   incluido el ρ = 0,9623 medido antes sobre la malla de 425 (que además era del modelo
+   antiguo de 3 factores).
+
+**Por tanto T6b exige regenerar ambas ciudades con `rebuild_risk_city.py` bajo una única
+configuración de factores** (densidad · socioeconómico · periferia · policía, mismos pesos),
+sobre las mallas entregadas, emitiendo la descomposición por factor. Sin eso, **no hay
+respuesta posible a T6b**, ni favorable ni desfavorable.
+
+> **Esto no invalida el sistema desplegado** —cada ciudad tiene un índice coherente y
+> funcional— pero **sí invalida la comparación entre ciudades** tal como está publicada.
