@@ -355,37 +355,66 @@ plano.
 
 ### 1.10 · C4 / Figura 14 — el −36,2 % NO se reproduce
 
+> ⚠️ **CORRECCIÓN (2026-08-09).** Una versión previa de esta sección afirmaba
+> «techo estable en 19,30 %, independiente de la muestra». **Era falso y no debe citarse.**
+> El par `mot2591` alcanza **23,90 %**, reproducido de forma independiente.
+>
+> **Causa del error — y no fue un fallo silencioso.** La búsqueda entró completa
+> (100/100 pares, 400/400 filas, sin excepciones tragadas). El problema es que
+> **`/trajectories/sample?n=100` devuelve siempre el MISMO subconjunto fijo de 100
+> trayectorias** de las 4.032 existentes (verificado: dos llamadas consecutivas dan
+> idéntico resultado, empezando por `mot320`), y **`mot2591` no está entre ellas**.
+> Mi «búsqueda amplia» no era amplia: muestreaba 100 elementos de un pool fijo que
+> excluye al 97,5 % del corpus. **Ninguna búsqueda vía ese endpoint puede encontrar
+> `mot2591`.**
+
 ```bash
-python3 services/api/scripts/oe4_busqueda_maximo.py   # 100 pares × 4 horas, λ=5.0
+python3 -c "
+import json,urllib.request
+B='https://englergz-nomadaai.hf.space'
+c=json.load(urllib.request.urlopen(B+'/trajectories/mot2591/track'))['coords']
+rq=urllib.request.Request(B+'/route/build',data=json.dumps({'origin':c[0],'dest':c[-1],
+  'type':None,'hour':20,'risk_weight':5.0}).encode(),
+  headers={'content-type':'application/json'},method='POST')
+print(json.load(urllib.request.urlopen(rq))['comparison'])"
 ```
 
-Dos búsquedas independientes, **1.600 evaluaciones de ruta en total**:
+| Par | Reducción | Distancia extra | Horas |
+|---|---|---|---|
+| **`mot2591`** | **−23,90 %** | **+17,4 %** (2.929,7 vs 2.495,2 m) | idéntico en 6/12/18/20/22 |
+| `mot1319` | −21,80 % | **+1,5 %** (2.829,1 vs 2.788,4 m) | — |
 
-| Fuente | Rutas | Máximo | ≥36 % | ≥30 % | ≥20 % |
-|---|---|---|---|---|---|
-| Barrido canónico (40 pares × 5 h × 6 λ) | 1.200 | **19,30 %** | 0 | 0 | 0 |
-| Búsqueda amplia (100 pares × 4 h, λ=5,0) | 400 | **19,30 %** | **0** | **0** | **0** |
+**Redacción correcta, que no depende de conocer el techo exacto:**
 
-**El máximo es idéntico en ambas** (`mot2551`, 19,30 %), y es el mismo en todos los λ ≥ 1
-—por eso λ=2,5 no necesita prueba aparte—. **El techo no depende de la muestra**: se
-estabiliza en 19,30 %.
+> *Sobre N rutas evaluadas, ninguna alcanza una reducción del 30 %; el máximo observado
+> es del 23,90 %.*
 
-**Aplica la salida nº 3 de las tres previstas:** el −36,2 % **no se reproduce** y **nada
-supera el 30 %** (ni siquiera el 20 %). El campo medido es el mismo
-(`comparison.exposure_reduction_pct`, `apps/web/src/App.tsx:696`), así que la comparación
-es legítima y la conclusión no admite escapatoria metodológica.
+**El veredicto de C4 no cambia** — ni las 1.600 evaluaciones propias ni las 200
+independientes encontraron nada ≥30 % — pero **el número que acompaña la frase sí**.
+No se publica ningún techo.
 
-**Para escritura:**
-1. El **−36,2 % sale del pie de la Figura 14 y de la Lista de Figuras.** No es reproducible
-   con ningún par O-D del sistema ni con ninguna configuración de λ.
-2. **Desdoblar el pie** en cualquier caso: hoy junta dos magnitudes distintas en una frase
-   con un solo número visible — el panel muestra `exposure_reduction_avg_pct` (promedio
-   acumulado en operación, `App.tsx:1088` y `1164`), mientras que el 36,2 % era un recorrido
-   único. Son cosas distintas.
-3. La figura se **reetiqueta como captura ilustrativa de operación, sin cifra en el pie**.
-4. Ahora sí puede declararse **C4 no alcanzado**, con respaldo: **0 de 1.600 rutas ≥30 %**,
-   techo estable en 19,30 %. Es un **límite del territorio, no del método** —la geometría
-   vial de Tumaco ofrece pocas alternativas— y así es defendible en sustentación.
+**Figura 14: la conclusión se mantiene (salida nº 3).** El −36,2 % no se reproduce con
+ningún par ni ningún λ. Sale del pie y de la Lista de Figuras. Además hay que **desdoblar
+el pie**: hoy junta el promedio del panel (`exposure_reduction_avg_pct`, `App.tsx:1088`
+y `1164`) con un recorrido único, en una frase con un solo número visible.
+
+**Sustituto trazable para la Figura 14** — usar `mot2591` (−23,90 %, +17,4 %), que es
+reproducible con el comando de arriba.
+
+#### Hallazgo con contenido: la protección no cuesta lo mismo en todas partes
+
+`mot2591` y `mot1319` tienen reducción casi igual (−23,9 % vs −21,8 %) pero **sobrecosto
+de distancia que difiere en un orden de magnitud** (+17,4 % vs +1,5 %). Es decir: **en
+algunos corredores la protección es casi gratis y en otros se paga cara.** Es más
+interesante que el promedio del 5-7 % y responde por adelantado a la pregunta obvia del
+jurado: *«¿cuánto más largo es el camino seguro?»*.
+
+#### Defecto de método detectado (para trabajo futuro)
+
+`/trajectories/sample` devuelve un subconjunto fijo, no una muestra aleatoria. **Cualquier
+barrido construido sobre ese endpoint —incluido el OE4 canónico— explora solo ese pool.**
+No invalida las medias (el pool no está sesgado por exposición), pero **sí impide afirmar
+máximos o techos**. Para eso hace falta un endpoint de muestreo real sobre los 4.032.
 
 ### 1.7 · Guarda de integridad para fusionar corridas (OE4)
 
