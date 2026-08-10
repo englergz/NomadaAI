@@ -94,3 +94,11 @@ sha256(artifacts/eval/oe3_alerta_nivel_alto.csv) = a028246359666416af0f23c153efe
 sha256(artifacts/eval/t6b_socioeconomico.csv) = 87b9cfb0b286f958748425ba1b5e538cb8c9f6b2a546b622e190c55e7b726182
 ```
 Reproducir: `python services/api/scripts/t6b_socioeconomico.py`
+
+
+## T8 / I5 — contribuciones sobre la malla de 475 (2026-08-10)
+
+```
+sha256(artifacts/eval/t8_contribuciones.csv) = 6b0bda5a8e9634da67dd4dd5b096e7d2b5460466b45f0ff977c1c389d045220a
+```
+Reproducir: `python services/api/scripts/t8_contribuciones.py`
