@@ -74,9 +74,12 @@ def cluster_bootstrap(by_pair: dict[str, list[float]]) -> tuple[float, float]:
 
 
 def main() -> None:
-    trips = _get(f"/trajectories/sample?n={min(100, N_PAIRS * 3)}").get("trips", [])  # el endpoint topa en 100
-    ids = sorted(t["id"] for t in trips)
-    ids = ids if len(ids) <= N_PAIRS else random.Random(SEED).sample(ids, N_PAIRS)
+    # DEFINICIÓN CANÓNICA DE LA MUESTRA: los N primeros que devuelve el endpoint, sin
+    # submuestreo. Antes se pedían 100 y se tomaban 40 con `Random(SEED).sample()`, lo que
+    # era igual de determinista pero daba OTRA muestra: una réplica independiente que
+    # pidiera `sample?n=40` coincidía en solo 17 de 40 pares. Se elige la definición más
+    # simple, que es la que reproduce cualquiera sin leer este script.
+    ids = [t["id"] for t in _get(f"/trajectories/sample?n={N_PAIRS}").get("trips", [])]
 
     pairs: list[tuple[str, list, list]] = []
     for tid in ids:
