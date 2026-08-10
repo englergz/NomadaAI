@@ -32,6 +32,7 @@ Backend medido: `https://englergz-nomadaai.hf.space` · malla servida de Tumaco:
 | **T5** | Anticipación **21,8 s** | **No existe** en ninguna combinación | idem | idem |
 | **T9** | ρ de sensibilidad ≈ **0,99** | **0,9898** (mínimo 0,9481) sobre la malla servida de 475 | `docs/VALIDACION_RIESGO.md` §6 | reconstrucción validada a corr **0,9935** |
 | **T10** | Niveles 332 bajo / 95 medio / 48 alto | **Tautológicos — confirmado** | ver §1.4 | `risk.py:38-45` |
+| **T13** | Arma de fuego 85,8 % · sicariato 56,6 % · rural/urbana 55,2/44,8 | **✅ REPRODUCEN EXACTO** contra la API `m8fd-ahd9`. Total 4.045 → **4.050** (conjunto vivo, congelado hoy) | ver §3.1 | snapshot `0f64efd4…2d75` · 4.034 filas |
 | **T12** | Los dos barridos citados como uno | **Son experimentos distintos: 45 escenarios ≠ 200 rutas (40 pares × 5 h)** | ver §1.6 | ambos CSV |
 
 ### 1.1 · T1 — desglose por tipo (nuevo, no estaba en la tesis)
@@ -374,10 +375,67 @@ Nada de lo siguiente se estimó. Se declara qué falta y por qué.
 | **T7** | Robustez GPS σ ∈ {0,5,10,20} | **Pendiente** | `destination.py` usa `Random(hash(tid) & 0xFFFF)`: sin `PYTHONHASHSEED=0` el ruido **no es reproducible entre procesos**. Hay que fijarlo en el Dockerfile antes de medir. |
 | **T8** | Contribuciones por factor | **Pendiente** | Deben regenerarse sobre 475 con los 4 factores, distinguiendo **contribución** (cuota de varianza) de **correlación**, y explicando por qué actividad pesa 0,20 con correlación 0,07. |
 | **T11** | «95 % de funcionalidad operativa» | **Pendiente — recomendación: retirar** | No hay definición operativa ni instrumento que lo mida. Si no se define un denominador, no es una cifra: es una impresión. |
-| **T13** | Columnas arma / modalidad · total 4.045 · 85,8 % masculino · 55,2/44,8 | **No recomputable — ver §3.1** | Ni el crudo ni el derivado reproducen las cifras, y el derivado contiene datos que el crudo no tiene. |
+
 | **C4** | Proyección de percepción | **DESBLOQUEADA** | Dependía de T4, que ya está cerrado. La proyección debe rehacerse partiendo de **4,92 % [3,34–6,66] (λ=2,5)**, no de 5,24 / 6,2 / 7,00, y arrastrar el intervalo. |
 
-### 3.1 · T13 en detalle — problema de trazabilidad, no solo de cifra
+### 3.1 · T13 — ⛔ RETRACTADO POR COMPLETO (2026-08-09)
+
+> **TODO LO QUE ESTA SECCIÓN DECÍA ERA FALSO. NO APLICAR NADA DE ELLO.**
+>
+> Concluí «no recomputable» y recomendé **retirar el 85,8 % de arma de fuego** y
+> **sustituirlo por el 91,1 % masculino**. **Las dos cosas están mal** y ambas quedaron
+> commiteadas por error. Quedan anuladas.
+>
+> **La causa del error:** asumí que la fuente era el CSV local
+> `HOMICIDIO_20251031.csv`. **Ese es otro dataset** — el nacional, 331.026 filas, que
+> efectivamente no tiene columna de arma. La fuente real es la **API de datos.gov.co,
+> conjunto `m8fd-ahd9`**, consultada **en vivo** por
+> `Research/analysis_v2/oe2_valida_riesgo.py:67-71` con `$where cod_muni='52835'` —
+> exactamente el identificador que la tesis ya citaba. Vi ese script en el listado y
+> nunca lo abrí.
+
+**Verificación independiente ejecutada contra la API (2026-08-09):**
+
+```bash
+python3 -c "
+import json,urllib.parse,urllib.request
+from collections import Counter
+u='https://www.datos.gov.co/resource/m8fd-ahd9.json?'+urllib.parse.urlencode(
+  {'\$where':\"cod_muni='52835'\",'\$limit':100000})
+rows=json.load(urllib.request.urlopen(urllib.request.Request(u,
+  headers={'User-Agent':'NomadaAI/1.0'}),timeout=180))
+print(len(rows),'filas ·',sum(int(float(r.get('cantidad',1))) for r in rows),'homicidios')"
+```
+
+| Cifra | Tesis | **Reproducido hoy** | Estado |
+|---|---|---|---|
+| Arma de fuego | 85,8 % | **85,8 %** | ✅ **reproduce exacto** |
+| Sicariato | 56,6 % | **56,6 %** | ✅ reproduce exacto |
+| Rural / Urbana | 55,2 / 44,8 | **55,2 / 44,8** | ✅ reproduce exacto |
+| Total | 4.045 | **4.050** | conjunto vivo → **congelar** |
+| Serie 2019 | 216 | **216** | ✅ reproduce |
+
+**Lo único real que queda de T13** —y es mucho menor de lo que dije— es que el conjunto es
+**vivo**: 4.045 en su momento, 4.050 hoy, y seguirá subiendo.
+
+**Decisión tomada (Opción A — congelar hoy):**
+
+- Snapshot congelado por la sesión de escritura: `m8fd-ahd9_tumaco_snapshot_2026-08-09.json`
+  · **4.034 filas · 4.050 homicidios** · `sha256 0f64efd4…2d75`.
+- **El texto pasa de 4.045 a 4.050**, con fecha de consulta. Los porcentajes **no se mueven**
+  (85,8 / 56,6 / 55,2-44,8 idénticos).
+- **2026 se excluye solo de la serie anual** (Figura 1), no de la caracterización: así las
+  cuatro cifras quedan idénticas y solo cambia un número. Cláusula: *«serie 2003–2025; se
+  excluye 2026 por tratarse de un año en curso al momento de la consulta»*.
+
+> Nota sobre el hash: el sha256 depende de la serialización. El canónico **oficial** es el
+> del snapshot congelado (`0f64efd4…`); mi verificación independiente usó otra
+> serialización y da `ec8a2bc9…`. **Los datos son los mismos** (4.034 filas / 4.050).
+
+<details>
+<summary>Texto original de T13 — CONSERVADO SOLO COMO REGISTRO DEL ERROR, NO APLICAR</summary>
+
+#### (anulado) Problema de trazabilidad
 
 ```bash
 head -1 Research/analysis_v2/data_sources/HOMICIDIO_20251031.csv | tr ',' '\n'
@@ -418,9 +476,10 @@ Además, recomputando directamente sobre el crudo:
 > Igualmente se retira la sospecha de etiquetas invertidas en el reparto urbano-rural:
 > **no están invertidas**, el 55,2 % es rural y es correcto.
 
-> **Recomendación.** (a) Retirar arma/modalidad salvo que aparezca el archivo original.
-> (b) Volver a descargar el crudo, versionarlo con sha256 en `GOLDEN.md` y regenerar el
-> derivado desde él, para cerrar el hueco de los 12 registros de 2026.
+> **(anulado)** Las recomendaciones de este bloque quedan sin efecto: la fuente existe,
+> es trazable y las cifras reproducen.
+
+</details>
 
 ---
 
@@ -435,8 +494,10 @@ Para la sesión de escritura, lo que ya se puede actualizar de una pasada:
 3. **Niveles 332/95/48**: reescribir como decisión de diseño, no como resultado (§1.4).
 4. **Cali**: incorporar §1.3 como evidencia del aporte socioeconómico. Es material nuevo
    y favorable.
-5. **Retirar** el «95 % de funcionalidad operativa» y las cifras de arma/modalidad salvo
-   que aparezca la fuente.
+5. **Retirar** el «95 % de funcionalidad operativa» (T11) — ver C5 más abajo.
+6. **T13: no retirar nada.** Arma de fuego, sicariato y urbano-rural **reproducen exacto**.
+   Único cambio: **4.045 → 4.050** con fecha de consulta, y cláusula de exclusión de 2026
+   de la serie anual.
 
 > Las cifras nuevas son **peores** que las publicadas (87,5 % en vez de 90,5 %; ×1,17 en
 > vez de ×1,79). Eso es lo correcto: un jurado premia el número honesto con su intervalo
