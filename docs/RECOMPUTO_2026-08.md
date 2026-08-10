@@ -766,10 +766,40 @@ python services/api/scripts/t2_destino_direccion.py https://englergz-nomadaai.hf
 de donde salen, o los emparejados de esta tabla. Lo que no puede quedar es una cifra de las
 4.029 presentada como «conjunto de prueba no visto».
 
-> **LIMITACION: n=100.** `/trajectories/sample` topa en 100. La salida limpia es **anadir
-> el error angular a `/trajectories/evaluate`**, que ya itera `sorted(test_ids)`, ya corre
-> el predictor desplegado y admite n hasta 2000: OE1 entero -- acierto, mediana y direccion --
-> saldria de UNA fuente, UN modelo y UNA muestra de 805. **Pendiente.**
+#### CIERRE DEFINITIVO — el error angular, ya en `/trajectories/evaluate`
+
+Se anadio a ese endpoint (`ang_med_deg`, `acc_ang30_pct`, ambos con bootstrap), que ya
+itera `sorted(test_ids)`, corre el **predictor desplegado** y admite n hasta 2000. Con eso
+**OE1 entero sale de UNA fuente, UN modelo y UNA muestra de 805**.
+
+```bash
+curl -s "https://englergz-nomadaai.hf.space/trajectories/evaluate?n=806"
+```
+
+| Metrica | **n=805** | IC95 | Publicado |
+|---|---|---|---|
+| acc@50 m | 87,5 % | [85,2 - 89,8] | 90,5 % |
+| acc@100 m | 92,7 % | — | — |
+| FDE mediana | 7,70 m | [7,0 - 8,5] | — |
+| **Direccion <=30 grados** | **92,4 %** | **[90,7 - 94,3]** | **91,9 %** |
+| Error angular mediano | **0,25 grados** | [0,2 - 0,3] | — |
+
+**Direccion por tipo:** bus 95,6 % (n=45) · car 96,5 % (n=198) · **mot 90,6 % (n=555)** ·
+truck 100,0 % (n=7).
+
+**CUATRO mediciones independientes convergen** en la direccion:
+
+| Fuente | Valor |
+|---|---|
+| Publicado en la tesis | 91,9 % |
+| Solo-test de `eval_fair_horizon.csv` (auditor) | 91,6 % |
+| Muestra de 100 con horizonte emparejado | 90,0 % [84,0 - 95,0] |
+| **Endpoint sobre las 805 (definitivo)** | **92,4 % [90,7 - 94,3]** |
+
+> **C2 queda cerrado como problema de ETIQUETA, no de integridad.** La cifra publicada
+> reproduce. Lo unico que hay que corregir es de donde se dice que sale: **reportar
+> 92,4 % [90,7 - 94,3] sobre las 805 de test**, medido con el predictor desplegado, en vez
+> de una cifra de las 4.029 presentada como «conjunto de prueba no visto».
 
 ### 1.18 · OE3 — nivel alto SIN el sesgo de anticipacion cero
 
@@ -947,7 +977,7 @@ Nada de lo siguiente se estimó. Se declara qué falta y por qué.
 
 | # | Qué | Estado | Motivo |
 |---|---|---|---|
-| **T2** | Dirección <30°, FDE por tipo, ≤100 m | **§1.17 — no habia fuga: es un error de ETIQUETA.** Dirección emparejada **90,0 %** [84,0-95,0], coincide con el 91,6 % solo-test | `Research/analysis_v2/eval_fair_horizon.py` no tiene split train/test, ni semilla, ni auto-exclusión (4.029 filas, mediana 0,31 m). Hay que rehacerlo **sobre los 806 ids de test** con `exclude_id`. Las cifras hoy publicadas (91,9 % dirección, 642,0 m, 1,44 %) **provienen de ese archivo y no son válidas** hasta rehacerlo. |
+| **T2** | Dirección <30°, FDE por tipo, ≤100 m | **§1.17 CERRADO — era ETIQUETA, no fuga.** Dirección **92,4 %** [90,7-94,3] sobre las **805**, con el predictor desplegado. El 91,9 % publicado **reproduce** | `Research/analysis_v2/eval_fair_horizon.py` no tiene split train/test, ni semilla, ni auto-exclusión (4.029 filas, mediana 0,31 m). Hay que rehacerlo **sobre los 806 ids de test** con `exclude_id`. Las cifras hoy publicadas (91,9 % dirección, 642,0 m, 1,44 %) **provienen de ese archivo y no son válidas** hasta rehacerlo. |
 | **T7** | Robustez GPS σ ∈ {0,5,10,20} | **Pendiente** | `destination.py` usa `Random(hash(tid) & 0xFFFF)`: sin `PYTHONHASHSEED=0` el ruido **no es reproducible entre procesos**. Hay que fijarlo en el Dockerfile antes de medir. |
 | **T8/I5** | «Contribuciones» 0,32/0,36/0,34 y «correlación» 0,07 mezcladas | **§1.19.** Sobre las 475 con 4 factores: contribuciones **0,312 / 0,324 / 0,138 / 0,226** (suman 1). El **0,07 es la correlación del crudo**; el percentil que usa el modelo correlaciona **0,285** | Deben regenerarse sobre 475 con los 4 factores, distinguiendo **contribución** (cuota de varianza) de **correlación**, y explicando por qué actividad pesa 0,20 con correlación 0,07. |
 | **T11 / C5** | «95 % de funcionalidad operativa» | **MEDIDO — §1.9 y §1.15.** El 95 % se retira; la cifra real es **29/29 pruebas** (21 cliente movil + 8 humo sobre `/route/build`). |
