@@ -12,6 +12,16 @@ Backend medido: `https://englergz-nomadaai.hf.space` · malla servida de Tumaco:
 
 ---
 
+> ⛔ **BLOQUEANTE (2026-08-09): T4 y T7 hay que REHACERLOS tras redesplegar.**
+> Se encontró la **causa raíz** de que barridos «con semilla fija» dieran resultados
+> distintos: `destination.py` iteraba `set`s de cadenas antes de barajar, y el orden de un
+> `set` depende del salt de hash del proceso. **Con la misma semilla, cada reinicio del
+> Space devolvía otros pares O-D.** Arreglado (§2.1), pero **el arreglo exige redesplegar**
+> y **el barrido canónico de T4 debe repetirse después**: si se congela ahora, nadie que
+> reproduzca el comando obtendrá estos números — que es exactamente el reproche que originó
+> esta auditoría. Las **medias siguen siendo estimadores insesgados**; lo que no es válido
+> es la reproducibilidad puntual ni ninguna afirmación de máximo.
+
 ## 1. Cifras recomputadas
 
 | # | Cifra en la tesis | Valor nuevo | Comando que lo reproduce | Artefacto + sha256 |
@@ -442,6 +452,50 @@ evaluación crítica. **Si tras la segunda pasada la huella no coincide, la corr
 λ = 2,5 se rehace junto con el resto**, no se fusiona.
 
 ---
+
+## 2.1 · Arreglo de reproducibilidad (causa raíz de T4, T7/I2 y C4)
+
+Tres iteraciones de `set` + `hash()` salteado, en `services/api/app/ml/destination.py`:
+
+| Línea | Antes | Después |
+|---|---|---|
+| 141 | `for tid in self.train_ids:` | `for tid in sorted(self.train_ids):` (KDTree) |
+| 158 | `for tid in self.train_ids:` | `for tid in sorted(self.train_ids):` (Markov) |
+| 222 | `ids = [t for t in self.test_ids …]` | `ids = sorted(t for t in self.test_ids …)` |
+| 282 | `_r.Random(hash(tid) & 0xFFFF)` | `blake2b(tid)` — estable sin depender del entorno |
+
+Y en `services/api/Dockerfile`: `ENV PYTHONHASHSEED=0`.
+
+**Demostración del fallo y del arreglo:**
+
+```bash
+for i in 1 2 3; do PYTHONHASHSEED=random python3 -c "
+import random
+ids={f'mot{i}' for i in range(1,300)}
+a=[t for t in ids]; random.Random(7).shuffle(a)      # ANTES
+b=sorted(ids);      random.Random(7).shuffle(b)      # DESPUÉS
+print(f'antes {a[:3]}  despues {b[:3]}')"; done
+```
+
+```
+antes ['mot250','mot144','mot117']   despues ['mot123','mot214','mot30']
+antes ['mot100','mot236','mot163']   despues ['mot123','mot214','mot30']
+antes ['mot126','mot57','mot165']    despues ['mot123','mot214','mot30']
+```
+
+Misma semilla: **antes tres listas distintas, después idénticas.**
+
+**NO afectado** (verificado): la partición train/test hace `sorted()` en la línea 133 antes
+de barajar con semilla 42 → **el 80/20 y los 3.226/806 son correctos**. `/trajectories/evaluate`
+usa `sorted(test_ids)` → estable; su problema era otro (T1).
+
+**Test de aceptación tras redesplegar:** dos llamadas a `/trajectories/sample?n=40`
+**tras reiniciar el Space** deben devolver la misma lista.
+
+> **Efecto en la tesis:** §Validez y confiabilidad dice hoy «las particiones y los cálculos
+> usan semilla fija». La partición sí; los barridos y la prueba de ruido, no.
+> **Tras el arreglo la frase pasa a ser verdadera** — se resuelve haciéndola cierta, no
+> reescribiéndola.
 
 ## 2. Cambio de código aplicado (T1)
 

@@ -137,8 +137,11 @@ class DestinationPredictor:
         self.train_ids: set[str] = set(ids[n_test:])
 
         # KDTree sobre el punto de inicio de cada segmento — SOLO con TRAIN
+        # `sorted()`: iterar el set directamente da un orden que depende del salt de hash
+        # del proceso, y con él cambia el desempate cuando dos vecinos están a igual
+        # distancia. Sin esto, el índice no es idéntico entre reinicios.
         rows: list[tuple[float, float, str, int, str]] = []
-        for tid in self.train_ids:
+        for tid in sorted(self.train_ids):
             pts = self.true_dict[tid]
             typ = infer_type(tid)
             for j in range(len(pts) - 1):
@@ -155,7 +158,7 @@ class DestinationPredictor:
 
         # Matriz de transición de Markov (celda -> {celda_siguiente: conteo}), SOLO con TRAIN.
         self._trans: dict[tuple[int, int], dict[tuple[int, int], int]] = {}
-        for tid in self.train_ids:
+        for tid in sorted(self.train_ids):  # orden estable entre reinicios (ver KDTree)
             seq: list[tuple[int, int]] = []
             for (x, y, _t) in self.true_dict[tid]:
                 c = _cell(x, y)
@@ -219,7 +222,12 @@ class DestinationPredictor:
         """Viajes del conjunto TEST (NO vistos por el modelo) para evaluar sin sesgo."""
         import random
 
-        ids = [t for t in self.test_ids if len(self.true_dict[t]) >= 12]
+        # CAUSA RAÍZ DE LA IRREPRODUCIBILIDAD DE LOS BARRIDOS O-D:
+        # `random.Random(seed).shuffle` es determinista DADO un orden de entrada, pero la
+        # entrada salía de iterar un `set` de cadenas, cuyo orden depende del salt de hash
+        # del proceso. Con la MISMA semilla, cada reinicio del servidor devolvía una lista
+        # distinta — por eso dos barridos O-D "con semilla fija" daban pares distintos.
+        ids = sorted(t for t in self.test_ids if len(self.true_dict[t]) >= 12)
         random.Random(seed).shuffle(ids)
         out = []
         for tid in ids:
@@ -270,8 +278,12 @@ class DestinationPredictor:
         truth_ll = ll(suffix_m)
 
         if noise_m and noise_m > 0:
+            import hashlib as _hashlib
             import random as _r
-            rng = _r.Random(hash(tid) & 0xFFFF)
+            # `hash(tid)` depende del salt del proceso: el MISMO viaje recibía un ruido
+            # distinto en cada arranque, y la prueba de robustez GPS no reproducía (T7/I2).
+            # blake2b es estable entre procesos y versiones, sin depender de PYTHONHASHSEED.
+            rng = _r.Random(int.from_bytes(_hashlib.blake2b(tid.encode(), digest_size=2).digest(), "big"))
             for c in prefix_ll:
                 dlat = rng.gauss(0, noise_m) / 111320.0
                 dlon = rng.gauss(0, noise_m) / (111320.0 * max(0.1, math.cos(math.radians(c[1]))))
