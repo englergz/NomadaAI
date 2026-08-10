@@ -1,0 +1,9 @@
+prueba,propiedad,resultado,detalle
+ruta_factible,un O-D válido devuelve una ruta con ≥2 vértices,PASA,segura 217 vértices · directa 212
+od_invalido,"un O-D fuera de la red falla limpio (4xx), no 5xx",PASA,falla limpia con HTTP 422
+lambda_cero,λ=0 devuelve reducción exactamente 0,PASA,λ=0 → reducción 0.0
+no_negativa,λ>0 nunca devuelve reducción negativa,PASA,ninguna reducción negativa
+segura_no_mas_corta,la ruta segura nunca es más corta que la directa,PASA,segura 4130.1 m ≥ directa 4082.2 m
+exposicion_menor,la exposición de la segura no supera la de la directa,PASA,exposición segura 1957.3 ≤ directa 2123.8
+hora_modula,cambiar la hora cambia la exposición,PASA,exposición 20:00=2123.8 vs 03:00=1815.9 (la hora modula)
+monotonia_lambda,más λ nunca reduce menos,PASA,"reducción no decreciente con λ: [0.0, 7.8, 7.8]"

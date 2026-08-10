@@ -41,8 +41,9 @@ REPO = ROOT.parent
 RISK = ROOT / "services/api/artifacts/risk/tumaco_riesgo_horario.csv"
 PTS = REPO / "Research/points_3857.parquet"
 OUT = ROOT / "services/api/artifacts/eval/oe3_alerta_punto_operacion.csv"
+OUT_ALTO = ROOT / "services/api/artifacts/eval/oe3_alerta_nivel_alto.csv"
 
-THRESHOLD_NORM = 0.7      # risk.py:167
+THRESHOLD_NORM = 0.7      # risk.py:167 — frontera del nivel "medio"/precaución
 SPEED_MPS = 8.3           # risk.py:168
 CELL_M = 150.0
 R_MAX = CELL_M * math.sqrt(2) / 2
@@ -89,6 +90,7 @@ def main(a) -> None:
     print(f"Corpus: {P['id'].nunique()} desplazamientos · {len(P)} puntos")
 
     rows: list[dict] = []
+    THR = float(a.threshold)
     for h0 in [int(h) for h in a.start_hours.split(",")]:
         start_s = h0 * 3600.0
         total = con_alerta = 0
@@ -101,12 +103,13 @@ def main(a) -> None:
                 if k > 0:
                     acc += math.hypot(xs[k] - xs[k - 1], ys[k] - ys[k - 1])
                 arrival_hour = int((start_s + acc / SPEED_MPS) // 3600) % 24
-                if rn_at(xs[k], ys[k], arrival_hour) >= THRESHOLD_NORM:
+                if rn_at(xs[k], ys[k], arrival_hour) >= THR:
                     con_alerta += 1
                     antic.append(acc)      # distancia a la que se avisa del peligro
                     break
         antic_s = sorted(antic)
         rows.append({
+            "threshold_norm": THR,
             "hora_inicio": h0, "n": total, "con_alerta": con_alerta,
             "pct_con_alerta": round(100 * con_alerta / total, 1) if total else 0,
             "antic_media_m": round(sum(antic) / len(antic), 1) if antic else 0,
@@ -119,11 +122,12 @@ def main(a) -> None:
               f"media {r['antic_media_m']:7.1f} m ({r['antic_media_s']:5.1f} s) · "
               f"mediana {r['antic_mediana_m']:7.1f} m ({r['antic_mediana_s']:5.1f} s)")
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUT, "w", newline="") as f:
+    dest = OUT if abs(THR - 0.7) < 1e-9 else OUT_ALTO
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with open(dest, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys())); w.writeheader(); w.writerows(rows)
-    print(f"\nEscrito {OUT}")
-    print(f"Punto de operación: threshold_norm={THRESHOLD_NORM} · speed={SPEED_MPS} m/s · sin horizonte")
+    print(f"\nEscrito {dest}")
+    print(f"Punto de operación: threshold_norm={THR} · speed={SPEED_MPS} m/s · sin horizonte")
     print("Sin partición train/test: la alerta es una REGLA sobre recorridos observados, "
           "no un modelo aprendido.")
 
@@ -131,4 +135,5 @@ def main(a) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--start-hours", default="6,12,18,20,22")
+    ap.add_argument("--threshold", default="0.7", help="0.7 = precaucion (defecto del sistema) · 0.9 = nivel alto")
     main(ap.parse_args())

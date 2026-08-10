@@ -64,3 +64,17 @@ Medido con `threshold_norm=0.7`, `speed_mps=8.3`, sin horizonte y con reloj de h
 llegada -- los parametros reales de `app/data/risk.py::lookahead_alert`. Sobre las 4.032
 trayectorias del corpus y la malla entregada de 475 celdas.
 Reproducir: `python services/api/scripts/oe3_alerta_punto_operacion.py`
+
+
+## Artefactos anadidos el 2026-08-10
+
+```
+sha256(artifacts/eval/oe3_alerta_nivel_alto.csv)   = 125f6f94bd8a85a342d9891951661caa73836981419387fcc08009c5129dffeb
+sha256(artifacts/eval/c5_humo_route_build.csv)     = ca8e07e2639ae8189812e2ef842bc95cfd5b1d572b12b5d2922651033ce8f64f
+```
+
+- `oe3_alerta_nivel_alto.csv` — cruce de zona de nivel alto (`risk_norm >= 0.90`), el
+  contrapeso del 99,1 % de precaucion. Reproducir:
+  `python services/api/scripts/oe3_alerta_punto_operacion.py --threshold 0.9`
+- `c5_humo_route_build.csv` — 8 invariantes de `/route/build`. Reproducir:
+  `python services/api/scripts/c5_humo_route_build.py` (sale con codigo 1 si alguna falla)

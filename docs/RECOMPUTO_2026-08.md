@@ -48,6 +48,7 @@ Backend medido: `https://englergz-nomadaai.hf.space` · malla servida de Tumaco:
 | **T5** | Anticipación media global | **276,7 m** (39 escenarios con alerta) | ver §1.5 | `sweep_alerta.csv` · 45 filas |
 | **T5** | Anticipación en segundos **24,6 s** | **24,9 s a 40 km/h** — es una **media**, no mediana | idem | idem |
 | **T5** | Anticipación **21,8 s** | **No existe** en ninguna combinación | idem | idem |
+| **T7** | Robustez GPS 90 / 82 / 72 / 60,6 | **87,5 / 77,4 / 63,7 / 47,7 %** con IC95 — **ninguna reproduce**; el rango «72-86 %» del Resumen tampoco | ver §1.14 | endpoint vivo, tras `blake2b` |
 | **T9** | ρ de sensibilidad ≈ **0,99** | **0,9898** (mínimo 0,9481) sobre la malla servida de 475 | `docs/VALIDACION_RIESGO.md` §6 | reconstrucción validada a corr **0,9935** |
 | **T10** | Niveles 332 bajo / 95 medio / 48 alto | **Tautológicos — confirmado** | ver §1.4 | `risk.py:38-45` |
 | **T13** | Arma de fuego 85,8 % · sicariato 56,6 % · rural/urbana 55,2/44,8 | **✅ REPRODUCEN EXACTO** contra la API `m8fd-ahd9`. Total 4.045 → **4.050** (conjunto vivo, congelado hoy) | ver §3.1 | snapshot `0f64efd4…2d75` · 4.034 filas |
@@ -552,6 +553,105 @@ en T3 quedo como supuesto de diseno.
 > prototipo viejo. **Es coincidencia y no se usa como validacion**: sale de una medicion
 > hecha sin mirar el numero anterior, con umbral, horizonte y reloj distintos.
 
+### 1.13 · OE3 — precaucion frente a nivel alto: la alerta SI discrimina
+
+El 99,1 % de 1.12 necesita contrapeso: `threshold_norm = 0.7` es la frontera del nivel
+**precaucion**, y a las 20:00 abarca el 30,1 % de las zonas. Que casi todo recorrido cruce
+alguna no es un logro del motor, es aritmetica del umbral. La medicion que lo pone en
+contexto es el **nivel alto** (`risk_norm >= 0,90`):
+
+```bash
+python services/api/scripts/oe3_alerta_punto_operacion.py --threshold 0.9
+```
+
+| Hora | Aviso de **precaucion** (>=0,70) | Zona de **nivel alto** (>=0,90) | Mediana (alto) |
+|---|---|---|---|
+| 06:00 | 84,3 % | **0,0 %** | -- |
+| 12:00 | 98,5 % | **30,4 %** | 1.399,4 m (168,6 s) |
+| 18:00 | 99,1 % | **60,4 %** | 404,1 m (48,7 s) |
+| **20:00** | **99,1 %** | **65,8 %** | **381,5 m (46,0 s)** |
+| 22:00 | 99,0 % | **59,2 %** | 464,5 m (56,0 s) |
+
+**Esto convierte una alarma casi siempre encendida en un sistema con discriminacion real.**
+A las 06:00 **ningun** recorrido cruza zona de nivel alto (0,0 %) frente al 65,8 % de las
+20:00. El contraste 0 % -> 65,8 % es la mejor evidencia empirica de que la modulacion
+horaria funciona sobre la superficie entregada.
+
+#### Desajuste de vocabulario que la tesis debe corregir
+
+El Resumen y la Introduccion dicen *«anticipa alertas antes de alcanzar zonas de riesgo
+**alto**»*. **El sistema no hace eso**: umbraliza en 0,70, que es la frontera de
+**precaucion** (`_level`: alto >= 0,90 · medio >= 0,70). A las 06:00 no existe ni una celda
+de nivel alto en todo Tumaco y aun asi el 84,3 % de los recorridos recibe aviso, todos por
+zonas medias.
+
+No es un error de implementacion -- es coherente con el esquema de tres niveles que la
+propia tesis describe. **Lo que esta mal es la palabra en el texto.**
+
+Redaccion propuesta:
+
+> «El sistema emite al menos un aviso de precaucion en el 99,1 % de los recorridos a la
+> hora pico, consecuencia de que el umbral de aviso --fijado en el percentil 0,70-- abarca
+> el 30,1 % de las zonas a esa hora. El evento escaso e informativo es el cruce de zona de
+> nivel alto, que ocurre en el 65,8 % de los recorridos a las 20:00 y en **ninguno** a las
+> 06:00.»
+
+**Para Recomendaciones -- fatiga de alerta:** un umbral que abarca el 30 % del territorio
+produce avisos casi universales. Elevar el umbral de aviso o **graduar el mensaje por
+nivel** es una linea de mejora declarable: limitacion de producto reconocida, no defecto
+oculto.
+
+### 1.14 · T7 -- robustez GPS, remedida tras el arreglo blake2b
+
+```bash
+curl -s "$API/trajectories/evaluate?n=806&noise_m=SIGMA"
+```
+
+| sigma (m) | n | acc@50 m | IC95 | acc@100 m | FDE mediana |
+|---|---|---|---|---|---|
+| 0 | 805 | **87,5 %** | [85,2 - 89,8] | 92,7 % | 7,70 m |
+| 5 | 805 | **77,4 %** | [74,0 - 80,2] | 82,2 % | 10,20 m |
+| 10 | 805 | **63,7 %** | [60,2 - 67,1] | 67,3 % | 15,40 m |
+| 20 | 805 | **47,7 %** | [44,3 - 51,1] | 52,2 % | 71,30 m |
+
+**Publicado en la tesis: 90 / 82 / 72 / 60,6. Ninguno reproduce.** Las cifras reales son
+entre 2,6 y 12,9 puntos mas bajas. Ahora si son reproducibles: `blake2b(tid)` sustituyo a
+`hash(tid)`, que dependia del salt del proceso.
+
+**El rango «72-86 %» del Resumen no se sostiene**: el rango real es **47,7 - 87,5 %**.
+Debe sustituirse por la tabla completa con sus intervalos, declarando sigma en cada punto.
+
+> **Lectura honesta:** la degradacion es mas fuerte de lo publicado, y eso es informacion
+> util -- dice que el metodo depende de GPS de calidad razonable (sigma <= 5 m mantiene
+> 77,4 %) y se degrada notablemente con ruido urbano severo. Declararlo es mas defendible
+> que un 60,6 % que no reproduce.
+
+### 1.15 · C5 -- pruebas de humo sobre `/route/build` (el indicador, no lo adyacente)
+
+El indicador aprobado habla de *«sin errores criticos en el manejo de rutas seguras»*, que
+vive en el backend. Las 21 pruebas de `apps/mobile` cubrian cliente movil: evidencia
+adyacente. Estas ocho comprueban **invariantes** del endpoint -- propiedades que deben
+cumplirse siempre, no valores concretos, asi que no caducan cuando cambien las cifras.
+
+```bash
+python services/api/scripts/c5_humo_route_build.py
+```
+
+| Prueba | Propiedad | Resultado |
+|---|---|---|
+| `ruta_factible` | un O-D valido devuelve ruta con >=2 vertices | PASA (217 / 212) |
+| `od_invalido` | un O-D fuera de la red falla limpio, no 5xx | PASA (HTTP 422) |
+| `lambda_cero` | lambda=0 devuelve reduccion exactamente 0 | PASA |
+| `no_negativa` | lambda>0 nunca devuelve reduccion negativa | PASA |
+| `segura_no_mas_corta` | la segura nunca es mas corta que la directa | PASA |
+| `exposicion_menor` | la exposicion de la segura no supera la directa | PASA |
+| `hora_modula` | cambiar la hora cambia la exposicion | PASA |
+| `monotonia_lambda` | mas lambda nunca reduce menos | PASA |
+
+**8/8 aprobadas.** Sumadas a las 21 del cliente movil: **29/29 pruebas automatizadas**,
+cubriendo alertas de zona, recalculo por desvio, reanudacion en segundo plano **y el
+manejo de rutas seguras del backend**.
+
 ### 1.7 · Guarda de integridad para fusionar corridas (OE4)
 
 OE4 se mide en **dos pasadas** contra el mismo Space: λ ∈ {0, 1, 2, 3, 5} primero y
@@ -658,7 +758,7 @@ Nada de lo siguiente se estimó. Se declara qué falta y por qué.
 | **T2** | Dirección <30°, FDE por tipo, ≤100 m | **Pendiente** | `Research/analysis_v2/eval_fair_horizon.py` no tiene split train/test, ni semilla, ni auto-exclusión (4.029 filas, mediana 0,31 m). Hay que rehacerlo **sobre los 806 ids de test** con `exclude_id`. Las cifras hoy publicadas (91,9 % dirección, 642,0 m, 1,44 %) **provienen de ese archivo y no son válidas** hasta rehacerlo. |
 | **T7** | Robustez GPS σ ∈ {0,5,10,20} | **Pendiente** | `destination.py` usa `Random(hash(tid) & 0xFFFF)`: sin `PYTHONHASHSEED=0` el ruido **no es reproducible entre procesos**. Hay que fijarlo en el Dockerfile antes de medir. |
 | **T8** | Contribuciones por factor | **Pendiente** | Deben regenerarse sobre 475 con los 4 factores, distinguiendo **contribución** (cuota de varianza) de **correlación**, y explicando por qué actividad pesa 0,20 con correlación 0,07. |
-| **T11 / C5** | «95 % de funcionalidad operativa» | **MEDIDO — ver §1.9.** El 95 % no tiene denominador y se retira; la cifra real es **21/21 pruebas aprobadas (3/3 suites)**. |
+| **T11 / C5** | «95 % de funcionalidad operativa» | **MEDIDO — §1.9 y §1.15.** El 95 % se retira; la cifra real es **29/29 pruebas** (21 cliente movil + 8 humo sobre `/route/build`). |
 
 | **C4** | Proyección de percepción | **DESBLOQUEADA** | Dependía de T4, que ya está cerrado. La proyección debe rehacerse partiendo de **4,92 % [3,34–6,66] (λ=2,5)**, no de 5,24 / 6,2 / 7,00, y arrastrar el intervalo. |
 
