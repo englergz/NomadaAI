@@ -78,3 +78,11 @@ sha256(artifacts/eval/c5_humo_route_build.csv)     = ca8e07e2639ae8189812e2ef842
   `python services/api/scripts/oe3_alerta_punto_operacion.py --threshold 0.9`
 - `c5_humo_route_build.csv` — 8 invariantes de `/route/build`. Reproducir:
   `python services/api/scripts/c5_humo_route_build.py` (sale con codigo 1 si alguna falla)
+
+
+## Artefactos T2 y OE3 nivel alto (2026-08-10)
+
+```
+sha256(artifacts/eval/t2_destino_direccion.csv)  = f70d8c120439a87857881765ced510c76056b50715a05832bb24216ea87e8869
+sha256(artifacts/eval/oe3_alerta_nivel_alto.csv) = a028246359666416af0f23c153efe25838d4053cb9c2a2e18a6a0c8e5b679a36
+```
