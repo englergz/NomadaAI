@@ -531,8 +531,8 @@ Sobre **4.032 desplazamientos / 1.526.430 puntos / 475 celdas**:
 | **20:00** | **99,1 %** | 480,8 m (57,9 s) | **129,0 m (15,5 s)** |
 | 22:00 | 99,0 % | 523,8 m (63,1 s) | 193,5 m (23,3 s) |
 
-**Cifras para la tesis (hora pico, 20:00):** el sistema emite alerta anticipada en el
-**99,1 %** de los desplazamientos, con una anticipacion **mediana de 129,0 m (15,5 s)**.
+**Cifras para la tesis (hora pico, 20:00):** ver **§1.16**, que corrige estas medianas.
+Las de esta seccion incluyen los avisos de anticipacion cero y subestiman la anticipacion real.
 
 **Reportar la MEDIANA, no la media.** La media (480,8 m) casi cuadruplica a la mediana
 porque la distribucion tiene cola larga: los trayectos que empiezan lejos de cualquier
@@ -657,6 +657,68 @@ python services/api/scripts/c5_humo_route_build.py
 **8/8 aprobadas.** Sumadas a las 21 del cliente movil: **29/29 pruebas automatizadas**,
 cubriendo alertas de zona, recalculo por desvio, reanudacion en segundo plano **y el
 manejo de rutas seguras del backend**.
+
+### 1.16 · OE3 — que fraccion de los avisos PRECEDE a la entrada
+
+> **CORRECCION IMPORTANTE a §1.12 (2026-08-10).** Las medianas de §1.12 (129,0 m a las
+> 20:00) se calcularon **incluyendo los avisos de anticipacion CERO** -- aquellos en que el
+> primer punto del recorrido ya supera el umbral y la persona **ya esta dentro** de la
+> zona. Esos ceros arrastraban la mediana hacia abajo. **La cifra condicionada a que el
+> aviso realmente preceda a la entrada es 756,0 m (91,1 s).** Citar la de §1.12 sin este
+> matiz subestima la anticipacion real por un factor de casi seis.
+
+En `lookahead_alert`, si el primer punto del recorrido ya supera el umbral, `acc = 0`: el
+aviso llega cuando ya no sirve. **Esa fraccion no es 100 % por construccion**, es una
+propiedad medible del motor -- y es el numero que da valor a la alerta.
+
+```bash
+python services/api/scripts/oe3_alerta_punto_operacion.py --threshold 0.7
+```
+
+| Hora | Con alerta | **Anticipados** (el aviso precede) | Mediana (solo anticipados) | Media |
+|---|---|---|---|---|
+| 06:00 | 84,3 % | **63,7 %** | 1.102,7 m (132,9 s) | 1.829,5 m |
+| 12:00 | 98,5 % | **65,9 %** | 826,3 m (99,6 s) | 893,1 m |
+| 18:00 | 99,1 % | **60,3 %** | 762,2 m (91,8 s) | 826,1 m |
+| **20:00** | **99,1 %** | **58,7 %** | **756,0 m (91,1 s)** | 819,7 m |
+| 22:00 | 99,0 % | **63,0 %** | 723,5 m (87,2 s) | 831,3 m |
+
+**El 41,3 % de los avisos a la hora pico llega cuando la persona ya esta dentro de la
+zona.** Es la limitacion mas concreta del motor y hay que declararla: el sistema no puede
+anticipar cuando el recorrido **empieza** en zona de precaucion, cosa frecuente en un
+municipio donde el umbral abarca el 30,1 % del territorio.
+
+> **Es un hallazgo, no un defecto oculto.** Da pie a una recomendacion accionable: avisar
+> tambien al **iniciar** un recorrido dentro de zona de precaucion, con un mensaje distinto
+> («estas en una zona de precaucion») en vez de una alerta de aproximacion que llega tarde.
+
+#### Parrafo para OE3, ya con todas las piezas
+
+> El sistema emite al menos un aviso de precaucion en el **99,1 %** de los recorridos a la
+> hora pico --consecuencia de que el umbral, fijado en el percentil 0,70, abarca el
+> **30,1 %** de las zonas a esa hora--, mientras que el **65,8 %** atraviesa ademas una
+> zona de nivel alto. El **58,7 %** de esos avisos precede a la entrada en la zona, con una
+> anticipacion mediana de **756,0 m (91,1 s)**; el resto corresponde a recorridos que ya
+> comienzan dentro de una zona de precaucion. A las 06:00 la proporcion de recorridos que
+> alcanzan el nivel alto cae al **0 %**, pues a esa hora ninguna celda del municipio lo
+> alcanza.
+
+**El contraste 0 % -> 65,8 % entre madrugada y hora pico es la evidencia empirica de que la
+modulacion horaria funciona sobre la superficie entregada** -- lo que en C3 quedo como
+supuesto de diseno sin respaldo. Merece decirse explicitamente: es un hallazgo que el
+documento hoy no tiene.
+
+> **Nada de `/evaluate/alerts` debe sobrevivir en el texto**, ni siquiera el 88,7 %. Ese
+> endpoint sirve `eval_alerta_anticipada.csv`, generado con `CELL = 250.0` sobre la malla de
+> **425 celdas** y curva x1,79, con `cell_id` del esquema `ix*100000+iy` que **no puede leer
+> la malla entregada**. Conservar el 88,7 % junto a estas cifras seria poner una cifra del
+> prototipo al lado de cifras del producto: el defecto C3 exacto que ya se retiro de las
+> Figuras 6 y 14.
+
+> **Pendiente menor:** las medianas de nivel alto de §1.13 (381,5 m a las 20:00) tambien
+> incluyen los ceros. La cifra condicionada exige repetir la corrida con `--threshold 0.9`;
+> mientras tanto, **citar de §1.13 solo los porcentajes** (0,0 % / 65,8 %), que no estan
+> afectados.
 
 ### 1.7 · Guarda de integridad para fusionar corridas (OE4)
 
