@@ -791,6 +791,59 @@ justo dentro de una.
 > Es la mejor noticia de OE3 y conviene decirla: **cuando el peligro es serio, el aviso
 > llega con casi cinco minutos de margen en el 71,6 % de los casos.**
 
+### 1.19 · T8 / I5 — CONTRIBUCION frente a CORRELACION, sobre las 475
+
+La tesis presenta «contribuciones» de densidad (0,32), periferia (0,36) y policia (0,34)
+junto a una «correlacion con trafico» de 0,07, **como si las cuatro fueran la misma
+magnitud**. No lo son. Y el artefacto que produce esas tres cifras
+(`tumaco_zonas_riesgo_rtm.csv`) tiene **425 celdas y el modelo antiguo de 3 factores**, no
+las 475 entregadas con 4.
+
+```bash
+python services/api/scripts/t8_contribuciones.py
+```
+
+| Factor | Peso | **Contribucion a la varianza** | Correlacion (percentil) | Correlacion (crudo) |
+|---|---|---|---|---|
+| densidad | 0,35 | **0,3120** | 0,3777 | 0,3236 |
+| periferia | 0,30 | **0,3238** | 0,4458 | 0,3621 |
+| **actividad** | 0,20 | **0,1378** | 0,2849 | **0,0648** |
+| resto | 0,15 | **0,2264** | 0,5147 | 0,5147 |
+| **SUMA** | 1,00 | **1,0000** | — | — |
+
+**Son dos preguntas distintas y hay que nombrarlas distinto:**
+
+- **Correlacion** — ¿la celda con mas de este factor tiende a tener mas riesgo? Relacion
+  bivariada; ignora el peso y a los demas factores.
+- **Contribucion** — ¿que fraccion de la **varianza** del indice explica este factor?
+  Descomposicion exacta `Var(I) = suma_i w_i · Cov(f_i, I)`, cuyas cuotas **suman 1**.
+
+#### Por que `actividad` pesa 0,20 y «correlaciona 0,07»
+
+**El 0,07 de la tesis es la correlacion del `n_points` EN CRUDO** (medido: 0,0648). Pero el
+indice **no usa el crudo, usa su percentil**, y ese correlaciona **0,2849**. La diferencia
+es la asimetria brutal de la variable:
+
+```
+n_points: min 0 · mediana 491 · media 3.214 · max 45.800
+asimetria media/mediana = 6,54x · el 1 % superior concentra el 11,9 % de la actividad
+```
+
+Con una cola asi, la correlacion lineal en crudo la dominan unas pocas celdas extremas y no
+describe la relacion tipica. **Percentilar es precisamente lo que corrige eso**, y por eso
+el factor aporta el **13,8 % de la varianza** del indice pese a su «0,07».
+
+> **Para la tesis:** el 0,07 **no debe presentarse junto a las contribuciones**, porque
+> invita a leer que el factor es inutil. Si se cita, debe decirse que es la correlacion del
+> valor crudo y que el modelo usa el percentil, cuya correlacion es 0,28 y cuya contribucion
+> a la varianza es 0,138.
+
+> **LIMITE DECLARADO — el «resto» no es «policia».** El factor policia no esta en los
+> artefactos entregados (exige redescargar OSM). Se despeja algebraicamente del indice, pero
+> ese residuo **absorbe tambien cualquier desajuste de reconstruccion**: 47 de 475 valores
+> caen fuera de [0,1]. Por eso la fila se llama **resto** y no se afirma que sea el factor
+> policia. Su contribucion (0,2264) es un techo, no una medicion del factor.
+
 ### 1.7 · Guarda de integridad para fusionar corridas (OE4)
 
 OE4 se mide en **dos pasadas** contra el mismo Space: λ ∈ {0, 1, 2, 3, 5} primero y
@@ -896,7 +949,7 @@ Nada de lo siguiente se estimó. Se declara qué falta y por qué.
 |---|---|---|---|
 | **T2** | Dirección <30°, FDE por tipo, ≤100 m | **§1.17 — no habia fuga: es un error de ETIQUETA.** Dirección emparejada **90,0 %** [84,0-95,0], coincide con el 91,6 % solo-test | `Research/analysis_v2/eval_fair_horizon.py` no tiene split train/test, ni semilla, ni auto-exclusión (4.029 filas, mediana 0,31 m). Hay que rehacerlo **sobre los 806 ids de test** con `exclude_id`. Las cifras hoy publicadas (91,9 % dirección, 642,0 m, 1,44 %) **provienen de ese archivo y no son válidas** hasta rehacerlo. |
 | **T7** | Robustez GPS σ ∈ {0,5,10,20} | **Pendiente** | `destination.py` usa `Random(hash(tid) & 0xFFFF)`: sin `PYTHONHASHSEED=0` el ruido **no es reproducible entre procesos**. Hay que fijarlo en el Dockerfile antes de medir. |
-| **T8** | Contribuciones por factor | **Pendiente** | Deben regenerarse sobre 475 con los 4 factores, distinguiendo **contribución** (cuota de varianza) de **correlación**, y explicando por qué actividad pesa 0,20 con correlación 0,07. |
+| **T8/I5** | «Contribuciones» 0,32/0,36/0,34 y «correlación» 0,07 mezcladas | **§1.19.** Sobre las 475 con 4 factores: contribuciones **0,312 / 0,324 / 0,138 / 0,226** (suman 1). El **0,07 es la correlación del crudo**; el percentil que usa el modelo correlaciona **0,285** | Deben regenerarse sobre 475 con los 4 factores, distinguiendo **contribución** (cuota de varianza) de **correlación**, y explicando por qué actividad pesa 0,20 con correlación 0,07. |
 | **T11 / C5** | «95 % de funcionalidad operativa» | **MEDIDO — §1.9 y §1.15.** El 95 % se retira; la cifra real es **29/29 pruebas** (21 cliente movil + 8 humo sobre `/route/build`). |
 
 | **C4** | Proyección de percepción | **DESBLOQUEADA** | Dependía de T4, que ya está cerrado. La proyección debe rehacerse partiendo de **4,92 % [3,34–6,66] (λ=2,5)**, no de 5,24 / 6,2 / 7,00, y arrastrar el intervalo. |

@@ -1,0 +1,5 @@
+factor,peso,contribucion_varianza,correlacion_pct_con_indice,correlacion_crudo_con_indice
+densidad,0.35,0.312,0.3777,0.3236
+periferia,0.3,0.3238,0.4458,0.3621
+actividad,0.2,0.1378,0.2849,0.0648
+resto,0.15,0.2264,0.5147,0.5147
