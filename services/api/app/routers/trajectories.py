@@ -13,6 +13,56 @@ from app.state import get_predictor
 # Semilla del muestreo de evaluación: fija para que las cifras sean reproducibles.
 _EVAL_SEED = 7
 
+
+def _hav_m(a, b) -> float:
+    """Distancia en metros entre [lon, lat]."""
+    import math
+    R = 6371000.0
+    p1, p2 = math.radians(a[1]), math.radians(b[1])
+    h = (math.sin((p2 - p1) / 2) ** 2
+         + math.cos(p1) * math.cos(p2) * math.sin(math.radians(b[0] - a[0]) / 2) ** 2)
+    return 2 * R * math.asin(math.sqrt(h))
+
+
+def _bearing_deg(a, b) -> float:
+    import math
+    p1, p2 = math.radians(a[1]), math.radians(b[1])
+    dl = math.radians(b[0] - a[0])
+    y = math.sin(dl) * math.cos(p2)
+    x = math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl)
+    return (math.degrees(math.atan2(y, x)) + 360) % 360
+
+
+def _error_angular(d: dict) -> float | None:
+    """Error de rumbo con el HORIZONTE EMPAREJADO (misma definición que
+    Research/analysis_v2/eval_fair_horizon.py:69).
+
+    Compara, desde el último punto observado, el rumbo hacia el extremo PREDICHO contra
+    el rumbo hacia el punto REAL a la MISMA longitud de arco. Emparejar el arco es
+    imprescindible: la predicción está truncada al horizonte (~195 m) mientras que la
+    continuación real es mucho más larga (razón de arcos mediana 0,21), así que comparar
+    los extremos mediría rumbos hacia puntos a distancias distintas — no el acierto de
+    rumbo. Ese error hundía la cifra de 90 % a 65 %.
+    """
+    pre, tru, cand = d.get("prefix"), d.get("truth"), d.get("candidates")
+    if not pre or not tru or not cand:
+        return None
+    coords = (cand[0] or {}).get("coordinates") or []
+    if len(coords) < 2 or len(tru) < 2:
+        return None
+    aqui = pre[-1]
+    arco_pred = sum(_hav_m(coords[i - 1], coords[i]) for i in range(1, len(coords)))
+    acc = 0.0
+    ref = tru[-1]
+    for k in range(1, len(tru)):
+        acc += _hav_m(tru[k - 1], tru[k])
+        if acc >= arco_pred:
+            ref = tru[k]
+            break
+    dif = abs(_bearing_deg(aqui, coords[-1]) - _bearing_deg(aqui, ref)) % 360
+    return min(dif, 360 - dif)
+
+
 router = APIRouter(prefix="/trajectories", tags=["trajectories"])
 
 
@@ -62,6 +112,8 @@ def evaluate(
     base_fdes: list[float] = []
     markov_fdes: list[float] = []
     by_type: dict[str, list[float]] = {}
+    angs: list[float] = []
+    angs_by_type: dict[str, list[float]] = {}
     for tid in test_ids:
         d = predictor.get_demo(tid, noise_m=noise_m)
         if not d or d.get("fde_m") is None:
@@ -73,6 +125,10 @@ def evaluate(
             base_fdes.append(float(d["baseline_fde_m"]))
         if d.get("markov_fde_m") is not None:
             markov_fdes.append(float(d["markov_fde_m"]))
+        _a = _error_angular(d)
+        if _a is not None:
+            angs.append(_a)
+            angs_by_type.setdefault(d["type"], []).append(_a)
 
     def summarize(vals: list[float]) -> dict:
         if not vals:
@@ -104,10 +160,20 @@ def evaluate(
         return [round(out[int(0.025 * iters)], 1), round(out[int(0.975 * iters)], 1)]
 
     _acc50 = lambda v: 100 * sum(x <= 50 for x in v) / len(v)  # noqa: E731
+    _acc30 = lambda v: 100 * sum(x <= 30 for x in v) / len(v)   # noqa: E731
     ci95 = {
         "acc_50m_pct": _boot_ci(fdes, _acc50),
         "fde_median_m": _boot_ci(fdes, statistics.median),
+        "acc_ang30_pct": _boot_ci(angs, _acc30),
+        "ang_med_deg": _boot_ci(angs, statistics.median),
     }
+
+    def _ang_stats(v: list[float]) -> dict:
+        if not v:
+            return {"n": 0}
+        return {"n": len(v),
+                "ang_med_deg": round(statistics.median(v), 2),
+                "acc_ang30_pct": round(_acc30(v), 1)}
 
     def _mejora(ref: dict) -> float | None:
         if overall.get("acc_50m_pct") is not None and ref.get("acc_50m_pct") is not None:
@@ -125,6 +191,8 @@ def evaluate(
         "mejora_vs_baseline_pp": _mejora(baseline),
         "mejora_vs_markov_pp": _mejora(markov),
         "by_type": {t: summarize(v) for t, v in sorted(by_type.items())},
+        "angular": _ang_stats(angs),
+        "angular_by_type": {t: _ang_stats(v) for t, v in sorted(angs_by_type.items())},
         "note": "FDE = error final vs recorrido real al horizonte de continuación (no visto). "
                 "baseline = línea recta; markov = transición más probable aprendida (TRAIN).",
     }
