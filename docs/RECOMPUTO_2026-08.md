@@ -445,7 +445,7 @@ barrido construido sobre ese endpoint —incluido el OE4 canónico— explora so
 No invalida las medias (el pool no está sesgado por exposición), pero **sí impide afirmar
 máximos o techos**. Para eso hace falta un endpoint de muestreo real sobre los 4.032.
 
-### 1.11 · C8 / OE3 — la alerta, remedida sobre la MALLA ENTREGADA
+### 1.11 · (SUPERADA por 1.12 — no citar) alerta con umbrales en escala cruda
 
 Las cifras publicadas (88,7 % · 94,0 % · 280,3 m) salen de
 `Research/analysis_v2/eval_anticipatory_alert.py`, que lee la malla **de 425 celdas a
@@ -498,6 +498,59 @@ entregada, pese a la compresión.
 > recorridos observados**, no un modelo aprendido: no hay nada que pueda filtrarse del
 > corpus. Por eso usa los 4.032 desplazamientos y no las 806 de prueba. Debe decirse
 > explícitamente en la tesis para que la pregunta no llegue en sustentación.
+
+### 1.12 · C8 / OE3 — la alerta en el PUNTO DE OPERACION REAL
+
+> **RETRACTACION (2026-08-10) de la seccion 1.11.** El barrido anterior buscaba la
+> configuracion (h=22, thr=70, look=150) hasta que reaparecia el 88,7 % publicado.
+> **Eso es ajustar a una cifra heredada** -- el vicio exacto que origino esta auditoria.
+> El punto de operacion no es un parametro libre: es lo que hace la app.
+> Los numeros de 1.11 NO deben citarse.
+
+`app/data/risk.py:167` define el punto de operacion real, y el barrido anterior lo
+incumplia en **tres** ejes a la vez:
+
+| | Barrido de 1.11 (mal) | **Sistema desplegado** |
+|---|---|---|
+| Umbral | 40/50/60/70 sobre `risk` **crudo** (max 81,18) | **`threshold_norm = 0.7` sobre `risk_norm`** (percentil 0-1) |
+| Horizonte | `lookahead` 150/300/500 m | **sin horizonte** -- recorre la continuacion entera |
+| Hora | fija | **hora estimada de LLEGADA** a cada punto (`speed_mps = 8.3`) |
+
+```bash
+/tmp/.oe3venv/bin/python services/api/scripts/oe3_alerta_punto_operacion.py
+```
+
+Sobre **4.032 desplazamientos / 1.526.430 puntos / 475 celdas**:
+
+| Hora de inicio | % con alerta | Anticipacion media | Anticipacion mediana |
+|---|---|---|---|
+| 06:00 | 84,3 % | 1.166,2 m (140,5 s) | 196,4 m (23,7 s) |
+| 12:00 | 98,5 % | 588,8 m (70,9 s) | 280,8 m (33,8 s) |
+| 18:00 | 99,1 % | 497,9 m (60,0 s) | 162,1 m (19,5 s) |
+| **20:00** | **99,1 %** | 480,8 m (57,9 s) | **129,0 m (15,5 s)** |
+| 22:00 | 99,0 % | 523,8 m (63,1 s) | 193,5 m (23,3 s) |
+
+**Cifras para la tesis (hora pico, 20:00):** el sistema emite alerta anticipada en el
+**99,1 %** de los desplazamientos, con una anticipacion **mediana de 129,0 m (15,5 s)**.
+
+**Reportar la MEDIANA, no la media.** La media (480,8 m) casi cuadruplica a la mediana
+porque la distribucion tiene cola larga: los trayectos que empiezan lejos de cualquier
+zona alta avisan a kilometros de distancia y arrastran el promedio. La mediana describe
+el caso tipico.
+
+**Por que el 84,3 % de las 06:00 es mas bajo:** a esa hora el factor temporal esta en su
+valle (`tf = 0,71`), asi que menos celdas superan `risk_norm >= 0,7`. **La modulacion
+horaria discrimina de verdad** sobre la malla entregada -- respaldo empirico para lo que
+en T3 quedo como supuesto de diseno.
+
+> **Sin particion train/test, y es correcto.** La alerta es una **regla evaluada sobre
+> recorridos observados**, no un modelo aprendido: no hay nada que pueda filtrarse del
+> corpus. Por eso usa los 4.032 desplazamientos y no las 806 de prueba. Debe decirse
+> explicitamente en la tesis para que la pregunta no llegue en sustentacion.
+
+> **Nota de honestidad:** la mediana a las 20:00 coincide en 129,0 m con una cifra del
+> prototipo viejo. **Es coincidencia y no se usa como validacion**: sale de una medicion
+> hecha sin mirar el numero anterior, con umbral, horizonte y reloj distintos.
 
 ### 1.7 · Guarda de integridad para fusionar corridas (OE4)
 
