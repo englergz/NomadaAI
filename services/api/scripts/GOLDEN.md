@@ -57,7 +57,7 @@ python services/api/scripts/huella_backend.py --check services/api/scripts/huell
 ## OE3 — alerta anticipada en el punto de operacion (2026-08-10)
 
 ```
-sha256(artifacts/eval/oe3_alerta_punto_operacion.csv) = 12249fcbb739cdf4219204a74e1b1edff2ca4bb1292e9f8ff6c8775b5374a291
+sha256(artifacts/eval/oe3_alerta_punto_operacion.csv) = 51d538181ce85e591731ca8d898f08687702a4310fec994b93d4e06cdd1f2388
 ```
 
 Medido con `threshold_norm=0.7`, `speed_mps=8.3`, sin horizonte y con reloj de hora de
