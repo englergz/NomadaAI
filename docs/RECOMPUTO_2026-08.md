@@ -48,7 +48,7 @@ Backend medido: `https://englergz-nomadaai.hf.space` · malla servida de Tumaco:
 | **T5** | Anticipación media global | **276,7 m** (39 escenarios con alerta) | ver §1.5 | `sweep_alerta.csv` · 45 filas |
 | **T5** | Anticipación en segundos **24,6 s** | **24,9 s a 40 km/h** — es una **media**, no mediana | idem | idem |
 | **T5** | Anticipación **21,8 s** | **No existe** en ninguna combinación | idem | idem |
-| **T7** | Robustez GPS 90 / 82 / 72 / 60,6 | **87,5 / 77,4 / 63,7 / 47,7 %** con IC95 — **ninguna reproduce**; el rango «72-86 %» del Resumen tampoco | ver §1.14 | endpoint vivo, tras `blake2b` |
+| **T7** | Robustez GPS 90 / 82 / 72 / 60,6 | **87,5 / 77,4 / 63,7 / 47,7 %** con IC95 — **ninguna reproduce** (tesis: 90,5 / 85,5 / 72,5 / 55,0); el rango «72-86 %» del Resumen tampoco | ver §1.14 | endpoint vivo, tras `blake2b` |
 | **T9** | ρ de sensibilidad ≈ **0,99** | **0,9898** (mínimo 0,9481) sobre la malla servida de 475 | `docs/VALIDACION_RIESGO.md` §6 | reconstrucción validada a corr **0,9935** |
 | **T10** | Niveles 332 bajo / 95 medio / 48 alto | **Tautológicos — confirmado** | ver §1.4 | `risk.py:38-45` |
 | **T13** | Arma de fuego 85,8 % · sicariato 56,6 % · rural/urbana 55,2/44,8 | **✅ REPRODUCEN EXACTO** contra la API `m8fd-ahd9`. Total 4.045 → **4.050** (conjunto vivo, congelado hoy) | ver §3.1 | snapshot `0f64efd4…2d75` · 4.034 filas |
@@ -607,15 +607,21 @@ oculto.
 curl -s "$API/trajectories/evaluate?n=806&noise_m=SIGMA"
 ```
 
-| sigma (m) | n | acc@50 m | IC95 | acc@100 m | FDE mediana |
-|---|---|---|---|---|---|
-| 0 | 805 | **87,5 %** | [85,2 - 89,8] | 92,7 % | 7,70 m |
-| 5 | 805 | **77,4 %** | [74,0 - 80,2] | 82,2 % | 10,20 m |
-| 10 | 805 | **63,7 %** | [60,2 - 67,1] | 67,3 % | 15,40 m |
-| 20 | 805 | **47,7 %** | [44,3 - 51,1] | 52,2 % | 71,30 m |
+| sigma (m) | n | acc@50 m | IC95 | **Publicado en la TESIS** | delta | acc@100 m | FDE mediana |
+|---|---|---|---|---|---|---|---|
+| 0 | 805 | **87,5 %** | [85,2 - 89,8] | 90,5 % | -3,0 pp | 92,7 % | 7,70 m |
+| 5 | 805 | **77,4 %** | [74,0 - 80,2] | 85,5 % | **-8,1 pp** | 82,2 % | 10,20 m |
+| 10 | 805 | **63,7 %** | [60,2 - 67,1] | 72,5 % | **-8,8 pp** | 67,3 % | 15,40 m |
+| 20 | 805 | **47,7 %** | [44,3 - 51,1] | 55,0 % | **-7,3 pp** | 52,2 % | 71,30 m |
 
-**Publicado en la tesis: 90 / 82 / 72 / 60,6. Ninguno reproduce.** Las cifras reales son
-entre 2,6 y 12,9 puntos mas bajas. Ahora si son reproducibles: `blake2b(tid)` sustituyo a
+> **CORRECCION DE ETIQUETA (2026-08-10).** Una version previa comparaba contra
+> «90 / 82 / 72 / 60,6». **Esos NO son los valores de la tesis**: el 82 y el 60,6 salen de
+> mediciones intermedias de julio que quedaron en el git log. Los publicados son
+> **90,5 / 85,5 / 72,5 / 55,0**, que es contra lo que compara la tabla de arriba. La
+> conclusion no cambia -- las nuevas estan por debajo de ambos juegos -- pero los deltas
+> si, y son los de esta tabla.
+
+**Ninguna cifra publicada reproduce.** Las reales estan entre 3,0 y 8,8 puntos por debajo. Ahora si son reproducibles: `blake2b(tid)` sustituyo a
 `hash(tid)`, que dependia del salt del proceso.
 
 **El rango «72-86 %» del Resumen no se sostiene**: el rango real es **47,7 - 87,5 %**.

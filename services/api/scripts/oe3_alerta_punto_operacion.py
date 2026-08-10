@@ -93,7 +93,7 @@ def main(a) -> None:
     THR = float(a.threshold)
     for h0 in [int(h) for h in a.start_hours.split(",")]:
         start_s = h0 * 3600.0
-        total = con_alerta = 0
+        total = con_alerta = anticipados = 0
         antic: list[float] = []
         for _tid, g in P.groupby("id", sort=False):
             total += 1
@@ -105,13 +105,21 @@ def main(a) -> None:
                 arrival_hour = int((start_s + acc / SPEED_MPS) // 3600) % 24
                 if rn_at(xs[k], ys[k], arrival_hour) >= THR:
                     con_alerta += 1
-                    antic.append(acc)      # distancia a la que se avisa del peligro
+                    # ¿el aviso PRECEDE a la entrada, o llega cuando ya se está dentro?
+                    # Si el primer punto del recorrido ya supera el umbral, acc = 0 y la
+                    # anticipación es nula: el aviso no sirve de nada. Esa fracción es una
+                    # propiedad real del motor, no es 100 % por construcción.
+                    if acc > 0:
+                        anticipados += 1
+                        antic.append(acc)
                     break
         antic_s = sorted(antic)
         rows.append({
             "threshold_norm": THR,
             "hora_inicio": h0, "n": total, "con_alerta": con_alerta,
             "pct_con_alerta": round(100 * con_alerta / total, 1) if total else 0,
+            "anticipados": anticipados,
+            "pct_anticipados": round(100 * anticipados / con_alerta, 1) if con_alerta else 0,
             "antic_media_m": round(sum(antic) / len(antic), 1) if antic else 0,
             "antic_mediana_m": round(antic_s[len(antic_s) // 2], 1) if antic else 0,
             "antic_media_s": round((sum(antic) / len(antic)) / SPEED_MPS, 1) if antic else 0,
@@ -119,6 +127,7 @@ def main(a) -> None:
         })
         r = rows[-1]
         print(f"  inicio {h0:02d}:00 → con alerta {r['pct_con_alerta']:5.1f}% · "
+              f"anticipados {r['pct_anticipados']:5.1f}% · "
               f"media {r['antic_media_m']:7.1f} m ({r['antic_media_s']:5.1f} s) · "
               f"mediana {r['antic_mediana_m']:7.1f} m ({r['antic_mediana_s']:5.1f} s)")
 
