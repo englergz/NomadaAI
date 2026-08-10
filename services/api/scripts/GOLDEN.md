@@ -24,7 +24,7 @@ contra estos artefactos versionados, no contra una re-descarga.
 ## Artefactos de evaluación OE4 (recómputo agosto 2026)
 
 ```
-sha256(artifacts/eval/oe4_lambda_canonico.csv) = 6020af32172021a23f7194dc631bb56a8b09463e624384065eead0b2d892d4df
+sha256(artifacts/eval/oe4_lambda_canonico.csv) = 09e9876e0015a208934c989dfc6a538c8580bbd9936a5aab4462748d39ef9884
 sha256(artifacts/eval/oe4_od_sweep.csv)        = 4f714482ea4b0bf733bf3e21444371df3a7460b3e7441e9733e09dd2844b227c
 ```
 
@@ -34,7 +34,11 @@ sha256(artifacts/eval/oe4_od_sweep.csv)        = 4f714482ea4b0bf733bf3e21444371d
 - **`oe4_od_sweep.csv`** — barrido original (λ=5,0 fijo, 200 filas). **Se conserva sin
   tocar** como referencia histórica: es el que respalda el 7,00 % publicado.
 
-Se midió en **dos pasadas** (λ=2,5 aparte) y se fusionó tras verificar que la superficie
+Corrida definitiva del **2026-08-10**, posterior al arreglo de reproducibilidad
+(`PYTHONHASHSEED=0` + `sorted()`): **1.200/1.200 rutas, cero fallos**, en una sola pasada
+con reintentos. Sustituye a la corrida del 09-08, que se hizo sobre pares no reproducibles.
+
+La versión anterior se midió en **dos pasadas** (λ=2,5 aparte) y se fusionó tras verificar que la superficie
 del backend no cambió entre ellas:
 
 ```

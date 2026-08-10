@@ -24,6 +24,8 @@ import csv
 import json
 import random
 import sys
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from statistics import fmean, median
@@ -87,14 +89,31 @@ def main() -> None:
     print(f"Base {BASE} · pares O-D válidos: {len(pairs)} · horas {HOURS} · semilla {SEED}")
 
     rows: list[dict] = []
+    fallos = {"sin_ruta": 0, "http": 0, "red": 0}
     for lam in LAMBDAS:
         for tid, o, d in pairs:
             for h in HOURS:
-                try:
-                    j = _post("/route/build", {
-                        "origin": o, "dest": d, "type": None, "hour": h, "risk_weight": lam,
-                    })
-                except Exception:  # noqa: BLE001 — O-D sin ruta factible
+                # NO tragarse los fallos en silencio: un `except: continue` a secas hizo
+                # que una corrida entera devolviera 0 rutas para λ=2.5 sin avisar.
+                # Se distingue "sin ruta factible" (legítimo) de fallo de transporte
+                # (5xx/timeout), y este último se reintenta antes de rendirse.
+                j = None
+                for intento in range(4):
+                    try:
+                        j = _post("/route/build", {
+                            "origin": o, "dest": d, "type": None, "hour": h, "risk_weight": lam,
+                        })
+                        break
+                    except urllib.error.HTTPError as e:
+                        if e.code in (400, 404, 422):      # O-D sin ruta factible
+                            fallos["sin_ruta"] += 1
+                            break
+                        fallos["http"] += 1
+                        time.sleep(2 * (intento + 1))
+                    except Exception:  # noqa: BLE001 — timeout / red
+                        fallos["red"] += 1
+                        time.sleep(2 * (intento + 1))
+                if j is None:
                     continue
                 comp = j.get("comparison") or {}
                 if comp.get("exposure_reduction_pct") is None:
@@ -105,8 +124,17 @@ def main() -> None:
                     "safe_dist_m": comp.get("safe_distance_m"),
                     "direct_dist_m": comp.get("direct_distance_m"),
                 })
-        print(f"  λ={lam}: {sum(1 for r in rows if r['lambda'] == lam)} rutas")
+        got = sum(1 for r in rows if r["lambda"] == lam)
+        esperado = len(pairs) * len(HOURS)
+        marca = "OK" if got == esperado else "*** INCOMPLETO ***"
+        print(f"  λ={lam}: {got}/{esperado} rutas  {marca}")
 
+    print(f"\nFallos: sin ruta factible={fallos['sin_ruta']} · HTTP={fallos['http']} · red={fallos['red']}")
+    esperado_tot = len(pairs) * len(HOURS) * len(LAMBDAS)
+    if len(rows) < esperado_tot:
+        print(f"\n*** CORRIDA INVÁLIDA: {len(rows)}/{esperado_tot} filas. NO PUBLICAR. ***")
+        print("*** El artefacto NO se sobrescribe. Repetir cuando el backend responda. ***")
+        return
     if not rows:
         print("Sin resultados (¿API caída?)."); return
 
