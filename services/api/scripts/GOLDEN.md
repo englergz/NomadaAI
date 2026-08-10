@@ -24,7 +24,7 @@ contra estos artefactos versionados, no contra una re-descarga.
 ## Artefactos de evaluación OE4 (recómputo agosto 2026)
 
 ```
-sha256(artifacts/eval/oe4_lambda_canonico.csv) = 09e9876e0015a208934c989dfc6a538c8580bbd9936a5aab4462748d39ef9884
+sha256(artifacts/eval/oe4_lambda_canonico.csv) = 586432d572a289cba5285ee01bba9eaada4672e50db6d98b507579bc72e5522c
 sha256(artifacts/eval/oe4_od_sweep.csv)        = 4f714482ea4b0bf733bf3e21444371df3a7460b3e7441e9733e09dd2844b227c
 ```
 

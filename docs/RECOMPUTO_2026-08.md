@@ -42,9 +42,9 @@ Backend medido: `https://englergz-nomadaai.hf.space` · malla servida de Tumaco:
 | **T3** | Amplitud de la curva horaria **×1,79** | **×1,170 efectiva** · ×1,408 servida · ×2,381 en `HOUR_REL` crudo (**piso nocturno aplicado dos veces — bug**) | ver §1.2 | `docs/artefactos_curva_horaria_2026-08.json` · `662a4cd1f05f0feff…` |
 | **T3** | Hora pico | **19:00** (valle 03:00) | idem | idem |
 | **T6b** | «Inerte en Tumaco, discriminante en Cali» | **PARCIAL — sin conclusión.** Tumaco: ρ = 0,9623 (**inerte, confirma esa mitad**) pero sobre malla de 425 y modelo antiguo. **Cali no medible desde lo publicado.** | ver §1.3 | `tumaco_zonas_riesgo_rtm.csv` · 425 celdas |
-| **T4** | OE4 «reducción de exposición» (5,24 / 6,2 / 7,00 en circulación) | **4,43 % · IC95 [3,02–6,10] a λ=2,5** (default real). Tope λ=5,0: 5,61 % [3,96–7,50] | `python3 services/api/scripts/oe4_lambda_canonico.py` | `oe4_lambda_canonico.csv` · `09e9876e0015a208…` |
+| **T4** | OE4 «reducción de exposición» (5,24 / 6,2 / 7,00 en circulación) | **4,84 % · IC95 [3,62–6,22] a λ=2,5** (default real, **verificado de forma cruzada**). Tope λ=5,0: 5,88 % [4,42–7,39] | `python3 services/api/scripts/oe4_lambda_canonico.py` | `oe4_lambda_canonico.csv` · `586432d572a289cb…` |
 | **T4** | IC95 de OE4 (±0,5 pp) | **2,1× más ancho** con bootstrap por clúster: [5,81–8,27] sobre el mismo artefacto | idem | `oe4_od_sweep.csv` · `4f714482ea4b0bf7…` |
-| **T4** | *(no existía)* sobrecosto de distancia | **1,6 % a λ=2,5** · 3,6 % a λ=5,0 | idem | idem |
+| **T4** | *(no existía)* sobrecosto de distancia | **1,7 % a λ=2,5** · 3,7 % a λ=5,0 | idem | idem |
 | **T5** | Anticipación media global | **276,7 m** (39 escenarios con alerta) | ver §1.5 | `sweep_alerta.csv` · 45 filas |
 | **T5** | Anticipación en segundos **24,6 s** | **24,9 s a 40 km/h** — es una **media**, no mediana | idem | idem |
 | **T5** | Anticipación **21,8 s** | **No existe** en ninguna combinación | idem | idem |
@@ -293,7 +293,7 @@ la corrección de T4: **n efectivo = 40, no 200.**
 ```bash
 python3 services/api/scripts/oe4_lambda_canonico.py
 # artefacto: services/api/artifacts/eval/oe4_lambda_canonico.csv
-# sha256 = 09e9876e0015a208934c989dfc6a538c8580bbd9936a5aab4462748d39ef9884
+# sha256 = 586432d572a289cba5285ee01bba9eaada4672e50db6d98b507579bc72e5522c
 ```
 
 1.200 filas = **40 pares O-D × 5 horas × 6 valores de λ**, pares fijados con semilla 7.
@@ -302,13 +302,24 @@ python3 services/api/scripts/oe4_lambda_canonico.py
 | λ | Qué es | Reducción media | **IC95 (clúster, n_eff=40)** | Mediana | Mejoran | Sobrecosto dist. |
 |---|---|---|---|---|---|---|
 | 0,0 | sin ponderación — **ancla** | 0,00 % | [0,00 · 0,00] | 0,00 | 0,0 % | 0,0 % |
-| 1,0 | | 3,10 % | [1,90 · 4,60] | 0,70 | 95,0 % | 0,4 % |
-| 2,0 | | 3,91 % | [2,62 · 5,47] | 0,90 | 96,5 % | 1,0 % |
-| **2,5** | **default real del producto** | **4,43 %** | **[3,02 · 6,10]** | 1,30 | 97,5 % | 1,6 % |
-| 3,0 | | 4,69 % | [3,29 · 6,34] | 2,00 | 97,5 % | 1,9 % |
-| 5,0 | tope de la barra | 5,61 % | [3,96 · 7,50] | 3,55 | 97,5 % | 3,6 % |
+| 1,0 | | 3,28 % | [2,22 · 4,50] | 0,90 | 99,0 % | 0,5 % |
+| 2,0 | | 4,50 % | [3,29 · 5,93] | 2,90 | 100,0 % | 1,4 % |
+| **2,5** | **default real del producto** | **4,84 %** | **[3,62 · 6,22]** | 3,45 | 100,0 % | 1,7 % |
+| 3,0 | | 4,91 % | [3,70 · 6,26] | 3,70 | 100,0 % | 1,8 % |
+| 5,0 | tope de la barra | 5,88 % | [4,42 · 7,39] | 5,70 | 100,0 % | 3,7 % |
 
-**Cifra titular de OE4 para la tesis: 4,43 % [3,02 – 6,10], λ = 2,5.** Es lo que recibe el
+> **VERIFICACION CRUZADA INDEPENDIENTE (2026-08-10).** La evaluacion critica corrio su
+> propia implementacion, sin reusar este script, y obtuvo a lambda=2,5: **media 4,84 %,
+> mediana 3,45, 100,0 % mejoran**, IC95 [3,55 - 6,13]. **Coincide al segundo decimal.**
+> La diferencia de centesimas en el IC es el RNG del bootstrap. **OE4 queda cerrado.**
+>
+> Una discrepancia previa (4,43 % frente a 4,84 %) se resolvio: este script pedia
+> 100 viajes y tomaba 40 con muestreo sembrado -- determinista, pero **otra muestra**
+> (solo 17 de 40 pares en comun con los 40 primeros del endpoint). Se adopto la
+> definicion mas simple: **los N primeros que devuelve el endpoint, sin submuestreo**,
+> que es la que reproduce cualquiera sin leer el script.
+
+**Cifra titular de OE4 para la tesis: 4,84 % [3,62 – 6,22], λ = 2,5.** Es lo que recibe el
 usuario de fábrica: ambos clientes arrancan la barra de protección al 50 % y
 `lambdaForLevel(pct) = pct/20` (`packages/shared/src/protection.ts`), verificado en
 `apps/web/src/App.tsx:217` y `apps/mobile/src/app/map.tsx:371`. **λ = 5,0 es el tope**
@@ -338,7 +349,7 @@ por fila ocultaba.
 **Material nuevo que la tesis no tiene:** el **sobrecosto de distancia** (0,3 % → 3,0 %
 según λ) es el contrapeso honesto de la reducción de exposición, y responde por adelantado
 a la pregunta obvia de sustentación: *«¿cuánto más largo es el camino seguro?»*.
-A λ=2,5 la respuesta es **1,6 % más de distancia a cambio de 4,43 % menos de exposición.**
+A λ=2,5 la respuesta es **1,7 % más de distancia a cambio de 4,84 % menos de exposición.**
 
 ### 1.9 · T11 / C5 — funcionalidad operativa, con denominador
 
