@@ -10,6 +10,9 @@ from app.core.config import get_settings
 from app.ml.destination import DestinationPredictor
 from app.state import get_predictor
 
+# Semilla del muestreo de evaluación: fija para que las cifras sean reproducibles.
+_EVAL_SEED = 7
+
 router = APIRouter(prefix="/trajectories", tags=["trajectories"])
 
 
@@ -44,7 +47,17 @@ def evaluate(
     if ckey in _eval_cache:
         return _eval_cache[ckey]
 
-    test_ids = sorted(predictor.test_ids)[:n]
+    # MUESTREO ALEATORIO CON SEMILLA FIJA.
+    # Antes: `sorted(test_ids)[:n]` — truncamiento ALFABÉTICO, no muestreo. Como los
+    # ids son bus*/car*/mot*/tru*, los primeros N nunca alcanzaban las motocicletas:
+    # con n=200 devolvía 45 buses y 155 carros, CERO motos, siendo que ~69 % del test
+    # son motos (el vehículo característico de Tumaco). Sesgaba toda la evaluación.
+    import random as _random
+    _all = sorted(predictor.test_ids)          # orden estable para reproducibilidad
+    if n >= len(_all):
+        test_ids = _all
+    else:
+        test_ids = _random.Random(_EVAL_SEED).sample(_all, n)
     fdes: list[float] = []
     base_fdes: list[float] = []
     markov_fdes: list[float] = []
@@ -116,6 +129,9 @@ def evaluate(
                 "baseline = línea recta; markov = transición más probable aprendida (TRAIN).",
     }
     result["noise_m"] = noise_m
+    result["seed"] = _EVAL_SEED
+    result["n_solicitado"] = n
+    result["n_test_total"] = len(predictor.test_ids)
     _eval_cache[ckey] = result
     return result
 
