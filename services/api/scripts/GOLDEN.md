@@ -52,3 +52,15 @@ Verificación:
 ```bash
 python services/api/scripts/huella_backend.py --check services/api/scripts/huella_backend.json
 ```
+
+
+## OE3 — alerta anticipada en el punto de operacion (2026-08-10)
+
+```
+sha256(artifacts/eval/oe3_alerta_punto_operacion.csv) = 12249fcbb739cdf4219204a74e1b1edff2ca4bb1292e9f8ff6c8775b5374a291
+```
+
+Medido con `threshold_norm=0.7`, `speed_mps=8.3`, sin horizonte y con reloj de hora de
+llegada -- los parametros reales de `app/data/risk.py::lookahead_alert`. Sobre las 4.032
+trayectorias del corpus y la malla entregada de 475 celdas.
+Reproducir: `python services/api/scripts/oe3_alerta_punto_operacion.py`
