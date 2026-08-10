@@ -322,6 +322,37 @@ según λ) es el contrapeso honesto de la reducción de exposición, y responde 
 a la pregunta obvia de sustentación: *«¿cuánto más largo es el camino seguro?»*.
 A λ=2,5 la respuesta es **1,5 % más de distancia a cambio de 4,92 % menos de exposición.**
 
+### 1.9 · T11 / C5 — funcionalidad operativa, con denominador
+
+```bash
+cd apps/mobile && npm test
+```
+
+```
+PASS src/__tests__/desvio.test.ts
+PASS src/__tests__/reanudacion.test.ts
+PASS src/__tests__/alerts.test.ts
+Test Suites: 3 passed, 3 total
+Tests:       21 passed, 21 total
+```
+
+| Métrica | Valor |
+|---|---|
+| Pruebas aprobadas / ejecutadas | **21 / 21 (100 %)** |
+| Suites aprobadas / ejecutadas | **3 / 3** |
+| Fecha de ejecución | 2026-08-09 |
+
+**Qué cubre realmente** (esto es el alcance que debe declararse, no «la app»):
+alertas de zona de riesgo, recálculo por desvío de ruta y reanudación del viaje en segundo
+plano.
+
+> **El «95 % de funcionalidad operativa» debe retirarse.** No tiene denominador ni
+> instrumento: no se sabe sobre cuántas funciones se calculó ni cómo se evaluó cada una.
+> Lo sustituible por una cifra defendible es **21/21 pruebas automatizadas sobre tres
+> módulos críticos**, declarando **explícitamente que es cobertura de esos tres módulos,
+> no de la aplicación completa**. Una cifra pequeña y verdadera resiste la sustentación;
+> una grande sin denominador, no.
+
 ### 1.7 · Guarda de integridad para fusionar corridas (OE4)
 
 OE4 se mide en **dos pasadas** contra el mismo Space: λ ∈ {0, 1, 2, 3, 5} primero y
@@ -374,7 +405,7 @@ Nada de lo siguiente se estimó. Se declara qué falta y por qué.
 | **T2** | Dirección <30°, FDE por tipo, ≤100 m | **Pendiente** | `Research/analysis_v2/eval_fair_horizon.py` no tiene split train/test, ni semilla, ni auto-exclusión (4.029 filas, mediana 0,31 m). Hay que rehacerlo **sobre los 806 ids de test** con `exclude_id`. Las cifras hoy publicadas (91,9 % dirección, 642,0 m, 1,44 %) **provienen de ese archivo y no son válidas** hasta rehacerlo. |
 | **T7** | Robustez GPS σ ∈ {0,5,10,20} | **Pendiente** | `destination.py` usa `Random(hash(tid) & 0xFFFF)`: sin `PYTHONHASHSEED=0` el ruido **no es reproducible entre procesos**. Hay que fijarlo en el Dockerfile antes de medir. |
 | **T8** | Contribuciones por factor | **Pendiente** | Deben regenerarse sobre 475 con los 4 factores, distinguiendo **contribución** (cuota de varianza) de **correlación**, y explicando por qué actividad pesa 0,20 con correlación 0,07. |
-| **T11** | «95 % de funcionalidad operativa» | **Pendiente — recomendación: retirar** | No hay definición operativa ni instrumento que lo mida. Si no se define un denominador, no es una cifra: es una impresión. |
+| **T11 / C5** | «95 % de funcionalidad operativa» | **MEDIDO — ver §1.9.** El 95 % no tiene denominador y se retira; la cifra real es **21/21 pruebas aprobadas (3/3 suites)**. |
 
 | **C4** | Proyección de percepción | **DESBLOQUEADA** | Dependía de T4, que ya está cerrado. La proyección debe rehacerse partiendo de **4,92 % [3,34–6,66] (λ=2,5)**, no de 5,24 / 6,2 / 7,00, y arrastrar el intervalo. |
 
