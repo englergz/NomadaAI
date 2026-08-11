@@ -905,8 +905,16 @@ abarca el 30,1 %. Es la figura que responde por adelantado a «¿un aviso que su
 cada 100 viajes que informa?».
 
 **Figura 8** — dos paneles: (a) cobertura de la alerta por hora, con las tres magnitudes
-que no deben confundirse —recibe aviso / cruza nivel alto / el aviso PRECEDE—; (b)
+que no deben confundirse —recibe aviso / atraviesa nivel alto / el aviso precede—; (b)
 anticipacion mediana **solo de los avisos que preceden**.
+
+> **Convencion IEEE aplicada (2026-08-11).** Las tres figuras se regeneraron **sin titulo
+> interno**: en IEEE el pie del documento ES el titulo, y rotularlo dentro del grafico lo
+> duplica con dos redacciones distintas. Importa especialmente en la Fig. 6, cuyo pie dice
+> «supuesto de modulacion sin calibrar» — matiz que costo tres rondas y que un titulo
+> interno perdia. Ademas: **tildes en todos los rotulos**, **coma decimal** (x1,408 y
+> x1,170), **sin nombres de archivos de codigo** dentro de las figuras (lenguaje de
+> repositorio, va en el cuerpo o en un anexo), y aire suficiente arriba en la Fig. 8.
 
 > **Detalle de honestidad grafica:** en 8b las 06:00 quedan **en blanco** para nivel alto,
 > no en cero. A esa hora no hay ningun aviso de ese tipo, y dibujar un 0 diria «avisa con
