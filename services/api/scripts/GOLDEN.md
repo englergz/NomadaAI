@@ -112,3 +112,22 @@ sha256(artifacts/figuras/fig7_umbral_cobertura.png) = d8ebdb6355ffaff60e85aa31b2
 sha256(artifacts/figuras/fig8_alerta_operacion.png) = 01e08511bad75d80ec28e3e8bfd71e78a988233e9efa575fdce9b839a75c2376
 ```
 Reproducir: `python services/api/scripts/figuras_6_7_8.py`
+
+
+## Red vial de Cali (2026-08-19)
+
+```
+sha256(artifacts/risk/cali_red_vial.json.gz) = 10c23fc8ab0e1dc8a054affa35eb7c699c0f293c5a04b4b533ede73df855cd0f
+```
+
+Descargada de OpenStreetMap vía Overpass, bbox 3.2932,-76.6023,3.5123,-76.4516 (la malla
+de riesgo mas 1 km de margen). **127.699 nodos · 249.926 aristas dirigidas · 4.360 km.**
+
+Existe porque `RouteGraph` deriva el grafo de las TRAYECTORIAS, y Cali no tiene corpus:
+tenia capa de riesgo pero `/route/build` respondia «muy lejos de la red». Con esto una
+ciudad nueva ya no necesita recoger trayectorias para trazar rutas seguras.
+
+Reproducir: `python services/api/scripts/fetch_road_graph.py --city cali`
+
+> El artefacto NO es bit a bit reproducible: OSM es un mapa vivo y una descarga posterior
+> traera calles nuevas. Por eso se versiona el fichero, no solo el comando.

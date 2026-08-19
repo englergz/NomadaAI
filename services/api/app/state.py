@@ -5,6 +5,8 @@ Se rellenan en el lifespan de app/main.py.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import HTTPException
 
 from app.data.corridors import CorridorStore
@@ -16,7 +18,6 @@ predictor: DestinationPredictor | None = None
 corridors: CorridorStore | None = None
 risk: RiskStore | None = None
 risk_cities: dict[str, RiskStore] = {}  # mapa de riesgo por ciudad (tumaco, cali, …)
-route_graph: RouteGraph | None = None
 
 
 def get_predictor() -> DestinationPredictor:
@@ -37,11 +38,51 @@ def get_risk() -> RiskStore:
     return risk
 
 
+# Grafo de rutas por ciudad. Tumaco lo deriva de su corpus de trayectorias; las demás,
+# de la red vial de OSM descargada con scripts/fetch_road_graph.py.
+route_graphs: dict[str, RouteGraph] = {}
+
+DEFAULT_CITY = "tumaco"
+_RED_VIAL = Path(__file__).resolve().parents[1] / "artifacts" / "risk"
+
+
 def get_route_graph() -> RouteGraph:
-    """Construye el grafo de rutas la primera vez que se solicita (perezoso)."""
-    global route_graph
-    if route_graph is None:
+    """Grafo de la ciudad por defecto. Se mantiene para los llamadores antiguos."""
+    return get_route_graph_for(DEFAULT_CITY)
+
+
+def get_route_graph_for(city: str | None) -> RouteGraph:
+    """Grafo de rutas de `city`, construido la primera vez que se pide (perezoso).
+
+    Dos orígenes posibles, por orden de preferencia:
+      1. el corpus de TRAYECTORIAS, si la ciudad lo tiene — sus segmentos son tramos de
+         calle realmente recorridos, e infieren qué vehículo cabe en cada uno;
+      2. la RED VIAL de OSM (`<city>_red_vial.json.gz`), para ciudades sin corpus.
+    """
+    global route_graphs
+    c = (city or DEFAULT_CITY).lower()
+    if c in route_graphs:
+        return route_graphs[c]
+
+    if c == DEFAULT_CITY:
         if predictor is None:
             raise HTTPException(status_code=503, detail="Predictor no disponible")
-        route_graph = RouteGraph(predictor.true_dict)
-    return route_graph
+        route_graphs[c] = RouteGraph(predictor.true_dict)
+        return route_graphs[c]
+
+    red = _RED_VIAL / f"{c}_red_vial.json.gz"
+    if not red.exists():
+        raise HTTPException(
+            status_code=422,
+            detail=(f"«{c}» todavía no tiene red vial cargada: se puede ver el mapa de "
+                    f"riesgo y hacer recorrido libre, pero no trazar rutas seguras."),
+        )
+    route_graphs[c] = RouteGraph.from_osm(red)
+    return route_graphs[c]
+
+
+def route_cities() -> list[str]:
+    """Ciudades que pueden trazar ruta hoy (corpus propio o red vial descargada)."""
+    out = {DEFAULT_CITY} if predictor is not None else set()
+    out |= {f.name.replace("_red_vial.json.gz", "") for f in _RED_VIAL.glob("*_red_vial.json.gz")}
+    return sorted(out)

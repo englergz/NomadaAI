@@ -62,6 +62,11 @@ class RouteGraph:
                         g.add_edge(prev_k, k, w=math.hypot(bx - ax, by - ay), mw=vw)
                 prev_k = k
 
+        self._finalizar(g, node_xy)
+
+    def _finalizar(self, g, node_xy: dict) -> None:
+        """Índice espacial y contadores. Compartido por ambos orígenes de grafo
+        (trayectorias y red vial de OSM): las claves de nodo pueden ser de cualquier tipo."""
         self.g = g
         self._keys = list(node_xy.keys())
         self._index = {k: i for i, k in enumerate(self._keys)}
@@ -69,6 +74,56 @@ class RouteGraph:
         self._tree = KDTree(self._xy) if len(self._keys) else None
         self.n_nodes = g.number_of_nodes()
         self.n_edges = g.number_of_edges()
+
+    @classmethod
+    def from_osm(cls, path) -> "RouteGraph":
+        """Grafo desde la red vial de OSM (`<city>_red_vial.json.gz`).
+
+        Existe para abrir ciudades SIN corpus de trayectorias: Cali tiene capa de riesgo
+        pero ningún recorrido, así que el constructor normal no puede darle un grafo.
+
+        A diferencia del grafo de trayectorias, aquí **no se cuantiza**: los nodos de OSM
+        ya son la topología real de la calle, y redondearlos a una rejilla fundiría un
+        puente con la vía que pasa por debajo. Se usan los ids de OSM como claves, que es
+        lo que hace `_finalizar` agnóstico al tipo de clave.
+
+        `mw` (ancho máximo de vehículo) viene del `highway=*`, no de quién pasó: sin
+        trayectorias no hay observaciones de las que inferirlo.
+        """
+        import gzip
+        import json
+
+        with gzip.open(path, "rt", encoding="utf-8") as f:
+            d = json.load(f)
+
+        obj = cls.__new__(cls)
+        obj.cell = 0.0  # sin cuantización
+        obj.fuente = "osm"
+        obj.meta = {k: d.get(k) for k in ("city", "bbox", "descargado", "km")}
+
+        node_xy: dict[int, tuple[float, float]] = {}
+        for nid, (lon, lat) in d["nodos"].items():
+            node_xy[int(nid)] = to_mercator(float(lon), float(lat))
+
+        g = nx.DiGraph()
+        for e in d["aristas"]:
+            a_, b_ = int(e["a"]), int(e["b"])
+            if a_ not in node_xy or b_ not in node_xy or a_ == b_:
+                continue
+            ax, ay = node_xy[a_]
+            bx, by = node_xy[b_]
+            w = math.hypot(bx - ax, by - ay)
+            if g.has_edge(a_, b_):
+                if e["mw"] > g[a_][b_]["mw"]:
+                    g[a_][b_]["mw"] = e["mw"]
+            else:
+                g.add_edge(a_, b_, w=w, mw=e["mw"])
+
+        # nodos sueltos (sin arista tras el filtrado) fuera del índice espacial: si el
+        # snap cayera en uno, no habría ruta posible desde él
+        node_xy = {k: v for k, v in node_xy.items() if k in g}
+        obj._finalizar(g, node_xy)
+        return obj
 
     def _snap(self, lon: float, lat: float) -> tuple[int, int]:
         x, y = to_mercator(lon, lat)

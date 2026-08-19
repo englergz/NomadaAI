@@ -13,22 +13,24 @@ from app.models.schemas import (
     RouteRequest,
     RouteResponse,
 )
-from app.state import get_route_graph
+from app.state import get_route_graph_for
 
 router = APIRouter(prefix="/route", tags=["routing"])
 
 
 @router.post("/build", response_model=BuildRouteResponse)
-def route_build(
-    req: BuildRouteRequest,
-    graph: RouteGraph = Depends(get_route_graph),
-) -> BuildRouteResponse:
-    """Genera una ruta NUEVA (origen→destino) sobre la red vial real de Tumaco.
+def route_build(req: BuildRouteRequest) -> BuildRouteResponse:
+    """Genera una ruta NUEVA (origen→destino) sobre la red vial real de la ciudad.
 
     El trazado se compone de tramos de calle reales, pero es una combinación que el
     modelo nunca vio como trayectoria: sirve para inyectar recorridos nuevos y probar
     la predicción sin sesgo. El destino NO se envía al modelo de predicción.
+
+    `city` elige el grafo: Tumaco usa el de sus trayectorias, las demás el de su red vial
+    de OSM. Si la ciudad no tiene red cargada, se responde 422 explicando qué SÍ funciona
+    allí (mapa de riesgo y recorrido libre), en vez de un error genérico.
     """
+    graph = get_route_graph_for(getattr(req, "city", None))
     r = graph.route(
         req.origin, req.dest, vtype=req.type,
         hour=req.hour, risk_weight=req.risk_weight, risk=state.risk,
