@@ -69,7 +69,7 @@ Reproducir: `python services/api/scripts/oe3_alerta_punto_operacion.py`
 ## Artefactos anadidos el 2026-08-10
 
 ```
-sha256(artifacts/eval/oe3_alerta_nivel_alto.csv)   = 125f6f94bd8a85a342d9891951661caa73836981419387fcc08009c5129dffeb
+sha256(artifacts/eval/oe3_alerta_nivel_alto.csv)   = a028246359666416af0f23c153efe25838d4053cb9c2a2e18a6a0c8e5b679a36   # corregido: la corrida anterior (125f6f94…) incluia los avisos de anticipacion cero
 sha256(artifacts/eval/c5_humo_route_build.csv)     = ca8e07e2639ae8189812e2ef842bc95cfd5b1d572b12b5d2922651033ce8f64f
 ```
 
