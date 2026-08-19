@@ -98,15 +98,25 @@ export default function MapScreen() {
   const [focus, setFocus] = useState<{ center: [number, number]; zoom: number } | null>(null);
   // COBERTURA POR GRADOS (no un sí/no). Verificado contra el backend:
   //   · riesgo   → todas las ciudades (Cali tiene 4.268 celdas)
-  //   · ruteo    → solo donde hay red vial cargada (hoy Tumaco; /route/build
-  //                falla en Cali con «muy lejos de la red»)
+  //   · ruteo    → donde hay red vial cargada. Lo dice el SERVIDOR, no una lista aquí:
+  //                antes era `city === DEFAULT_CITY` y abrir una ciudad obligaba a
+  //                publicar versión del cliente. Ahora basta con dejar su red vial
+  //                en el backend (services/api/scripts/fetch_road_graph.py).
   //   · predicción → solo donde hay trayectorias para entrenar (hoy Tumaco)
   // El recorrido y las alertas EN ZONA solo necesitan riesgo + GPS, así que
-  // funcionan en Cali; lo único que se pierde sin predicción es la anticipación
-  // cuando el usuario no declara destino. Ver docs/DISENO_FUTURO.md §1.
-  const canRoute = city === DEFAULT_CITY;      // buscar destino y trazar ruta segura
-  const canPredict = city === DEFAULT_CITY;    // alerta anticipada sin destino
-  const cityFull = canRoute;                   // compatibilidad con el resto del archivo
+  // funcionan en cualquier ciudad con capa de riesgo; lo único que se pierde sin
+  // predicción es la anticipación cuando el usuario no declara destino.
+  // Ver docs/DISENO_FUTURO.md §1.
+  const [routeCities, setRouteCities] = useState<string[]>([DEFAULT_CITY]);
+  useEffect(() => {
+    // Si la consulta falla se conserva el valor por defecto: sin red no se promete de más.
+    api.routeCities()
+      .then((r) => { if (r?.cities?.length) setRouteCities(r.cities); })
+      .catch(() => {});
+  }, []);
+  const canRoute = routeCities.includes(city);  // buscar destino y trazar ruta segura
+  const canPredict = city === DEFAULT_CITY;     // alerta anticipada sin destino
+  const cityFull = canRoute;                    // compatibilidad con el resto del archivo
 
   // Vehículo del viaje: por defecto el del perfil (Ajustes), cambiable en cada viaje (B.6.1).
   // undefined = usar el predeterminado · null = «sin vehículo» explícito para este viaje.
@@ -370,6 +380,7 @@ export default function MapScreen() {
           hour: new Date().getHours(),
           risk_weight: lambdaForLevel(protLevelsRef.current[prioIdx] ?? 50),
           type: effVehicle ?? undefined, // calles según el vehículo (opcional)
+          city,                          // grafo vial de la ciudad activa (Tumaco, Cali…)
         }),
         // silent=recálculo por desvío: banner discreto, no interrumpe el viaje.
         45000, // el Space gratuito puede tardar en despertar
