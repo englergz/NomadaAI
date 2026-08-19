@@ -96,6 +96,15 @@ export class NomadaApi {
     return this.req<{ cities: string[] }>("/risk/cities");
   }
 
+  /**
+   * Ciudades que pueden trazar RUTA SEGURA. Es un subconjunto de `riskCities`: el ruteo
+   * exige además el grafo vial. Se consulta en vez de codificarlo, para que abrir una
+   * ciudad nueva no obligue a publicar una versión del cliente.
+   */
+  routeCities() {
+    return this.req<{ cities: string[] }>("/route/cities");
+  }
+
   predictOnline(body: OnlineRequest) {
     return this.req<OnlineResponse>("/predict/online", {
       method: "POST",

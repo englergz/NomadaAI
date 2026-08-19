@@ -18,6 +18,20 @@ from app.state import get_route_graph_for
 router = APIRouter(prefix="/route", tags=["routing"])
 
 
+@router.get("/cities")
+def route_cities() -> dict:
+    """Ciudades que HOY pueden trazar ruta segura.
+
+    Existe para que los clientes no tengan que codificar la lista: hasta ahora la app
+    fijaba `canRoute = city === 'tumaco'` a mano, así que abrir una ciudad nueva exigía
+    publicar una versión. Con esto basta con dejar su red vial en el backend.
+
+    Una ciudad puede tener capa de riesgo (mapa de calor, avisos en zona, recorrido libre)
+    sin estar aquí: el ruteo necesita además el grafo vial.
+    """
+    return {"cities": state.route_cities()}
+
+
 @router.post("/build", response_model=BuildRouteResponse)
 def route_build(req: BuildRouteRequest) -> BuildRouteResponse:
     """Genera una ruta NUEVA (origen→destino) sobre la red vial real de la ciudad.

@@ -127,6 +127,7 @@ export interface BuildRouteRequest {
   type?: string;      // vehículo (opcional)
   hour?: number;      // 0–23
   risk_weight?: number; // λ: prioridad de seguridad (0–5)
+  city?: string;      // grafo vial a usar; si se omite, la ciudad por defecto
 }
 
 export interface RouteComparison {
