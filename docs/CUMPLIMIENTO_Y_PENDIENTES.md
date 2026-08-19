@@ -59,7 +59,7 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 | Reglas de R8 para lo que se carga por reflexión | ✅ (su ausencia rompía el segundo plano) |
 | Errores que no se tragan en silencio | ✅ corregido en fondo y notificaciones |
 | `map.tsx` con más de 2.000 líneas | ❌ refactor pendiente |
-| Pruebas automatizadas | ❌ no hay |
+| Pruebas automatizadas | ✅ **29/29** (21 móvil + 8 invariantes de `/route/build`) |
 
 ### A.5 Funcionalidad verificada ejecutando
 
