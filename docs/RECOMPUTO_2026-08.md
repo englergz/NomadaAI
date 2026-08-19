@@ -1025,11 +1025,11 @@ Nada de lo siguiente se estimó. Se declara qué falta y por qué.
 | # | Qué | Estado | Motivo |
 |---|---|---|---|
 | **T2** | Dirección <30°, FDE por tipo, ≤100 m | **§1.17 CERRADO — era ETIQUETA, no fuga.** Dirección **92,4 %** [90,7-94,3] sobre las **805**, con el predictor desplegado. El 91,9 % publicado **reproduce** | `Research/analysis_v2/eval_fair_horizon.py` no tiene split train/test, ni semilla, ni auto-exclusión (4.029 filas, mediana 0,31 m). Hay que rehacerlo **sobre los 806 ids de test** con `exclude_id`. Las cifras hoy publicadas (91,9 % dirección, 642,0 m, 1,44 %) **provienen de ese archivo y no son válidas** hasta rehacerlo. |
-| **T7** | Robustez GPS σ ∈ {0,5,10,20} | **Pendiente** | `destination.py` usa `Random(hash(tid) & 0xFFFF)`: sin `PYTHONHASHSEED=0` el ruido **no es reproducible entre procesos**. Hay que fijarlo en el Dockerfile antes de medir. |
+| **T7** | Robustez GPS σ ∈ {0,5,10,20} | **CERRADO — §1.14.** Arreglada la causa (`blake2b` sustituye a `hash(tid)`, más `PYTHONHASHSEED=0`) y remedido tras el redespliegue: **87,5 / 77,4 / 63,7 / 47,7 %** con IC95. **Ninguna cifra publicada reproduce** (tesis: 90,5 / 85,5 / 72,5 / 55,0). |
 | **T8/I5** | «Contribuciones» 0,32/0,36/0,34 y «correlación» 0,07 mezcladas | **§1.19.** Sobre las 475 con 4 factores: contribuciones **0,312 / 0,324 / 0,138 / 0,226** (suman 1). El **0,07 es la correlación del crudo**; el percentil que usa el modelo correlaciona **0,285** | Deben regenerarse sobre 475 con los 4 factores, distinguiendo **contribución** (cuota de varianza) de **correlación**, y explicando por qué actividad pesa 0,20 con correlación 0,07. |
 | **T11 / C5** | «95 % de funcionalidad operativa» | **MEDIDO — §1.9 y §1.15.** El 95 % se retira; la cifra real es **29/29 pruebas** (21 cliente movil + 8 humo sobre `/route/build`). |
 
-| **C4** | Proyección de percepción | **DESBLOQUEADA** | Dependía de T4, que ya está cerrado. La proyección debe rehacerse partiendo de **4,92 % [3,34–6,66] (λ=2,5)**, no de 5,24 / 6,2 / 7,00, y arrastrar el intervalo. |
+| **C4** | Proyección de percepción | **DESBLOQUEADA** | Dependía de T4, ya cerrado. La proyección parte de la cifra **definitiva y verificada de forma cruzada: 4,84 % · IC95 [3,62–6,22] (λ=2,5)**, y debe arrastrar el intervalo. ⚠️ **NO usar 5,24 / 6,2 / 7,00, ni 4,92 ni 4,43** — esas dos últimas son corridas intermedias sobre muestras no reproducibles, superadas por §1.8. |
 
 ### 3.1 · T13 — ⛔ RETRACTADO POR COMPLETO (2026-08-09)
 

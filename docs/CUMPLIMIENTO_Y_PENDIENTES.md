@@ -111,7 +111,11 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 
 ### B.4 Calidad
 8. **Refactor de `map.tsx`** (>2.000 líneas) en hooks: useTrip, useCity, useBanner.
-9. **Pruebas automatizadas** de lo crítico: alertas por zona, recálculo, reanudación.
+~~9. Pruebas automatizadas de lo crítico~~ — **RESUELTO (2026-08-10): 29/29.**
+   21 en el cliente móvil (alertas por zona, recálculo por desvío, reanudación en
+   segundo plano) + 8 invariantes sobre `/route/build` en el backend, que es donde
+   vive el manejo de rutas seguras del indicador. Reproducir:
+   `npm test` en `apps/mobile` y `python services/api/scripts/c5_humo_route_build.py`.
 10. **Cifrado del histórico local** y revisión de `npm audit`.
 
 ### B.5 Producto futuro (diseñado, no construido)
