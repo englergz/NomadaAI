@@ -84,6 +84,7 @@ class BuildRouteRequest(BaseModel):
     type: Optional[str] = None  # vehículo (opcional)
     hour: int = Field(default=19, ge=0, le=23)
     risk_weight: float = Field(default=0.0, ge=0.0, le=5.0)  # λ: prioridad de seguridad
+    city: Optional[str] = None  # grafo a usar; None = ciudad por defecto (tumaco)
 
 
 class RouteComparison(BaseModel):

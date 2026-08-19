@@ -73,23 +73,20 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("No existe %s — capa de riesgo deshabilitada", risk_csv)
 
-    # Grafo de rutas (OE3) — construido al inicio para que /route/build sea inmediato.
-    if state.predictor is not None:
+    # Grafos de rutas (OE3) — construidos al inicio para que /route/build sea inmediato.
+    # Tumaco desde su corpus de trayectorias; las demás desde la red vial de OSM.
+    for _c in state.route_cities():
         try:
-            from app.ml.router import RouteGraph
-            state.route_graph = RouteGraph(state.predictor.true_dict)
-            logger.info(
-                "Grafo de rutas listo: %d nodos, %d aristas",
-                state.route_graph.n_nodes, state.route_graph.n_edges,
-            )
+            g = state.get_route_graph_for(_c)
+            logger.info("Grafo de rutas de %s: %d nodos, %d aristas", _c, g.n_nodes, g.n_edges)
         except Exception as e:  # noqa: BLE001
-            logger.warning("No se pudo construir el grafo de rutas: %s", e)
+            logger.warning("No se pudo construir el grafo de rutas de %s: %s", _c, e)
 
     yield
     state.predictor = None
     state.corridors = None
     state.risk = None
-    state.route_graph = None
+    state.route_graphs = {}
 
 
 def create_app() -> FastAPI:
