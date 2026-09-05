@@ -100,6 +100,18 @@ def get_route_graph_for(city: str | None) -> RouteGraph:
     return route_graphs[c]
 
 
+def get_risk_for(city: str | None) -> "RiskStore | None":
+    """Capa de riesgo de `city`, o la de la ciudad por defecto si no se indica.
+
+    El ruteo la necesita para ponderar las aristas: sin la capa CORRECTA, las consultas
+    caen fuera de la malla, devuelven 0 y la ruta segura sale idéntica a la directa —
+    con una reducción de exposición del 0 % que parece un fallo del método y en realidad
+    es que se estaba midiendo con el mapa de otra ciudad.
+    """
+    c = (city or DEFAULT_CITY).lower()
+    return risk_cities.get(c) or (risk if c == DEFAULT_CITY else None)
+
+
 def route_cities() -> list[str]:
     """Ciudades que pueden trazar ruta hoy (corpus propio o red vial descargada)."""
     out = {DEFAULT_CITY} if predictor is not None else set()

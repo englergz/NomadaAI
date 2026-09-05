@@ -13,7 +13,7 @@ from app.models.schemas import (
     RouteRequest,
     RouteResponse,
 )
-from app.state import get_route_graph_for
+from app.state import get_risk_for, get_route_graph_for
 
 router = APIRouter(prefix="/route", tags=["routing"])
 
@@ -47,7 +47,7 @@ def route_build(req: BuildRouteRequest) -> BuildRouteResponse:
     graph = get_route_graph_for(getattr(req, "city", None))
     r = graph.route(
         req.origin, req.dest, vtype=req.type,
-        hour=req.hour, risk_weight=req.risk_weight, risk=state.risk,
+        hour=req.hour, risk_weight=req.risk_weight, risk=get_risk_for(req.city),
     )
     if r is None:
         raise HTTPException(
