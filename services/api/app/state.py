@@ -43,7 +43,26 @@ def get_risk() -> RiskStore:
 route_graphs: dict[str, RouteGraph] = {}
 
 DEFAULT_CITY = "tumaco"
-_RED_VIAL = Path(__file__).resolve().parents[1] / "artifacts" / "risk"
+
+
+def _red_vial_dir() -> Path:
+    """Carpeta donde viven los artefactos de riesgo, incluida la red vial.
+
+    NO se deriva de `__file__`: en el contenedor `services/api/artifacts` se copia a
+    `/research`, no junto al código, así que una ruta relativa al fuente existe en local
+    y no en producción — que es exactamente lo que hizo que Cali no ruteara tras el
+    primer despliegue. Se usa `research_path`, que respeta `RESEARCH_DIR`, igual que el
+    resto de la carga de artefactos.
+    """
+    from app.core.config import get_settings
+    base = get_settings().research_path
+    # Ruta relativa al fuente: es la buena en desarrollo, donde `artifacts/` está junto
+    # al código y `research_path` apunta a la carpeta de ANÁLISIS, que es otra cosa.
+    local = Path(__file__).resolve().parents[1] / "artifacts" / "risk"
+    for cand in (base / "risk", local, base / "analysis_v2", base):
+        if cand.is_dir() and any(cand.glob("*_red_vial.json.gz")):
+            return cand
+    return local if local.is_dir() else base
 
 
 def get_route_graph() -> RouteGraph:
@@ -70,7 +89,7 @@ def get_route_graph_for(city: str | None) -> RouteGraph:
         route_graphs[c] = RouteGraph(predictor.true_dict)
         return route_graphs[c]
 
-    red = _RED_VIAL / f"{c}_red_vial.json.gz"
+    red = _red_vial_dir() / f"{c}_red_vial.json.gz"
     if not red.exists():
         raise HTTPException(
             status_code=422,
@@ -84,5 +103,5 @@ def get_route_graph_for(city: str | None) -> RouteGraph:
 def route_cities() -> list[str]:
     """Ciudades que pueden trazar ruta hoy (corpus propio o red vial descargada)."""
     out = {DEFAULT_CITY} if predictor is not None else set()
-    out |= {f.name.replace("_red_vial.json.gz", "") for f in _RED_VIAL.glob("*_red_vial.json.gz")}
+    out |= {f.name.replace("_red_vial.json.gz", "") for f in _red_vial_dir().glob("*_red_vial.json.gz")}
     return sorted(out)
