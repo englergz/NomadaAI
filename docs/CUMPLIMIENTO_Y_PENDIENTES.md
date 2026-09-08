@@ -47,7 +47,8 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 | Rol de admin verificado **en servidor** (nunca en cliente) | ✅ `/admin/me` → 401 sin token |
 | Escapado de datos externos en el mapa (XSS) | ✅ |
 | Rate-limit en escrituras del backend | ✅ **en servidor** (2026-09-08): ventana deslizante por IP en `core/ratelimit.py` sobre escrituras y cómputo, 429 con `Retry-After`; límites por identidad en BD como control primario; el cubo `anon` compartido de reportes corregido con `device_id` |
-| Auditoría de dependencias (`npm audit`) | ⚠️ hay avisos sin revisar |
+| Auditoría de dependencias (`npm audit`) | ✅ **revisado (2026-09-08)**: 29 → 28; el único HIGH directo (Clerk, bypass de autorización) parcheado quirúrgicamente; los 28 residuales son tooling de build/dev-server o transitivos sin parche seguro, clasificados y aceptados con motivo en `docs/DEPENDENCIAS.md`. **Nunca `npm audit fix --force`** (degrada expo 57→46) |
+| Auditoría de dependencias backend (`pip-audit`) | ✅ **22 → 0** (2026-09-08): `pyjwt` 2.13.0 (12 avisos, incl. cabecera `crit`), `starlette` 1.6.0 vía `fastapi` 0.141.1 (9 avisos: validación de Host y ruta), `pyarrow` 23.0.1 (use-after-free). Verificado con la suite completa con lifespan sobre la malla real |
 
 ### A.4 Calidad y buenas prácticas
 

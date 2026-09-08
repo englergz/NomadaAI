@@ -1,11 +1,12 @@
-fastapi==0.115.6
+fastapi==0.141.1          # pip-audit 2026-09: exige starlette>=0.46 sin tope; verificado con la suite completa
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
 pydantic-settings==2.7.1
 numpy==2.2.1
 pandas==2.2.3
-pyarrow==18.1.0
+pyarrow==23.0.1           # PYSEC-2026-113 use-after-free en Arrow C++
 scikit-learn==1.6.0
 networkx==3.4.2
 psycopg[binary]==3.2.3
-pyjwt[crypto]==2.10.1
+pyjwt[crypto]==2.13.0     # 12 avisos, incl. validacion de la cabecera `crit` (PYSEC-2026-120/179)
+starlette==1.6.0          # transitiva de fastapi; pineada explicita (9 avisos en 0.41.3, cierra en >=1.3.1)
