@@ -11,6 +11,7 @@ Endpoints:
 - GET  /admin/reports        (admin)    reportes ciudadanos recientes (moderación).
 - DELETE /admin/reports/{id} (admin)    elimina un reporte.
 - GET  /admin/summary        (admin)    BI: totales de reportes y uso (histórico global).
+- GET  /admin/feedback       (admin)    opiniones: agregados + comentarios recientes.
 """
 from __future__ import annotations
 
@@ -20,7 +21,7 @@ from fastapi import APIRouter, Header, HTTPException
 
 from app.core.auth import verify_bearer
 from app.core.config import get_settings
-from app.data import appconfig, history, incidents
+from app.data import appconfig, feedback, history, incidents
 
 router = APIRouter()
 
@@ -101,3 +102,17 @@ def admin_summary(authorization: Optional[str] = Header(default=None)) -> dict[s
     except Exception:  # noqa: BLE001
         out["reports"] = {"total": 0, "by_category": {}, "by_city": {}}
     return out
+
+
+@router.get("/admin/feedback")
+def admin_feedback(
+    limit: int = 100,
+    authorization: Optional[str] = Header(default=None),
+) -> dict[str, Any]:
+    """Opiniones del formulario: promedios por pregunta y comentarios recientes.
+
+    Antes llegaban como correos sueltos a una bandeja personal; ahora se agregan aquí.
+    Los comentarios individuales solo se sirven tras verificar el rol en servidor.
+    """
+    _require_admin(authorization)
+    return {"summary": feedback.summary(), "recent": feedback.list_recent(limit)}

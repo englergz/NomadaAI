@@ -5,13 +5,14 @@
 // pidiendo confirmación. Ningún toque accidental puede borrar nada.
 import { useState } from 'react';
 import {
-  ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text,
+  ActivityIndicator, Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text,
   TextInput, useWindowDimensions, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Colors, Radii } from '@/constants/theme';
+import { api } from '@/lib/api';
 import { deleteAllMyData } from '@/lib/data-deletion';
 import { useT, type TKey } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
@@ -44,6 +45,10 @@ export default function PrivacySheet({
   const [deleting, setDeleting] = useState(false);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [comment, setComment] = useState('');
+  const [sending, setSending] = useState(false);
+  // Las cuatro preguntas son obligatorias tanto para enviar como para borrar los datos;
+  // el comentario no. Es la única fuente de aprendizaje sobre quien se va.
+  const allAnswered = QUESTIONS.every((q) => Boolean(answers[q.id]));
 
   async function doDelete() {
     setDeleting(true);
@@ -71,14 +76,42 @@ export default function PrivacySheet({
     ]);
   }
 
-  function sendFeedback() {
-    // Sin endpoint propio todavía: se abre el correo con las respuestas ya
-    // redactadas. Es honesto (el usuario ve exactamente qué envía) y funciona hoy.
+  function abrirCorreo() {
+    // Respaldo cuando el servidor no acepta: el correo con las respuestas redactadas,
+    // que era el único canal hasta que existió POST /feedback.
     const lines = QUESTIONS.map((q) => `${t(q.key)}: ${answers[q.id] ? `${answers[q.id]}/5` : '—'}`);
     if (comment.trim()) lines.push('', `${t('fb.comment')}: ${comment.trim()}`);
     const body = encodeURIComponent(lines.join('\n'));
     const subject = encodeURIComponent(t('fb.subject'));
     void Linking.openURL(`mailto:englergz@gmail.com?subject=${subject}&body=${body}`);
+  }
+
+  async function sendFeedback() {
+    if (!allAnswered || sending) return;
+    setSending(true);
+    try {
+      const r = await api.sendFeedback({
+        useful: answers.useful, on_time: answers.onTime, trust: answers.trust, recommend: answers.recommend,
+        comment: comment.trim() || undefined,
+        city,
+        platform: Platform.OS,
+        device_id: await getUid(),
+      });
+      if (r.accepted) {
+        Alert.alert(t('fb.sent.title'), t('fb.sent.body'));
+        setAnswers({}); setComment('');
+      } else {
+        // El servidor respondió pero no aceptó (sin base de datos, límite por hora…):
+        // se dice y se ofrece el correo, no se pierde la opinión en silencio.
+        Alert.alert(t('fb.sent.title'), r.note ?? t('fb.sent.fallback'));
+        abrirCorreo();
+      }
+    } catch {
+      Alert.alert(t('fb.sent.title'), t('fb.sent.fallback'));
+      abrirCorreo();
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -131,11 +164,20 @@ export default function PrivacySheet({
               maxLength={800}
               style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.backgroundSelected }]}
             />
+            {!allAnswered && (
+              <Text style={{ color: c.textSecondary, fontSize: 12, lineHeight: 17 }}>{t('fb.required')}</Text>
+            )}
             <Pressable
-              onPress={sendFeedback}
-              style={({ pressed }) => [styles.cta, { backgroundColor: c.accent, opacity: pressed ? 0.85 : 1 }]}
+              onPress={() => { void sendFeedback(); }}
+              disabled={!allAnswered || sending}
+              style={({ pressed }) => [
+                styles.cta,
+                { backgroundColor: c.accent, opacity: !allAnswered || sending ? 0.4 : pressed ? 0.85 : 1 },
+              ]}
             >
-              <Text style={styles.ctaText}>{t('fb.send')}</Text>
+              {sending
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={styles.ctaText}>{t('fb.send')}</Text>}
             </Pressable>
           </View>
 
@@ -156,12 +198,15 @@ export default function PrivacySheet({
               <Text style={{ color: c.text, fontSize: 13, flex: 1, lineHeight: 19 }}>{t('privacy.delete.check')}</Text>
             </Pressable>
 
+            {!allAnswered && (
+              <Text style={{ color: c.textSecondary, fontSize: 12, lineHeight: 17 }}>{t('privacy.delete.needFeedback')}</Text>
+            )}
             <Pressable
               onPress={askDelete}
-              disabled={!confirmDelete || deleting}
+              disabled={!confirmDelete || deleting || !allAnswered}
               style={({ pressed }) => [
                 styles.cta,
-                { backgroundColor: c.coral, opacity: !confirmDelete || deleting ? 0.4 : pressed ? 0.85 : 1 },
+                { backgroundColor: c.coral, opacity: !confirmDelete || deleting || !allAnswered ? 0.4 : pressed ? 0.85 : 1 },
               ]}
             >
               {deleting

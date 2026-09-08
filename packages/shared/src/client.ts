@@ -15,6 +15,8 @@ import type {
   IncidentResponse,
   TripsResponse,
   DemoResponse,
+  FeedbackIn,
+  FeedbackResponse,
 } from "./types";
 
 export class NomadaApi {
@@ -133,6 +135,18 @@ export class NomadaApi {
 
   reportIncident(body: IncidentReport, token?: string | null) {
     return this.req<IncidentResponse>("/incidents/report", {
+      method: "POST",
+      body: JSON.stringify(body),
+      ...(token ? { headers: { "content-type": "application/json", Authorization: `Bearer ${token}` } } : {}),
+    });
+  }
+
+  /**
+   * Opinión del usuario → servidor, no correo. La consumen móvil y escritorio; el panel
+   * admin la lee agregada. Si el servidor no acepta, el cliente decide el respaldo.
+   */
+  sendFeedback(body: FeedbackIn, token?: string | null) {
+    return this.req<FeedbackResponse>("/feedback", {
       method: "POST",
       body: JSON.stringify(body),
       ...(token ? { headers: { "content-type": "application/json", Authorization: `Bearer ${token}` } } : {}),

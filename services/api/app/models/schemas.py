@@ -140,3 +140,22 @@ class IncidentResponse(BaseModel):
     accepted: bool
     id: Optional[str] = None
     note: Optional[str] = None
+
+
+class FeedbackIn(BaseModel):
+    """Cuatro respuestas obligatorias (1–5); el comentario es opcional."""
+    useful: int = Field(ge=1, le=5)
+    on_time: int = Field(ge=1, le=5)
+    trust: int = Field(ge=1, le=5)
+    recommend: int = Field(ge=1, le=5)
+    comment: Optional[str] = Field(default=None, max_length=800)
+    city: str = "tumaco"
+    platform: Optional[str] = Field(default=None, max_length=20)
+    # identificador anónimo del dispositivo: rate-limit por persona sin exigir cuenta
+    device_id: Optional[str] = Field(default=None, max_length=64)
+
+
+class FeedbackResponse(BaseModel):
+    accepted: bool
+    id: Optional[str] = None
+    note: Optional[str] = None
