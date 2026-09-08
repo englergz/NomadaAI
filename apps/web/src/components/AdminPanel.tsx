@@ -19,11 +19,12 @@ export default function AdminPanel({ getToken, onClose, onConfigSaved }: {
   onClose: () => void;
   onConfigSaved: (cfg: AppCfg) => void;
 }) {
-  const [tab, setTab] = useState<"config" | "reports" | "bi">("config");
+  const [tab, setTab] = useState<"config" | "reports" | "feedback" | "bi">("config");
   const [cfg, setCfg] = useState<AppCfg | null>(null);
   const [levelsTxt, setLevelsTxt] = useState("");
   const [reports, setReports] = useState<Report[]>([]);
   const [bi, setBi] = useState<any>(null);
+  const [fb, setFb] = useState<any>(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -45,6 +46,7 @@ export default function AdminPanel({ getToken, onClose, onConfigSaved }: {
     call("/config/app").then((c: AppCfg) => { setCfg(c); setLevelsTxt(c.protection_levels.join(", ")); }).catch(() => setMsg("No se pudo cargar la configuración."));
     call("/admin/reports?limit=200").then((r) => setReports(r.reports)).catch(() => { /* pestaña lo reintenta */ });
     call("/admin/summary").then(setBi).catch(() => { /* idem */ });
+    call("/admin/feedback?limit=200").then(setFb).catch(() => { /* idem */ });
   }, [call]);
 
   async function saveConfig() {
@@ -77,7 +79,7 @@ export default function AdminPanel({ getToken, onClose, onConfigSaved }: {
         <button className="help-x" onClick={onClose} title="Cerrar">✕</button>
         <h2>Panel de administración</h2>
         <div className="admin-tabs">
-          {([["config", "Configuración"], ["reports", `Reportes (${reports.length})`], ["bi", "BI"]] as const).map(([k, lbl]) => (
+          {([["config", "Configuración"], ["reports", `Reportes (${reports.length})`], ["feedback", `Opiniones (${fb?.summary?.total ?? 0})`], ["bi", "BI"]] as const).map(([k, lbl]) => (
             <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{lbl}</button>
           ))}
         </div>
@@ -111,6 +113,36 @@ export default function AdminPanel({ getToken, onClose, onConfigSaved }: {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        )}
+
+        {tab === "feedback" && (
+          <div className="admin-sec">
+            {!fb ? <p className="hint">Cargando…</p> : !fb.summary?.available ? (
+              <p className="hint">Sin base de datos configurada.</p>
+            ) : (
+              <>
+                <h3>Promedios (1–5) · {fb.summary.total} opiniones · {fb.summary.ultimos_30_dias} en 30 días</h3>
+                {([["useful", "Utilidad"], ["on_time", "Alertas a tiempo"], ["trust", "Confianza de noche"], ["recommend", "Recomendaría"]] as const).map(([k, lbl]) => (
+                  <p className="hint" key={k}>· {lbl}: <b>{fb.summary.promedios?.[k] ?? "—"}</b></p>
+                ))}
+                <p className="hint">Con comentario: <b>{fb.summary.con_comentario}</b> · plataforma: {Object.entries(fb.summary.por_plataforma ?? {}).map(([p, n]) => `${p} ${n}`).join(" · ") || "—"}</p>
+                <h3>Comentarios recientes</h3>
+                {(fb.recent ?? []).filter((r: any) => r.comment).length === 0 ? <p className="hint">Sin comentarios todavía.</p> : (
+                  <div className="admin-table">
+                    {(fb.recent ?? []).filter((r: any) => r.comment).map((r: any) => (
+                      <div className="admin-row" key={r.id}>
+                        <div className="admin-row-main">
+                          <b>#{r.id}</b> · {new Date(r.created_at).toLocaleString("es-CO")} · {r.city} · {r.platform ?? "?"} · {r.useful}/{r.on_time}/{r.trust}/{r.recommend}
+                          <div className="admin-desc">{r.comment}</div>
+                          <div className="admin-meta">usuario {String(r.user_id).slice(0, 14)}…</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

@@ -179,3 +179,22 @@ export interface HealthResponse {
   corridors_ready: boolean;
   n_corridors: number;
 }
+
+/** Formulario de opinión: cuatro respuestas obligatorias (1–5), comentario opcional. */
+export interface FeedbackIn {
+  useful: number;
+  on_time: number;
+  trust: number;
+  recommend: number;
+  comment?: string;
+  city?: string;
+  platform?: string;
+  /** identificador anónimo del dispositivo: rate-limit por persona sin exigir cuenta */
+  device_id?: string;
+}
+
+export interface FeedbackResponse {
+  accepted: boolean;
+  id?: string;
+  note?: string;
+}

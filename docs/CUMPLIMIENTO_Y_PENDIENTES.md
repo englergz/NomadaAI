@@ -88,9 +88,12 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 **No quedan bloqueantes legales.**
 
 ### B.2 Funcionalidad prometida que falta
-2b. **Endpoint propio de opiniones**: hoy el formulario abre el correo con las
-   respuestas redactadas (funciona y es transparente, el usuario ve qué envía),
-   pero conviene un `POST /feedback` para agregarlas y medirlas.
+~~2b. Endpoint propio de opiniones~~ — **RESUELTO (2026-09-08).** `POST /feedback`
+   guarda las cuatro respuestas y el comentario en Postgres con rate-limit por
+   persona; el panel admin (pestaña «Opiniones») muestra promedios por pregunta y
+   comentarios recientes. El correo queda solo como respaldo si el servidor no
+   acepta. Además, responder el formulario es ahora **obligatorio para borrar los
+   datos** (el comentario sigue siendo opcional), como se pidió.
 3. **Fotos en los reportes** (selector + almacenamiento de objetos + endpoint).
    Postgres no es sitio para archivos: aquí sí aplica un almacenamiento tipo
    Supabase Storage o R2.
