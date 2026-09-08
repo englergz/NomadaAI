@@ -70,6 +70,28 @@ class RiskStore:
         self.max_risk = max_risk or 1.0
         self.n_zones = len({c for rows in self._by_hour.values() for (c, *_3) in rows})
 
+        # --- Índice espacial para `risk_at` ---
+        # Antes `risk_at` hacía un barrido lineal con haversine sobre TODAS las celdas de
+        # la hora: O(n) por consulta. Con 475 celdas (Tumaco) pasaba desapercibido; con
+        # 4.268 (Cali) y un grafo vial de 127.699 nodos, el primer ruteo con riesgo
+        # exigía ~545 millones de haversines y el Space no respondía en 400 s.
+        # Los centros de celda son los mismos a todas horas — solo cambia el riesgo — así
+        # que basta un KDTree sobre los centros y un diccionario riesgo por (hora, celda).
+        from sklearn.neighbors import KDTree
+        from app.core.geo import to_mercator
+        centros: dict[str, tuple[float, float]] = {}
+        self._risk_hc: dict[int, dict[str, float]] = {}
+        for h, rows in self._by_hour.items():
+            self._risk_hc[h] = {c: r for (c, _lo, _la, r) in rows}
+            for (c, lo, la, _r) in rows:
+                centros.setdefault(c, (lo, la))
+        self._cell_ids: list[str] = list(centros)
+        if self._cell_ids:
+            xy = [to_mercator(*centros[c]) for c in self._cell_ids]
+            self._tree = KDTree(xy)
+        else:
+            self._tree = None
+
         # --- Normalización por PERCENTIL espacial + modulación temporal ---
         # Dividir por el máximo comprime una distribución sesgada (casi todo se ve verde y las
         # alertas no disparan). Usamos el percentil espacial del riesgo base (reparte 0-1 de forma
@@ -150,14 +172,20 @@ class RiskStore:
 
     # --- consulta puntual (zona más cercana) ---
     def risk_at(self, lon: float, lat: float, hour: int, day: int | None = None) -> tuple[float, float, str]:
-        """Devuelve (riesgo, riesgo_norm, cell_id) en la zona más cercana al punto."""
-        rows = self._by_hour.get(int(hour) % 24, [])
-        best_r, best_d, best_c = 0.0, float("inf"), ""
-        for (c, zlon, zlat, r) in rows:
-            d = _haversine_m((lon, lat), (zlon, zlat))
-            if d < best_d:
-                best_d, best_r, best_c = d, r, c
-        return best_r, self._risk_norm(best_c, hour, day), best_c
+        """Devuelve (riesgo, riesgo_norm, cell_id) en la zona más cercana al punto.
+
+        Vecino más cercano por KDTree en metros (Mercator): O(log n) en vez del barrido
+        lineal con haversine. A escala de ciudad el vecino euclidiano en proyección y el
+        haversine coinciden; se verificó celda a celda sobre una muestra de Cali y Tumaco.
+        """
+        h = int(hour) % 24
+        if self._tree is None or not self._risk_hc.get(h):
+            return 0.0, self._risk_norm("", hour, day), ""
+        from app.core.geo import to_mercator
+        _d, idx = self._tree.query([to_mercator(lon, lat)], k=1)
+        c = self._cell_ids[int(idx[0][0])]
+        r = self._risk_hc[h].get(c, 0.0)
+        return r, self._risk_norm(c, hour, day), c
 
     # --- alerta anticipada (look-ahead) ---
     def lookahead_alert(
