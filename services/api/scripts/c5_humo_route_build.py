@@ -32,11 +32,11 @@ def _get(path: str):
         return json.load(r)
 
 
-def _build(origin, dest, hour=20, lam=2.5):
+def _build(origin, dest, hour=20, lam=2.5, city=None):
     req = urllib.request.Request(
         f"{BASE}/route/build",
         data=json.dumps({"origin": origin, "dest": dest, "type": None,
-                         "hour": hour, "risk_weight": lam}).encode(),
+                         "hour": hour, "risk_weight": lam, "city": city}).encode(),
         headers={"content-type": "application/json"}, method="POST",
     )
     with urllib.request.urlopen(req, timeout=180) as r:
@@ -44,6 +44,7 @@ def _build(origin, dest, hour=20, lam=2.5):
 
 
 def main() -> None:
+    print("C5 · PRUEBAS DE HUMO — manejo de rutas seguras (/route/build)")
     resultados: list[dict] = []
 
     def check(nombre: str, descripcion: str, fn) -> None:
@@ -51,67 +52,86 @@ def main() -> None:
             ok, detalle = fn()
         except Exception as e:  # noqa: BLE001
             ok, detalle = False, f"excepción: {type(e).__name__}: {e}"
-        resultados.append({"prueba": nombre, "propiedad": descripcion,
+        resultados.append({"ciudad": check.city, "prueba": nombre, "propiedad": descripcion,
                            "resultado": "PASA" if ok else "FALLA", "detalle": detalle})
         print(f"  [{'PASA' if ok else 'FALLA'}] {nombre}: {detalle}")
 
-    # O-D real, que por construcción cae en la red vial.
-    tid = _get("/trajectories/sample?n=1")["trips"][0]["id"]
-    c = _get(f"/trajectories/{tid}/track")["coords"]
-    o, d = c[0], c[-1]
-    print(f"O-D de referencia: {tid}\n")
+    # Una pasada por CADA ciudad que rutea, no solo Tumaco: cuando Cali ganó red vial
+    # esta suite seguía probando únicamente el corpus de trayectorias, así que Cali
+    # funcionaba sin que nada lo vigilara. La lista sale del servidor.
+    ciudades = _get("/route/cities").get("cities") or ["tumaco"]
+    # O-D de referencia: Tumaco, un viaje real del corpus (cae en la red por construcción);
+    # las demás no tienen corpus, así que un par fijo dentro de su malla de riesgo.
+    OD_FIJO = {"cali": ([-76.5100, 3.4900], [-76.5400, 3.3400])}
+    for _city in ciudades:
+        if _city == "tumaco":
+            tid = _get("/trajectories/sample?n=1")["trips"][0]["id"]
+            c = _get(f"/trajectories/{tid}/track")["coords"]
+            o, d = c[0], c[-1]
+            print(f"\n##### {_city.upper()} · O-D de referencia: {tid}")
+        elif _city in OD_FIJO:
+            o, d = OD_FIJO[_city]
+            print(f"\n##### {_city.upper()} · O-D fijo dentro de la malla")
+        else:
+            print(f"\n##### {_city.upper()} · sin O-D de referencia definido, se omite")
+            continue
+        _corre(o, d, _city, resultados, check)
+    _resumen(resultados)
+
+
+def _corre(o, d, city, resultados, check) -> None:
 
     def t1():
-        j = _build(o, d)
+        j = _build(o, d, city=city)
         n = len(j.get("coords") or [])
         nd = len(j.get("direct_coords") or [])
         return n >= 2 and nd >= 2, f"segura {n} vértices · directa {nd}"
 
     def t2():
         try:
-            _build([0.0, 0.0], [0.1, 0.1])
+            _build([0.0, 0.0], [0.1, 0.1], city=city)
             return False, "aceptó un O-D fuera de la red (debía fallar limpio)"
         except urllib.error.HTTPError as e:
             return e.code in (400, 404, 422), f"falla limpia con HTTP {e.code}"
 
     def t3():
-        j = _build(o, d, lam=0.0)
+        j = _build(o, d, lam=0.0, city=city)
         r = (j.get("comparison") or {}).get("exposure_reduction_pct")
         return r is not None and abs(r) < 1e-6, f"λ=0 → reducción {r}"
 
     def t4():
         malas = []
         for lam in (1.0, 2.5, 5.0):
-            r = (_build(o, d, lam=lam).get("comparison") or {}).get("exposure_reduction_pct")
+            r = (_build(o, d, lam=lam, city=city).get("comparison") or {}).get("exposure_reduction_pct")
             if r is None or r < 0:
                 malas.append((lam, r))
         return not malas, "ninguna reducción negativa" if not malas else f"negativas en {malas}"
 
     def t5():
-        cm = _build(o, d, lam=5.0).get("comparison") or {}
+        cm = _build(o, d, lam=5.0, city=city).get("comparison") or {}
         s, dd = cm.get("safe_distance_m"), cm.get("direct_distance_m")
         return s is not None and dd is not None and s >= dd * 0.999, \
             f"segura {s:.1f} m ≥ directa {dd:.1f} m"
 
     def t6():
-        cm = _build(o, d, lam=5.0).get("comparison") or {}
+        cm = _build(o, d, lam=5.0, city=city).get("comparison") or {}
         se, de = cm.get("safe_exposure"), cm.get("direct_exposure")
         return se is not None and de is not None and se <= de * 1.001, \
             f"exposición segura {se:.1f} ≤ directa {de:.1f}"
 
     def t7():
-        a = (_build(o, d, hour=20).get("comparison") or {}).get("direct_exposure")
-        b = (_build(o, d, hour=3).get("comparison") or {}).get("direct_exposure")
+        a = (_build(o, d, hour=20, city=city).get("comparison") or {}).get("direct_exposure")
+        b = (_build(o, d, hour=3, city=city).get("comparison") or {}).get("direct_exposure")
         return a is not None and b is not None and a != b, \
             f"exposición 20:00={a:.1f} vs 03:00={b:.1f} (la hora modula)"
 
     def t8():
-        v = [(_build(o, d, lam=x).get("comparison") or {}).get("exposure_reduction_pct")
+        v = [(_build(o, d, lam=x, city=city).get("comparison") or {}).get("exposure_reduction_pct")
              for x in (0.0, 2.5, 5.0)]
         return all(x is not None for x in v) and v[0] <= v[1] <= v[2] + 1e-9, \
             f"reducción no decreciente con λ: {v}"
 
-    print("C5 · PRUEBAS DE HUMO — manejo de rutas seguras (/route/build)\n")
+    check.city = city
     check("ruta_factible", "un O-D válido devuelve una ruta con ≥2 vértices", t1)
     check("od_invalido", "un O-D fuera de la red falla limpio (4xx), no 5xx", t2)
     check("lambda_cero", "λ=0 devuelve reducción exactamente 0", t3)
@@ -121,13 +141,15 @@ def main() -> None:
     check("hora_modula", "cambiar la hora cambia la exposición", t7)
     check("monotonia_lambda", "más λ nunca reduce menos", t8)
 
+
+def _resumen(resultados) -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with open(OUT, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(resultados[0].keys()))
         w.writeheader(); w.writerows(resultados)
 
     pasa = sum(1 for r in resultados if r["resultado"] == "PASA")
-    print(f"\n===== {pasa}/{len(resultados)} pruebas aprobadas =====")
+    print(f"\n===== {pasa}/{len(resultados)} pruebas aprobadas · {len({r['ciudad'] for r in resultados})} ciudades =====")
     print(f"CSV: {OUT}")
     if pasa != len(resultados):
         sys.exit(1)
