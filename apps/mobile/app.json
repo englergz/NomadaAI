@@ -99,7 +99,10 @@
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/1b72d408-48c0-4af8-b4a6-cf6c5491b4a1"
+      "url": "https://u.expo.dev/1b72d408-48c0-4af8-b4a6-cf6c5491b4a1",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
     },
     "extra": {
       "router": {},
