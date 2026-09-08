@@ -2,43 +2,59 @@
 // clave, migración de legado, wipe, sin fallback a claro). El AES real es nativo de
 // Expo y se verifica en el dispositivo; aquí se simula preservando su contrato:
 // roundtrip, clave distinta falla, AAD distinta falla.
-const mem = new Map<string, string>();
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  __esModule: true,
-  default: {
-    getItem: async (k: string) => (mem.has(k) ? mem.get(k)! : null),
-    setItem: async (k: string, v: string) => { mem.set(k, v); },
-    removeItem: async (k: string) => { mem.delete(k); },
-  },
-}));
+//
+// Las fábricas de jest.mock son AUTOCONTENIDAS: Jest prohíbe referenciar variables
+// externas, y además Babel iza los `import` por encima de cualquier `const`, así que
+// una fábrica que corra durante el import del módulo bajo prueba vería la variable sin
+// inicializar. El estado vive dentro de cada fábrica y se expone por `exports`.
+// En el mapper de este repo, react-native y async-storage resuelven al MISMO stub, y
+// jest.mock registra por ruta resuelta: esta fabrica sirve a los dos, por eso expone
+// tambien `Platform`.
+jest.mock('@react-native-async-storage/async-storage', () => {
+  const mem = new Map<string, string>();
+  return {
+    __esModule: true,
+    __mem: mem,
+    Platform: { OS: 'android', select: (o: Record<string, unknown>) => o.android ?? o.default },
+    default: {
+      getItem: async (k: string) => (mem.has(k) ? mem.get(k)! : null),
+      setItem: async (k: string, v: string) => { mem.set(k, v); },
+      removeItem: async (k: string) => { mem.delete(k); },
+    },
+  };
+});
 
-const secure = new Map<string, string>();
-jest.mock('expo-secure-store', () => ({
-  AFTER_FIRST_UNLOCK: 'afu',
-  getItemAsync: async (k: string) => secure.get(k) ?? null,
-  setItemAsync: async (k: string, v: string) => { secure.set(k, v); },
-  deleteItemAsync: async (k: string) => { secure.delete(k); },
-}));
+jest.mock('expo-secure-store', () => {
+  const store = new Map<string, string>();
+  return {
+    __store: store,
+    AFTER_FIRST_UNLOCK: 'afu',
+    getItemAsync: async (k: string) => store.get(k) ?? null,
+    setItemAsync: async (k: string, v: string) => { store.set(k, v); },
+    deleteItemAsync: async (k: string) => { store.delete(k); },
+  };
+});
 
-// AES simulado: XOR con (clave ⊕ nonce) + etiqueta que autentica ciphertext y AAD.
-// El envoltorio trata `combined` como opaco: basta hex puro, sin APIs de Node que el
-// tsconfig del movil no conoce.
-const hex = (u: Uint8Array) => Array.from(u, (x) => x.toString(16).padStart(2, '0')).join('');
-const unhex = (s: string) => new Uint8Array((s.match(/../g) ?? []).map((h) => parseInt(h, 16)));
-const tagOf = (key: string, ct: Uint8Array, aad: Uint8Array) => {
-  let h = 7; const all = [...Array.from(key, (c) => c.charCodeAt(0)), ...ct, ...aad];
-  for (const x of all) h = (h * 31 + x) >>> 0;
-  return h.toString(16).padStart(8, '0');
-};
 jest.mock('expo-crypto', () => {
+  // AES simulado: XOR con (clave ⊕ nonce) + etiqueta que autentica ciphertext y AAD.
+  // El envoltorio trata `combined` como opaco: basta hex puro.
+  const hex = (u: Uint8Array) => Array.from(u, (x) => x.toString(16).padStart(2, '0')).join('');
+  const unhex = (s: string) => new Uint8Array((s.match(/../g) ?? []).map((h) => parseInt(h, 16)));
+  const tagOf = (key: string, ct: Uint8Array, aad: Uint8Array) => {
+    let h = 7; const all = [...Array.from(key, (c) => c.charCodeAt(0)), ...ct, ...aad];
+    for (const x of all) h = (h * 31 + x) >>> 0;
+    return h.toString(16).padStart(8, '0');
+  };
   class AESEncryptionKey {
-    constructor(public hex: string) {}
+    hex: string;
+    constructor(hex: string) { this.hex = hex; }
     static async generate() { return new AESEncryptionKey(Math.random().toString(16).slice(2).padEnd(64, 'a')); }
-    static async import(hex: string) { return new AESEncryptionKey(hex); }
+    static async import(h: string) { return new AESEncryptionKey(h); }
     async encoded() { return this.hex; }
   }
   class AESSealedData {
-    constructor(public combined64: string) {}
+    combined64: string;
+    constructor(combined64: string) { this.combined64 = combined64; }
     static fromCombined(c: string) { return new AESSealedData(c); }
     async combined() { return this.combined64; }
   }
@@ -47,8 +63,7 @@ jest.mock('expo-crypto', () => {
     aesEncryptAsync: async (pt: Uint8Array, key: AESEncryptionKey, o: { additionalData: Uint8Array }) => {
       const nonce = new Uint8Array(12).map(() => Math.floor(Math.random() * 256));
       const ct = pt.map((b, i) => b ^ nonce[i % 12] ^ key.hex.charCodeAt(i % key.hex.length));
-      const tag = tagOf(key.hex, ct, o.additionalData);
-      return new AESSealedData(`${hex(nonce)}.${hex(ct)}.${tag}`);
+      return new AESSealedData(`${hex(nonce)}.${hex(ct)}.${tagOf(key.hex, ct, o.additionalData)}`);
     },
     aesDecryptAsync: async (sd: AESSealedData, key: AESEncryptionKey, o: { additionalData: Uint8Array }) => {
       const [n64, c64, tag] = sd.combined64.split('.');
@@ -60,6 +75,9 @@ jest.mock('expo-crypto', () => {
 });
 
 import { secureGet, secureSet, secureRemove, wipeSecureMaterial, _resetKeyCacheForTests } from '@/lib/secure-storage';
+
+const mem: Map<string, string> = (jest.requireMock('@react-native-async-storage/async-storage') as { __mem: Map<string, string> }).__mem;
+const secure: Map<string, string> = (jest.requireMock('expo-secure-store') as { __store: Map<string, string> }).__store;
 
 beforeEach(() => { mem.clear(); secure.clear(); _resetKeyCacheForTests(); });
 
