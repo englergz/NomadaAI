@@ -87,10 +87,38 @@ Corrige JS —pantallas, textos, lógica, diseño— sin publicar APK nuevo.
 Lo nativo (permisos, módulos, splash) SÍ exige compilar de nuevo; la política de
 huella lo detecta sola e invalida la actualización para esas builds.
 
+> **Verificado el 2026-09-08: hasta esa fecha NINGÚN update había llegado a un teléfono.**
+> Un cliente `expo-updates` pide updates por *channel*; EAS resuelve channel → branch →
+> update. `eas update --branch production` crea el **branch**, pero no existía ningún
+> **channel** (`eas channel:list` → 0), y el APK —compilado en local con gradle, no con
+> EAS Build— no enviaba `expo-channel-name`. Dos fallos independientes; cualquiera de los
+> dos bastaba para que el manifiesto respondiera 403.
+
+Requisitos, en orden — cada uno se verifica, no se supone:
+
 ```bash
 cd apps/mobile
-npx eas-cli@latest login                       # una vez
+npx eas-cli@latest login                                   # una vez
+npx eas-cli@latest channel:create production               # una vez: channel → branch del mismo nombre
+npx eas-cli@latest channel:list                            # debe listar production → production
+```
+
+`app.json` ya fija `updates.requestHeaders["expo-channel-name"] = "production"`. Eso se
+**hornea en el manifiesto nativo**, así que cambia la huella: tras tocarlo hay que
+`prebuild` + compilar APK/IPA + instalar, y publicar el update **después** del build
+(`eas update` calcula la huella del árbol en ese momento; publicado antes, queda huérfano).
+
+```bash
 npx eas-cli@latest update --branch production --message "qué cambia"
+```
+
+Verificar que el teléfono lo recibe (con el dispositivo conectado):
+
+```bash
+# runtime que lleva la app instalada — debe coincidir con el `runtimeVersion` del update
+adb shell pm path ai.nomada.app | sed 's/package://' | xargs -I{} adb pull {} /tmp/app.apk
+~/Library/Android/sdk/build-tools/*/aapt dump xmltree /tmp/app.apk AndroidManifest.xml | grep -A1 EXPO_RUNTIME_VERSION
+npx eas-cli@latest update:list --branch production --limit 2
 ```
 
 > Si `npm ci` falla en EAS con «lock file out of sync», es que se instaló una
