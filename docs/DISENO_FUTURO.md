@@ -45,22 +45,35 @@ Son **tres ingredientes independientes**, y cada uno habilita cosas distintas:
   el grafo vial se descarga de OpenStreetMap, no hay que entrenar nada ni recoger
   trayectorias. **Para abrir una ciudad nueva, el orden correcto es 1 → 2 → 3.**
 
-### Estado por ciudad (verificado 2026-08-04)
+### Estado por ciudad (verificado 2026-09-07)
 
 | Ciudad | 1 Riesgo | 2 Grafo vial | 3 Predicción |
 |---|---|---|---|
-| Tumaco | ✅ | ✅ | ✅ |
-| Cali | ✅ (4.268 celdas) | ❌ | ❌ |
+| Tumaco | ✅ | ✅ (corpus de trayectorias) | ✅ |
+| Cali | ✅ (4.268 celdas) | ✅ (OSM, 4.360 km) | ❌ |
+
+**Cali rutea desde 2026-09-07.** Su grafo viene de OpenStreetMap
+(`scripts/fetch_road_graph.py`), no de trayectorias: `RouteGraph.from_osm` construye
+la misma estructura desde las vías, con el ancho de vehículo derivado del `highway=*`.
+Verificado en producción con los 8 invariantes de `/route/build`: a λ=2,5 (defecto
+del producto) reduce la exposición un **19,1 %** por un 2,9 % más de distancia.
+
+> **Dato para no sobreinterpretar:** en Tumaco el mismo λ da 4,84 %. No es
+> comparable — ciudades, superficies y fuentes de grafo distintas — pero apunta a
+> lo que la tesis defendió en C4: que el techo bajo de Tumaco es un límite del
+> territorio, no del método. Convertirlo en evidencia exige el barrido canónico
+> sobre Cali con la misma disciplina.
 
 ### Cómo lo refleja la app (ya implementado)
 
 `map.tsx` evalúa `canRoute` y `canPredict` por separado en vez de un booleano
-«ciudad completa». En una ciudad con solo riesgo se ofrece **recorrido libre** con
-avisos en zona, y el copy dice la verdad: «ya te protegemos… las rutas seguras
-llegan cuando la red vial de esta ciudad esté cargada».
+«ciudad completa». **`canRoute` lo dice el servidor** (`GET /route/cities`), no una
+lista en el cliente: abrir una ciudad nueva ya no exige publicar versión de la app,
+basta con dejar su red vial en el backend. En una ciudad con solo riesgo se ofrece
+**recorrido libre** con avisos en zona, y el copy dice la verdad.
 
-**Pendiente para que Cali quede completa:** cargar su grafo vial en el backend
-(paso 2). La predicción (paso 3) exige además recoger trayectorias de la ciudad.
+**Pendiente para que Cali quede completa:** la predicción (paso 3), que exige
+recoger trayectorias de la ciudad. Es el único ingrediente que no se descarga.
 
 ## 2. «Círculos» — cuidarnos juntos (trabajo futuro, con cimientos ya)
 
