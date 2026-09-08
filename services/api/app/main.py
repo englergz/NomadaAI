@@ -12,6 +12,8 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.ratelimit import RateLimitMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app import state
@@ -99,6 +101,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Respaldo anti-abuso por IP sobre escrituras y cómputo. Va DESPUÉS de CORS en el
+    # registro para que CORS lo envuelva y un 429 lleve las cabeceras que el navegador exige.
+    app.add_middleware(RateLimitMiddleware, enabled=s.rate_limit_enabled)
     app.include_router(health.router)
     app.include_router(predict.router)
     app.include_router(corridors.router)

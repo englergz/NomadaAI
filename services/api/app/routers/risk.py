@@ -61,7 +61,10 @@ def report_incident(
     """
     try:
         data = report.model_dump()
-        data["user_id"] = verify_bearer(authorization) or "anon"
+        # Identidad: token > id anónimo del dispositivo > "anon". Antes saltaba directo a
+        # "anon" y todos los invitados compartían un único cubo de rate-limit.
+        data["user_id"] = verify_bearer(authorization) or data.get("device_id") or "anon"
+        data.pop("device_id", None)   # no es columna de la tabla
         r = incidents.report(data)
         return IncidentResponse(accepted=r["accepted"], id=r.get("id"), note=r.get("note"))
     except Exception as e:  # noqa: BLE001 — el reporte nunca debe tumbar la app

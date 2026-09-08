@@ -11,6 +11,7 @@ import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
 import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { getUid } from '@/lib/uid';
 import { authToken } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
@@ -76,6 +77,7 @@ export default function ReportSheet({
         description: description.trim() || undefined,
         city,
         hour: new Date().getHours(),
+        device_id: await getUid(), // rate-limit por persona aunque no haya sesión
       }, await authToken());
       if (r.accepted) {
         await AsyncStorage.setItem(LAST_KEY, String(Date.now()));
