@@ -81,7 +81,9 @@
       "^react-native$": "<rootDir>/src/__tests__/__stubs__/native.js",
       "^expo-location$": "<rootDir>/src/__tests__/__stubs__/native.js",
       "^expo-task-manager$": "<rootDir>/src/__tests__/__stubs__/native.js",
-      "^@react-native-async-storage/async-storage$": "<rootDir>/src/__tests__/__stubs__/native.js"
+      "^@react-native-async-storage/async-storage$": "<rootDir>/src/__tests__/__stubs__/native.js",
+      "^expo-crypto$": "<rootDir>/src/__tests__/__stubs__/expo-crypto.js",
+      "^expo-secure-store$": "<rootDir>/src/__tests__/__stubs__/expo-secure-store.js"
     },
     "testPathIgnorePatterns": [
       "/node_modules/",
