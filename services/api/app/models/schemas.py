@@ -134,6 +134,9 @@ class IncidentReport(BaseModel):
     description: Optional[str] = Field(default=None, max_length=500)
     city: str = "tumaco"
     hour: Optional[int] = Field(default=None, ge=0, le=23)
+    # identificador anónimo del dispositivo: sin él, TODOS los invitados compartían un
+    # solo cubo "anon" de 5 reportes/hora, y un abusador bloqueaba a la ciudad entera
+    device_id: Optional[str] = Field(default=None, max_length=64)
 
 
 class IncidentResponse(BaseModel):

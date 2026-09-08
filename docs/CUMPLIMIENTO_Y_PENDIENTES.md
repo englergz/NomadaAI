@@ -46,7 +46,7 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 | Todo el tráfico por HTTPS (sin cleartext) | ✅ verificado |
 | Rol de admin verificado **en servidor** (nunca en cliente) | ✅ `/admin/me` → 401 sin token |
 | Escapado de datos externos en el mapa (XSS) | ✅ |
-| Rate-limit en escrituras del backend | ⚠️ parcial (cooldown en cliente) |
+| Rate-limit en escrituras del backend | ✅ **en servidor** (2026-09-08): ventana deslizante por IP en `core/ratelimit.py` sobre escrituras y cómputo, 429 con `Retry-After`; límites por identidad en BD como control primario; el cubo `anon` compartido de reportes corregido con `device_id` |
 | Auditoría de dependencias (`npm audit`) | ⚠️ hay avisos sin revisar |
 
 ### A.4 Calidad y buenas prácticas

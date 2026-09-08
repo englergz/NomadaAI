@@ -158,7 +158,8 @@ export interface IncidentReport {
   category: string;
   description?: string;
   city?: string;
-  hour?: number;
+  hour?: number;  /** id anónimo del dispositivo: rate-limit por persona sin exigir cuenta */
+  device_id?: string;
 }
 
 export interface IncidentResponse {

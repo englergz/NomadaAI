@@ -66,6 +66,11 @@ class Settings(BaseSettings):
     # en el cliente. Sin ids configurados el panel queda deshabilitado.
     admin_user_ids: str = ""
 
+    # --- Rate-limit por IP en servidor (app/core/ratelimit.py). Interruptor de
+    # emergencia: si algún día un proxy nuevo rompiera la lectura de la IP y empezara a
+    # meter a todos en un cubo, se apaga con RATE_LIMIT_ENABLED=false sin redesplegar código.
+    rate_limit_enabled: bool = True
+
     @property
     def admin_id_list(self) -> list[str]:
         return [a.strip() for a in self.admin_user_ids.split(",") if a.strip()]
