@@ -11,6 +11,8 @@
 // - El servicio en primer plano de Android muestra SIEMPRE una notificación
 //   persistente: el usuario ve que la app está midiendo su ruta, sin sorpresas.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { secureGet, secureRemove, secureSet } from '@/lib/secure-storage';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
@@ -56,7 +58,7 @@ export interface ActiveTrip {
 
 export async function loadActiveTrip(): Promise<ActiveTrip | null> {
   try {
-    const raw = await AsyncStorage.getItem(KEY_TRIP);
+    const raw = await secureGet(KEY_TRIP);   // cifrado en reposo: posiciones
     if (!raw) return null;
     const trip = JSON.parse(raw) as ActiveTrip;
     if (!trip?.startedAt) return null;
@@ -69,13 +71,13 @@ export async function loadActiveTrip(): Promise<ActiveTrip | null> {
 export async function saveActiveTrip(trip: ActiveTrip): Promise<void> {
   try {
     const points = trip.points.slice(-MAX_POINTS);
-    await AsyncStorage.setItem(KEY_TRIP, JSON.stringify({ ...trip, points, updatedAt: Date.now() }));
+    await secureSet(KEY_TRIP, JSON.stringify({ ...trip, points, updatedAt: Date.now() }));
   } catch { /* sin almacenamiento el viaje sigue vivo en memoria */ }
 }
 
 export async function clearActiveTrip(): Promise<void> {
   try {
-    await AsyncStorage.multiRemove([KEY_TRIP, KEY_QUEUE]);
+    await Promise.all([secureRemove(KEY_TRIP), secureRemove(KEY_QUEUE)]);
   } catch { /* nada que limpiar */ }
 }
 
@@ -89,9 +91,9 @@ export function isResumable(trip: ActiveTrip | null): trip is ActiveTrip {
 /** Devuelve las posiciones capturadas mientras la app no estaba en pantalla y vacía la cola. */
 export async function drainQueuedPoints(): Promise<TripPoint[]> {
   try {
-    const raw = await AsyncStorage.getItem(KEY_QUEUE);
+    const raw = await secureGet(KEY_QUEUE);
     if (!raw) return [];
-    await AsyncStorage.removeItem(KEY_QUEUE);
+    await secureRemove(KEY_QUEUE);
     const pts = JSON.parse(raw) as TripPoint[];
     return Array.isArray(pts) ? pts : [];
   } catch {
@@ -102,10 +104,10 @@ export async function drainQueuedPoints(): Promise<TripPoint[]> {
 async function queuePoints(points: TripPoint[]): Promise<void> {
   if (!points.length) return;
   try {
-    const raw = await AsyncStorage.getItem(KEY_QUEUE);
+    const raw = await secureGet(KEY_QUEUE);
     const prev = raw ? (JSON.parse(raw) as TripPoint[]) : [];
     const next = [...prev, ...points].slice(-MAX_POINTS);
-    await AsyncStorage.setItem(KEY_QUEUE, JSON.stringify(next));
+    await secureSet(KEY_QUEUE, JSON.stringify(next));
   } catch { /* la cola es best-effort: al volver se sigue con el GPS en vivo */ }
 }
 
@@ -172,10 +174,10 @@ if (Platform.OS !== 'web') {
     const now = { lon: loc.coords.longitude, lat: loc.coords.latitude, t: Date.now() };
     let prev: TripPoint | null = null;
     try {
-      const raw = await AsyncStorage.getItem(KEY_WATCH);
+      const raw = await secureGet(KEY_WATCH);
       prev = raw ? (JSON.parse(raw) as TripPoint) : null;
     } catch { /* primera muestra */ }
-    try { await AsyncStorage.setItem(KEY_WATCH, JSON.stringify(now)); } catch { /* best-effort */ }
+    try { await secureSet(KEY_WATCH, JSON.stringify(now)); } catch { /* best-effort: nunca en claro */ }
     if (!prev) return;
     const dt = (now.t - prev.t) / 1000;
     if (dt <= 0) return;
@@ -271,7 +273,7 @@ export async function stopAutoTripWatch(): Promise<void> {
     if (await Location.hasStartedLocationUpdatesAsync(AUTOTRIP_TASK)) {
       await Location.stopLocationUpdatesAsync(AUTOTRIP_TASK);
     }
-    await AsyncStorage.removeItem(KEY_WATCH);
+    await secureRemove(KEY_WATCH);
   } catch { /* ya estaba detenido */ }
 }
 
