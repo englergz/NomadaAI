@@ -12,6 +12,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { api } from '@/lib/api';
 import { authToken } from '@/lib/auth';
+import { wipeSecureMaterial } from '@/lib/secure-storage';
+import { wipeUid } from '@/lib/uid';
 
 /** Prefijos de todo lo que la app escribe en el dispositivo. */
 const OWNED_PREFIXES = ['nomadaai'];
@@ -54,6 +56,9 @@ export async function deleteAllMyData(uid: string, city: string): Promise<Deleti
     const keys = await AsyncStorage.getAllKeys();
     const mine = keys.filter((k) => OWNED_PREFIXES.some((p) => k.startsWith(p)));
     if (mine.length) await AsyncStorage.multiRemove(mine);
+    // La clave AES y el uid viven en Keystore/Keychain, fuera de AsyncStorage: sin esto
+    // el borrado dejaría la llave que ata el histórico del servidor a este teléfono.
+    await Promise.all([wipeSecureMaterial(), wipeUid()]);
     await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(legal));
   } catch {
     localOk = false;

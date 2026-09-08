@@ -4,6 +4,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { AlertLevel } from '@/lib/alerts';
+import { secureGet, secureRemove, secureSet } from '@/lib/secure-storage';
 
 export interface AlertRecord {
   t: string;                                  // ISO timestamp
@@ -20,19 +21,19 @@ export async function logAlert(rec: Omit<AlertRecord, 't'>): Promise<void> {
   try {
     const list = await getAlerts();
     list.unshift({ t: new Date().toISOString(), ...rec });
-    await AsyncStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)));
+    await secureSet(KEY, JSON.stringify(list.slice(0, MAX)));   // celda+hora = dónde estuvo
   } catch { /* el recorrido nunca depende del histórico */ }
 }
 
 export async function getAlerts(): Promise<AlertRecord[]> {
   try {
-    const s = await AsyncStorage.getItem(KEY);
+    const s = await secureGet(KEY);
     return s ? (JSON.parse(s) as AlertRecord[]) : [];
   } catch { return []; }
 }
 
 export async function clearAlerts(): Promise<void> {
-  try { await AsyncStorage.removeItem(KEY); } catch { /* ignore */ }
+  try { await secureRemove(KEY); } catch { /* ignore */ }
 }
 
 // «Sin leer»: marca de última vista — el puntico del FAB de notificaciones.

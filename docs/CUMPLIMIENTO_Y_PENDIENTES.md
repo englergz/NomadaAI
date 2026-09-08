@@ -35,7 +35,7 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
 | Reportes ciudadanos anónimos y agregados | ✅ |
 | Notificación persistente mientras se sigue la ubicación | ✅ verificado |
 | Permisos mínimos (sin «dibujar sobre otras apps» ni almacenamiento) | ✅ verificado en el manifiesto |
-| Cifrado del histórico local en reposo | ❌ pendiente |
+| Cifrado del histórico local en reposo | ✅ **(2026-09-08)** AES-256-GCM nativo (`expo-crypto`) con la clave en Keystore/Keychain (`expo-secure-store`, `AFTER_FIRST_UNLOCK` en iOS para la tarea de fondo). Cubre recorrido en curso, cola de posiciones, última posición del vigía y registro de alertas; el `uid` pasa a SecureStore. AAD = nombre de la clave; migración transparente del legado; **sin fallback a claro**; el borrado de datos destruye la clave. 6 pruebas nuevas. `expo-crypto` ya estaba en el APK a 57.0.0 (vía `expo-auth-session`): debería salir por OTA |
 | Flujo de borrado de datos a petición | ✅ en Configuración → Privacidad, doble confirmación |
 
 ### A.3 Seguridad técnica
@@ -120,7 +120,7 @@ Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo es
    segundo plano) + 8 invariantes sobre `/route/build` en el backend, que es donde
    vive el manejo de rutas seguras del indicador. Reproducir:
    `npm test` en `apps/mobile` y `python services/api/scripts/c5_humo_route_build.py`.
-10. **Cifrado del histórico local** y revisión de `npm audit`.
+~~10. Cifrado del histórico local y revisión de `npm audit`~~ — **RESUELTO (2026-09-08)**, ver filas A.2 y A.3.
 
 ### B.5 Producto futuro (diseñado, no construido)
 11. **Círculos** — cuidarnos juntos. Diseño completo en `DISENO_FUTURO.md`.
