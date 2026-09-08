@@ -11,5 +11,8 @@
     "dev:web": "npm run dev --workspace apps/web",
     "build:web": "npm run build --workspace apps/web",
     "ios": "bash scripts/ios.sh"
+  },
+  "overrides": {
+    "@clerk/clerk-js": "5.127.0"
   }
 }
