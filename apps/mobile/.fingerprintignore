@@ -1,0 +1,4 @@
+# Ficheros transitorios que Kotlin 2.x crea mientras gradle compila los plugins de Expo
+# (.kotlin/sessions/*.salive). Sin esto, la huella que expo-updates graba en el APK en
+# tiempo de build difiere de la que calcula `eas update`, y la OTA nunca aplica.
+**/*-gradle-plugin/.kotlin/**/*
