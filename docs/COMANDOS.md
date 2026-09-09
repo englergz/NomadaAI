@@ -93,6 +93,14 @@ huella lo detecta sola e invalida la actualización para esas builds.
 > **channel** (`eas channel:list` → 0), y el APK —compilado en local con gradle, no con
 > EAS Build— no enviaba `expo-channel-name`. Dos fallos independientes; cualquiera de los
 > dos bastaba para que el manifiesto respondiera 403.
+>
+> **2026-09-09, tercer fallo:** la huella que expo-updates graba en el APK al compilar
+> (`assets/fingerprint`) NO coincidía con la que calcula `eas update` (4e563f16… frente a
+> be94deb1…). Kotlin 2 deja archivos de sesión transitorios en
+> `node_modules/expo-updates/expo-updates-gradle-plugin/.kotlin/` mientras gradle compila,
+> y @expo/fingerprint 0.20 no los ignora: cada build grababa una huella distinta y ningún
+> update la habría apuntado. Lo arregla `apps/mobile/.fingerprintignore`; con él, gradle y
+> la CLI dan la misma huella (verificado con la tarea `createReleaseUpdatesResources`).
 
 Requisitos, en orden — cada uno se verifica, no se supone:
 
@@ -115,10 +123,20 @@ npx eas-cli@latest update --branch production --message "qué cambia"
 Verificar que el teléfono lo recibe (con el dispositivo conectado):
 
 ```bash
-# runtime que lleva la app instalada — debe coincidir con el `runtimeVersion` del update
+# runtime que lleva la app instalada — debe coincidir con el `runtimeVersion` del update.
+# OJO: en el AndroidManifest solo aparece el marcador `file:fingerprint`; el valor real
+# va en el asset `assets/fingerprint` del APK.
 adb shell pm path ai.nomada.app | sed 's/package://' | xargs -I{} adb pull {} /tmp/app.apk
-~/Library/Android/sdk/build-tools/*/aapt dump xmltree /tmp/app.apk AndroidManifest.xml | grep -A1 EXPO_RUNTIME_VERSION
+unzip -p /tmp/app.apk assets/fingerprint; echo
+# lo que publicará eas update (debe ser idéntico al anterior)
+npx expo-updates runtimeversion:resolve --platform android | python3 -c "import json,sys; print(json.load(sys.stdin)['runtimeVersion'])"
 npx eas-cli@latest update:list --branch production --limit 2
+```
+
+Antes de compilar un APK, la comprobación equivalente sin teléfono:
+
+```bash
+cd apps/mobile/android && ANDROID_HOME=~/Library/Android/sdk ./gradlew :app:createReleaseUpdatesResources --rerun-tasks -q >/dev/null; cat app/build/generated/assets/createReleaseUpdatesResources/fingerprint
 ```
 
 > Si `npm ci` falla en EAS con «lock file out of sync», es que se instaló una
