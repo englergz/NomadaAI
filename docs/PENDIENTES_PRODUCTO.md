@@ -123,7 +123,7 @@ emulador Pixel 7a (onboarding, Configuración, selector de ciudad, tarjeta OTA, 
 | Títulos vs subtítulos diferenciados en la ayuda móvil (08-03) | ⚠️ hay jerarquía en código; sin confirmar visualmente |
 | Radios coherentes en toda la app (07-10, 08-03) | ✅ tokens `Radii` |
 | Wordmark Sora, «.AI» azul, punto redondo, sin relleno (07-10, 07-11) | ✅ `BrandWordmark` |
-| Agrupar los 4 botones de configuración en «más opciones» desplegable (08-04 14:04) | ❌ sin commit que lo toque |
+| Agrupar los 4 botones de configuración en «más opciones» desplegable (08-04 14:04) | ✅ **(09-10)** tarjeta «Más opciones» plegable (ayuda · mis datos y opinión · términos · restablecer), verificada en el emulador |
 | **Iconos de lugares (POI) en el mapa nativo** como en web (07-09, 07-11, 08-04) | ✅ **(09-10)** PNG generados de la misma tabla que la web (`scripts/gen_poi_icons.py`), capa `symbol` con `<Images/>`; verificado en el emulador Pixel 7a (tamaño corregido: el @2x se registraba como @1x) |
 | Botón «centrar» no centra (07-10, 07-11, **08-04 19:36**) | ⚠️ `a2fa92a` lo arregló el 07-11; lo volviste a reportar el 08-04 y no hay commit posterior. Hay que probarlo en teléfono |
 | Tocar fuera cierra el teclado (08-03) | ⚠️ sin confirmar |
@@ -240,8 +240,8 @@ Nada pendiente salvo lo del panel admin (§3).
 ---
 
 ## 8. Orden sugerido para lo que sigue (valor / esfuerzo)
-~~1–6~~ ✅ cerrados el 2026-09-10 (commit 57d8e53 + OTA). Pendiente tuyo: instalar el APK y mirarlo.
-7. Agrupar los 4 botones de configuración en «más opciones» (08-04) — pequeño, JS.
+~~1–7~~ ✅ cerrados el 2026-09-10 (commits 57d8e53, 052561d y el de «Más opciones») y verificados en el
+emulador Pixel 7a; la OTA republicada corre en el emulador con la hoja de Novedades.
 8. Fotos en reportes (bloqueado por la decisión de Storage).
 9. Refactor `map.tsx` → hooks + `BaseSheet` + `useBanner` (habilita lo demás sin romper).
 10. Caché offline + cola de escrituras.

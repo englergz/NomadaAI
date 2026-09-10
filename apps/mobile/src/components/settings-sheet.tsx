@@ -1,10 +1,11 @@
 // Hoja de Ajustes (B8): VEHÍCULO / RECORRIDO Y ALERTAS / TEMA / MAPA Y CAPAS / RIESGO
 // (categoría propia: toggle de capa + heatmap dentro, deshabilitado si la capa está OFF).
 // Paridad con el menú del panel de escritorio.
-import React from 'react';
+import React, { useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 import SliderImpl from '@react-native-community/slider';
 
 // Los tipos del slider aún no están alineados con React 19; el runtime es correcto.
@@ -46,6 +47,9 @@ export default function SettingsSheet({ visible, onClose, onHelp, onLegal, onPri
   const c = Colors[scheme];
   const { settings, set, reset } = useSettings();
   const insets = useSafeAreaInsets();
+  // «Más opciones» (ayuda, mis datos, términos, restablecer): plegado por defecto para
+  // que los ajustes del día a día no compitan con cuatro botones que se usan una vez.
+  const [more, setMore] = useState(false);
   const { height: winH } = useWindowDimensions();
 
   return (
@@ -243,45 +247,52 @@ export default function SettingsSheet({ visible, onClose, onHelp, onLegal, onPri
           <Text style={{ color: c.textSecondary, fontSize: 12.5, lineHeight: 18 }}>{t('circles.card.body')}</Text>
         </View>
 
-        {/* Datos y legal en UNA fila: son dos cosas distintas (mis datos/opinión vs.
-            el texto legal) y con nombres distintos; antes parecían el mismo botón. */}
-        <View style={styles.legalRow}>
-          <Pressable
-            onPress={onPrivacy}
-            style={({ pressed }) => [styles.resetBtn, styles.legalBtn, { borderColor: c.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Text style={{ color: c.textSecondary, fontSize: 12.5, fontWeight: '600', textAlign: 'center' }}>{t('privacy.open')}</Text>
-          </Pressable>
-          <Pressable
-            onPress={onLegal}
-            style={({ pressed }) => [styles.resetBtn, styles.legalBtn, { borderColor: c.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Text style={{ color: c.textSecondary, fontSize: 12.5, fontWeight: '600', textAlign: 'center' }}>{t('legal.open')}</Text>
-          </Pressable>
-        </View>
-
+        {/* MÁS OPCIONES: tarjeta plegable con lo que se usa una vez (pedido 08-04: agrupar
+            los cuatro botones). Ayuda · mis datos y opinión · términos · restablecer. */}
         <Pressable
-          onPress={onHelp}
-          style={({ pressed }) => [styles.resetBtn, { borderColor: c.border, opacity: pressed ? 0.7 : 1, marginTop: 22 }]}
+          onPress={() => setMore((v) => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: more }}
+          style={({ pressed }) => [styles.more, { borderColor: c.border, backgroundColor: c.background, opacity: pressed ? 0.85 : 1 }]}
         >
-          <Text style={{ color: c.accent, fontSize: 13.5, fontWeight: '700' }}>{t('help.title')}</Text>
-        </Pressable>
-
-        {/* Restablecer: pide confirmación porque borra TODAS las preferencias. */}
-        <Pressable
-          onPress={() => Alert.alert(
-            t('settings.reset.title'),
-            t('settings.reset.body'),
-            [
-              { text: t('settings.reset.cancel'), style: 'cancel' },
-              { text: t('settings.reset.confirm'), style: 'destructive', onPress: reset },
-            ],
+          <View style={styles.moreHead}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ color: c.text, fontSize: 14, fontWeight: '700' }}>{t('settings.more')}</Text>
+              {!more && <Text style={{ color: c.textSecondary, fontSize: 12 }}>{t('settings.more.hint')}</Text>}
+            </View>
+            <Ionicons name={more ? 'chevron-up' : 'chevron-down'} size={18} color={c.textSecondary} />
+          </View>
+          {more && (
+            <View style={[styles.moreList, { borderTopColor: c.border }]}>
+              {([
+                { key: 'help', icon: 'help-circle-outline', label: t('help.title'), color: c.accent, onPress: onHelp },
+                { key: 'privacy', icon: 'shield-checkmark-outline', label: t('privacy.open'), color: c.text, onPress: onPrivacy },
+                { key: 'legal', icon: 'document-text-outline', label: t('legal.open'), color: c.text, onPress: onLegal },
+                {
+                  key: 'reset', icon: 'refresh-outline', label: t('settings.reset.action'), color: c.text,
+                  // Restablecer pide confirmación porque borra TODAS las preferencias.
+                  onPress: () => Alert.alert(
+                    t('settings.reset.title'),
+                    t('settings.reset.body'),
+                    [
+                      { text: t('settings.reset.cancel'), style: 'cancel' },
+                      { text: t('settings.reset.confirm'), style: 'destructive', onPress: reset },
+                    ],
+                  ),
+                },
+              ] as const).map((row) => (
+                <Pressable
+                  key={row.key}
+                  onPress={row.onPress}
+                  style={({ pressed }) => [styles.moreRow, { opacity: pressed ? 0.6 : 1 }]}
+                >
+                  <Ionicons name={row.icon} size={18} color={row.color} />
+                  <Text style={{ color: row.color, fontSize: 13.5, fontWeight: '600', flex: 1 }}>{row.label}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={c.textSecondary} />
+                </Pressable>
+              ))}
+            </View>
           )}
-          style={({ pressed }) => [styles.resetBtn, { borderColor: c.border, opacity: pressed ? 0.7 : 1 }]}
-        >
-          <Text style={{ color: c.textSecondary, fontSize: 13, fontWeight: '600' }}>
-            {t('settings.reset.action')}
-          </Text>
         </Pressable>
 
         </ScrollView>
@@ -299,12 +310,10 @@ export default function SettingsSheet({ visible, onClose, onHelp, onLegal, onPri
 const styles = StyleSheet.create({
   circles: { marginHorizontal: 16, borderWidth: 1, borderRadius: Radii.card, padding: 12, gap: 6 },
   soon: { borderWidth: 1.5, borderRadius: Radii.pill, paddingVertical: 3, paddingHorizontal: 9 },
-  legalRow: { flexDirection: 'row', gap: 8, marginHorizontal: 16, marginTop: 22 },
-  legalBtn: { flex: 1, marginHorizontal: 0, marginTop: 0, marginBottom: 0, paddingHorizontal: 8 },
-  resetBtn: {
-    marginTop: 18, marginHorizontal: 16, marginBottom: 6, paddingVertical: 11,
-    borderWidth: 1, borderRadius: Radii.control, alignItems: 'center',
-  },
+  more: { marginHorizontal: 16, marginTop: 18, borderWidth: 1, borderRadius: Radii.card, overflow: 'hidden' },
+  moreHead: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14 },
+  moreList: { borderTopWidth: 1, paddingVertical: 4 },
+  moreRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 14 },
   // B3: el backdrop cubre TODA la pantalla (también detrás de las esquinas curvas de la
   // hoja); antes terminaba en el borde superior de la hoja y se veía una línea recta.
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },

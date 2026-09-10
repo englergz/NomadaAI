@@ -25,6 +25,8 @@ export const CHANGELOG: ChangelogEntry[] = [
         en: 'Map places now carry icons per category, on Android and iPhone too.' },
       { es: 'La pantalla de arranque refleja la carga real: ajustes, ubicación y mapa de riesgo.',
         en: 'The launch screen now reflects the real loading: settings, location and risk map.' },
+      { es: 'Configuración más limpia: ayuda, mis datos, términos y restablecer viven en «Más opciones».',
+        en: 'Cleaner Settings: help, my data, terms and reset now live under “More options”.' },
       { es: 'Tu histórico local queda cifrado en el teléfono.',
         en: 'Your local history is now encrypted on the phone.' },
       { es: 'Las actualizaciones avisan cuando están listas y nunca se aplican durante un recorrido.',
