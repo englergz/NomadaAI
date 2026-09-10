@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { baseStyle, baseTiles, CITIES, DEFAULT_CITY, RISK_FILL_COLOR, riskFillColor } from '@/constants/map';
+import { baseLabelTiles, baseStyle, baseTiles, CITIES, DEFAULT_CITY, RISK_FILL_COLOR, riskFillColor } from '@/constants/map';
 // Glyphmap oficial de MaterialCommunityIcons (nombre → codepoint): iconos literales
 // por categoría (gas-station, hospital-box, church…), nada de emojis.
 import MCIGlyphs from '@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/MaterialCommunityIcons.json';
@@ -152,6 +152,11 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     const apply = () => {
       const src = map.getSource('base') as maplibregl.RasterTileSource | undefined;
       if (src?.setTiles) src.setTiles(baseTiles(dark, satellite));
+      // Rótulos: siguen al tema; en satelital se ocultan (esa base no los tiene).
+      const labels = baseLabelTiles(dark, satellite);
+      const lsrc = map.getSource('labels') as maplibregl.RasterTileSource | undefined;
+      if (lsrc?.setTiles && labels) lsrc.setTiles(labels);
+      if (map.getLayer('labels')) map.setLayoutProperty('labels', 'visibility', labels ? 'visible' : 'none');
     };
     if (loadedRef.current) apply(); else map.once('load', apply);
   }, [dark, satellite]);

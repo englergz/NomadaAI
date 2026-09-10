@@ -1,19 +1,16 @@
-// Config de mapa compartida (web y nativo) — mismas bases raster gratis que apps/web.
-export const cartoTiles = (name: string) =>
-  ['a', 'b', 'c', 'd'].map((s) => `https://${s}.basemaps.cartocdn.com/${name}/{z}/{x}/{y}.png`);
+// Config de mapa compartida (web y nativo). Las teselas base viven en @nomadaai/shared
+// (misma fuente que el escritorio): desde el 2026-09-10 son los lienzos de Esri, sin
+// clave; CARTO pasó a exigir API key y servía «API KEY REQUIRED».
+import {
+  BASEMAP_ATTRIBUTION, BASEMAP_MAX_ZOOM, basemapKind, basemapLabelTiles, basemapTiles,
+} from '@nomadaai/shared';
 
-// Tiles satelitales (ESRI World Imagery), como en el panel de escritorio.
-export const SATELLITE_TILES = [
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-];
-
-// Tiles de la base según tema/satélite (compartido web y nativo).
-export function baseTiles(dark: boolean, satellite = false): string[] {
-  return satellite ? SATELLITE_TILES : cartoTiles(dark ? 'dark_all' : 'light_all');
-}
+export { basemapTiles as baseTiles, basemapLabelTiles as baseLabelTiles };
 
 // Estilo MapLibre (JSON) con base clara/oscura/satelital — sin API key.
 export function baseStyle(dark: boolean, satellite = false) {
+  const kind = basemapKind(dark, satellite);
+  const labels = basemapLabelTiles(dark, satellite);
   return {
     version: 8 as const,
     // `glyphs` es necesario si alguna capa symbol usa texto; sin él, MapLibre nativo
@@ -22,12 +19,19 @@ export function baseStyle(dark: boolean, satellite = false) {
     sources: {
       base: {
         type: 'raster' as const,
-        tiles: baseTiles(dark, satellite),
+        tiles: basemapTiles(dark, satellite),
         tileSize: 256,
-        attribution: satellite ? 'Imagery © Esri' : '© OpenStreetMap · © CARTO',
+        maxzoom: BASEMAP_MAX_ZOOM,
+        attribution: BASEMAP_ATTRIBUTION[kind],
       },
+      // Rótulos (calles, barrios) del lienzo de Esri: fuente aparte porque el
+      // satelital no los trae. Van bajo el riesgo, igual que venían en CARTO.
+      ...(labels ? { labels: { type: 'raster' as const, tiles: labels, tileSize: 256, maxzoom: BASEMAP_MAX_ZOOM } } : {}),
     },
-    layers: [{ id: 'base', type: 'raster' as const, source: 'base' }],
+    layers: [
+      { id: 'base', type: 'raster' as const, source: 'base' },
+      ...(labels ? [{ id: 'labels', type: 'raster' as const, source: 'labels' }] : []),
+    ],
   };
 }
 
