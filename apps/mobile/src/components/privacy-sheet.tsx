@@ -4,13 +4,11 @@
 // que el usuario debe marcar (nunca premarcada) y, encima, el diálogo del sistema
 // pidiendo confirmación. Ningún toque accidental puede borrar nada.
 import { useState } from 'react';
-import {
-  ActivityIndicator, Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text,
-  TextInput, useWindowDimensions, View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
+import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { deleteAllMyData } from '@/lib/data-deletion';
@@ -39,7 +37,6 @@ export default function PrivacySheet({
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -115,15 +112,7 @@ export default function PrivacySheet({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View
-        style={[
-          styles.sheet,
-          { backgroundColor: c.backgroundElement, borderColor: c.border, maxHeight: height * 0.9, paddingBottom: insets.bottom + 14 },
-        ]}
-      >
-        <View style={[styles.handle, { backgroundColor: c.border }]} />
+    <BaseSheet visible={visible} onClose={onClose} backdropOpacity={0.5} sheetStyle={{ paddingBottom: insets.bottom + 14 }}>
         <Text style={[styles.title, { color: c.text }]}>{t('privacy.title')}</Text>
 
         <ScrollView contentContainerStyle={{ gap: 22, paddingVertical: 6 }} keyboardShouldPersistTaps="handled">
@@ -222,19 +211,11 @@ export default function PrivacySheet({
         >
           <Text style={{ color: c.text, fontSize: 15, fontWeight: '700' }}>{t('settings.done')}</Text>
         </Pressable>
-      </View>
-    </Modal>
+    </BaseSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: {
-    marginTop: 'auto', borderWidth: 1, borderBottomWidth: 0,
-    borderTopLeftRadius: Radii.sheet, borderTopRightRadius: Radii.sheet,
-    paddingHorizontal: 20, paddingTop: 10, gap: 10,
-  },
-  handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
   title: { fontSize: 17, fontWeight: '800' },
   section: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
   scaleRow: { flexDirection: 'row', gap: 8 },

@@ -3,12 +3,13 @@
 // Anti-abuso en cliente (cooldown) además del rate-limit del servidor.
 // La foto llegará cuando el backend soporte adjuntos (Storage) — no se finge.
 import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
+import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { getUid } from '@/lib/uid';
@@ -94,10 +95,7 @@ export default function ReportSheet({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: c.backgroundElement, borderColor: c.border, marginBottom: kbHeight, paddingBottom: kbHeight ? 16 : 28 }]}>
-        <View style={[styles.handle, { backgroundColor: c.border }]} />
+    <BaseSheet visible={visible} onClose={onClose} maxHeightPct={null} sheetStyle={{ marginBottom: kbHeight, paddingBottom: kbHeight ? 16 : 28, gap: 12 }}>
         <Text style={[styles.title, { color: c.text }]}>{t('report.title')}</Text>
         <Text style={{ color: c.textSecondary, fontSize: 12, lineHeight: 17 }}>{t('report.intro')}</Text>
 
@@ -152,20 +150,11 @@ export default function ReportSheet({
             ? <ActivityIndicator size="small" color="#fff" />
             : <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>{t('report.send')}</Text>}
         </Pressable>
-      </View>
-    </Modal>
+    </BaseSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  // B3: backdrop a pantalla completa (también detrás de las esquinas curvas de la hoja).
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: {
-    marginTop: 'auto',
-    borderWidth: 1, borderBottomWidth: 0, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    overflow: 'hidden', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28, gap: 12,
-  },
-  handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
   title: { fontSize: 17, fontWeight: '800' },
   // Radios del sistema (Radii): controles 14, campo multilínea 14, botón píldora.
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

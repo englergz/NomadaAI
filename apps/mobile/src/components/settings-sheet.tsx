@@ -2,8 +2,7 @@
 // (categoría propia: toggle de capa + heatmap dentro, deshabilitado si la capa está OFF).
 // Paridad con el menú del panel de escritorio.
 import React, { useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import SliderImpl from '@react-native-community/slider';
@@ -13,6 +12,7 @@ const Slider = SliderImpl as unknown as React.ComponentType<Record<string, unkno
 
 import PaletteRamp from '@/components/palette-ramp';
 import { HEAT_PALETTES, type HeatPaletteKey } from '@/constants/map';
+import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
 import IOSSwitch from '@/components/ios-switch';
 import { systemLangUnsupported, useT, type TKey } from '@/lib/i18n';
@@ -46,19 +46,13 @@ export default function SettingsSheet({ visible, onClose, onHelp, onLegal, onPri
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
   const { settings, set, reset } = useSettings();
-  const insets = useSafeAreaInsets();
   // «Más opciones» (ayuda, mis datos, términos, restablecer): plegado por defecto para
   // que los ajustes del día a día no compitan con cuatro botones que se usan una vez.
   const [more, setMore] = useState(false);
-  const { height: winH } = useWindowDimensions();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      {/* Altura acotada a la pantalla: el contenido scrollea y «Listo» SIEMPRE
-          queda visible (antes se tapaba en pantallas cortas). */}
-      <View style={[styles.sheet, { maxHeight: winH * 0.9, paddingBottom: insets.bottom + 16, backgroundColor: c.backgroundElement, borderColor: c.border }]}>
-        <View style={[styles.handle, { backgroundColor: c.border }]} />
+    // Altura acotada a la pantalla (BaseSheet): el contenido scrollea y «Listo» SIEMPRE queda visible.
+    <BaseSheet visible={visible} onClose={onClose}>
         <Text style={[styles.title, { color: c.text }]}>{t('settings.title')}</Text>
         <ScrollView style={styles.scroll} contentContainerStyle={{ gap: 10, paddingBottom: 8 }} showsVerticalScrollIndicator={false}>
 
@@ -302,8 +296,7 @@ export default function SettingsSheet({ visible, onClose, onHelp, onLegal, onPri
         >
           <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>{t('settings.done')}</Text>
         </Pressable>
-      </View>
-    </Modal>
+    </BaseSheet>
   );
 }
 
@@ -314,15 +307,6 @@ const styles = StyleSheet.create({
   moreHead: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14 },
   moreList: { borderTopWidth: 1, paddingVertical: 4 },
   moreRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 14 },
-  // B3: el backdrop cubre TODA la pantalla (también detrás de las esquinas curvas de la
-  // hoja); antes terminaba en el borde superior de la hoja y se veía una línea recta.
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: {
-    marginTop: 'auto',
-    borderWidth: 1, borderBottomWidth: 0, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    overflow: 'hidden', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28, gap: 10,
-  },
-  handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
   title: { fontSize: 17, fontWeight: '800' },
   scroll: { flexShrink: 1 },
   sec: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginTop: 6 },
