@@ -2,9 +2,18 @@
 // ruta segura vs directa + alertas graduadas por acción durante el recorrido.
 // Permisos (ubicación, notificaciones) SIEMPRE en contexto, nunca al abrir.
 // Regla de ruteo: EVITAR cuando hay alternativa; AVISAR cuando el riesgo es inevitable.
+//
+// ARQUITECTURA (U7-ARCH): esta vista compone hooks con la lógica de negocio y se queda
+// con la composición y el JSX:
+//   hooks/use-city    ciudad activa, cobertura por grados, capa de riesgo y lugares
+//   hooks/use-trip    recorrido, alertas, recálculo, inactividad, segundo plano
+//   hooks/use-banner  aviso de estado con auto-descarte
+//   hooks/use-health  estado del servicio con diagnóstico
+//   hooks/use-ota     tarjeta de actualización y novedades
+// Aquí siguen: ubicación (locate), ruteo (goSafe), búsqueda y la barra inferior.
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, AppState, FlatList, Image, Keyboard, Linking, Platform, Pressable,
+  ActivityIndicator, FlatList, Image, Keyboard, Linking, Platform, Pressable,
   StyleSheet, Text, TextInput, useWindowDimensions, View,
 } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
@@ -13,7 +22,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { DEFAULT_PROTECTION_LEVELS, lambdaForLevel } from '@nomadaai/shared';
-import type { BuildRouteResponse, Coordinate, RiskZonesResponse } from '@nomadaai/shared';
+import type { BuildRouteResponse, Coordinate } from '@nomadaai/shared';
 
 import BrandWordmark from '@/components/brand';
 import CitySheet from '@/components/city-sheet';
@@ -28,27 +37,23 @@ import HelpSheet from '@/components/help-sheet';
 import LegalSheet from '@/components/legal-sheet';
 import PrivacySheet from '@/components/privacy-sheet';
 import ProtectionSlider from '@/components/protection-slider';
+import { useBanner } from '@/hooks/use-banner';
+import { useCity } from '@/hooks/use-city';
+import { useHealth } from '@/hooks/use-health';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
+import { useOta } from '@/hooks/use-ota';
+import { useTrip } from '@/hooks/use-trip';
 import { markBootReady } from '@/lib/boot';
-import { applyUpdate, shouldShowWhatsNew, subscribeUpdatePending } from '@/lib/ota';
-import { hasUnseenAlerts, logAlert } from '@/lib/alert-log';
-import { notifyAlert, setupAlerts } from '@/lib/notify';
-import {
-  clearActiveTrip, drainQueuedPoints, isResumable, loadActiveTrip,
-  resumeBackgroundTrip,
-  saveActiveTrip, saveNotificationCopy, startAutoTripWatch, startBackgroundTrip,
-  stopAutoTripWatch, stopBackgroundTrip, type ActiveTrip,
-} from '@/lib/background-trip';
-import { logTrip } from '@/lib/history';
+import { applyUpdate } from '@/lib/ota';
+import { hasUnseenAlerts } from '@/lib/alert-log';
 import type { RouteLines } from '@/components/risk-map.types';
 import { useT, type TKey } from '@/lib/i18n';
 import { useResolvedScheme, useSettings } from '@/lib/settings';
-import { CITIES, DEFAULT_CITY, SERVED_CITIES, type CityKey } from '@/constants/map';
+import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
 import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
-import { diagnose, messageKeyFor, type NetState } from '@/lib/connectivity';
-import { levelFor, ProximityTracker, zoneAt, type AlertLevel } from '@/lib/alerts';
-import { bearingDeg, coverageCity, distM, distToPath, searchPlaces, type Place } from '@/lib/geocode';
+import { levelFor, zoneAt, type AlertLevel } from '@/lib/alerts';
+import { coverageCity, searchPlaces, type Place } from '@/lib/geocode';
 
 // Nivel de protección → λ (risk_weight) del backend. Naming de producto: habla del
 // valor (protegerte), no de la geometría de la ruta; empata con «Tu protección».
@@ -93,50 +98,20 @@ export default function MapScreen() {
   const [unread, setUnread] = useState(false);
   useEffect(() => { hasUnseenAlerts().then(setUnread); }, []);
 
-  // U3 · Ciudad activa: el mapa, la capa de riesgo y el buscador giran alrededor de ella.
-  // Hoy solo Tumaco tiene pipeline completo (predicción + rutas); el resto, capa de riesgo.
-  const [city, setCity] = useState<CityKey>(DEFAULT_CITY);
-  const [showCity, setShowCity] = useState(false);
-  const [citySuggest, setCitySuggest] = useState<CityKey | null>(null); // «¿Estás en X?»
+  const { banner, setBanner } = useBanner();
   const [focus, setFocus] = useState<{ center: [number, number]; zoom: number } | null>(null);
-  // COBERTURA POR GRADOS (no un sí/no). Verificado contra el backend:
-  //   · riesgo   → todas las ciudades (Cali tiene 4.268 celdas)
-  //   · ruteo    → donde hay red vial cargada. Lo dice el SERVIDOR, no una lista aquí:
-  //                antes era `city === DEFAULT_CITY` y abrir una ciudad obligaba a
-  //                publicar versión del cliente. Ahora basta con dejar su red vial
-  //                en el backend (services/api/scripts/fetch_road_graph.py).
-  //   · predicción → solo donde hay trayectorias para entrenar (hoy Tumaco)
-  // El recorrido y las alertas EN ZONA solo necesitan riesgo + GPS, así que
-  // funcionan en cualquier ciudad con capa de riesgo; lo único que se pierde sin
-  // predicción es la anticipación cuando el usuario no declara destino.
-  // Ver docs/DISENO_FUTURO.md §1.
-  const [routeCities, setRouteCities] = useState<string[]>([DEFAULT_CITY]);
-  // Ciudades con capa de riesgo publicada: alimenta el selector por país y la
-  // sugerencia «¿Estás en X?» (solo se sugiere lo que el servidor sirve).
-  const [riskCities, setRiskCities] = useState<string[]>([...SERVED_CITIES]);
-  useEffect(() => {
-    // Si la consulta falla se conserva el valor por defecto: sin red no se promete de más.
-    api.routeCities()
-      .then((r) => { if (r?.cities?.length) setRouteCities(r.cities); })
-      .catch(() => {});
-    api.riskCities()
-      .then((r) => { if (r?.cities?.length) setRiskCities(r.cities); })
-      .catch(() => {});
-  }, []);
-  const riskCitiesRef = useRef(riskCities);
-  useEffect(() => { riskCitiesRef.current = riskCities; }, [riskCities]);
+  // Parar el viaje antes de cambiar de ciudad: stopTrip se crea más abajo (use-trip).
+  const stopTripRef = useRef<() => void>(() => {});
+  // U3 · Ciudad activa y cobertura por grados (riesgo / ruteo / predicción): hooks/use-city.ts.
+  const {
+    city, showCity, setShowCity, citySuggest, setCitySuggest, routeCities, riskCities, riskCitiesRef,
+    canPredict, cityFull, riskData, riskRef, poisData, switchCity,
+  } = useCity({
+    t, setBanner, setFocus, poisOn: settings.poisOn,
+    onBeforeSwitch: () => { stopTripRef.current(); setDest(null); setRoutes(null); setQuery(''); setResults([]); },
+  });
+  const { otaPending, otaDismissed, setOtaDismissed, showNews, setShowNews } = useOta();
 
-  // OTA: la actualización descargada se AVISA con una tarjeta; solo se aplica a
-  // petición del usuario y nunca con un recorrido en curso (regla del producto).
-  const [otaPending, setOtaPending] = useState(false);
-  const [otaDismissed, setOtaDismissed] = useState(false);
-  useEffect(() => subscribeUpdatePending(setOtaPending), []);
-  // Novedades: una vez, en el primer arranque con una versión nueva.
-  const [showNews, setShowNews] = useState(false);
-  useEffect(() => { shouldShowWhatsNew().then(setShowNews).catch(() => {}); }, []);
-  const canRoute = routeCities.includes(city);  // buscar destino y trazar ruta segura
-  const canPredict = city === DEFAULT_CITY;     // alerta anticipada sin destino
-  const cityFull = canRoute;                    // compatibilidad con el resto del archivo
 
   // Vehículo del viaje: por defecto el del perfil (Ajustes), cambiable en cada viaje (B.6.1).
   // undefined = usar el predeterminado · null = «sin vehículo» explícito para este viaje.
@@ -148,20 +123,8 @@ export default function MapScreen() {
   useEffect(() => { effVehicleRef.current = effVehicle; }, [effVehicle]);
 
   const riskOn = settings.riskOn; // capa de riesgo: vive en Ajustes (con acceso rápido aquí)
-  const [riskData, setRiskData] = useState<RiskZonesResponse | null>(null);
-  const [poisData, setPoisData] = useState<RiskZonesResponse | null>(null);
   const [userLoc, setUserLoc] = useState<[number, number] | null>(null);
   const [outOfCoverage, setOutOfCoverage] = useState(false);
-  const [banner, setBanner] = useState<{ text: string; tone: 'ok' | 'warn' | 'info' | 'coral' } | null>(null);
-  // Los banners NO se quedan pegados: se auto-descartan según su categoría
-  // (info/ok breve, advertencias más tiempo, coral=alerta persiste un poco más)
-  // y siempre traen ✕ para cerrarlos a mano.
-  useEffect(() => {
-    if (!banner) return;
-    const ms = banner.tone === 'coral' ? 15000 : banner.tone === 'warn' ? 10000 : 6000;
-    const t2 = setTimeout(() => setBanner(null), ms);
-    return () => clearTimeout(t2);
-  }, [banner]);
 
   // Centro REAL del área visible del mapa (entre el tope y la barra inferior):
   // ahí se centra la columna de FABs.
@@ -179,22 +142,6 @@ export default function MapScreen() {
   const [routes, setRoutes] = useState<RouteLines | null>(null);
   const searchSeq = useRef(0);
 
-  // Recorrido (Fase 3): seguimiento + alertas de proximidad una-vez-por-zona.
-  const [onTrip, setOnTrip] = useState(false);
-  // Rumbo para el modo navegación: brújula del teléfono en nativo; en web se
-  // estima con el movimiento (bearing entre posiciones consecutivas).
-  const [heading, setHeading] = useState<number | null>(null);
-  const headingSubRef = useRef<Location.LocationSubscription | null>(null);
-  const [tripLevel, setTripLevel] = useState<AlertLevel>('despejado');
-  const trackerRef = useRef(new ProximityTracker());
-  const watchRef = useRef<Location.LocationSubscription | null>(null);
-  // Inactividad: si el usuario lleva rato quieto se pregunta si sigue en viaje;
-  // sin respuesta y sin moverse, se finaliza solo (no drena batería para siempre).
-  const lastMoveAtRef = useRef(0);
-  const idlePromptsRef = useRef(0);
-  const idleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const riskRef = useRef<RiskZonesResponse | null>(null);
-  useEffect(() => { riskRef.current = riskData; }, [riskData]);
   // Refs para los callbacks de GPS (ven estado fresco sin re-suscribir el watcher).
   const routesRef = useRef<RouteLines | null>(null);
   useEffect(() => { routesRef.current = routes; }, [routes]);
@@ -215,45 +162,11 @@ export default function MapScreen() {
       .catch(() => { /* sin config del servidor seguimos con los valores por defecto */ });
     return () => { alive = false; };
   }, []);
-  const lastRerouteRef = useRef(0);
-  const reroutingRef = useRef(false);
-  // Segundo plano: instantánea del viaje en disco para poder reanudarlo.
-  const tripStartedAtRef = useRef(0);
-  const lastPersistRef = useRef(0);
-  const tripMetaRef = useRef<{
-    city: string; vehicle: string | null; priority: number;
-    dest: ActiveTrip['dest'];
-  } | null>(null);
 
-  // Estado del servicio: comprobación REAL de /health, repetida cada 60 s. Alimenta
-  // el punto verde/coral del chip de ciudad; si cae, además avisa con un banner.
-  // Estado del servicio con DIAGNÓSTICO: distingue «no tienes internet» de «somos
-  // nosotros los que fallamos» y de «la red va lenta». Antes todo era el mismo
-  // mensaje culpando al usuario, incluso cuando el caído era nuestro servidor.
-  const [healthOk, setHealthOk] = useState<boolean | null>(null);
-  const [netState, setNetState] = useState<NetState>('ok');
-  useEffect(() => {
-    let alive = true;
-    const check = async () => {
-      const d = await diagnose(async () => {
-        await api.health();
-        return 200;
-      });
-      if (!alive) return;
-      setNetState(d.state);
-      setHealthOk(d.state === 'ok' || d.state === 'lento');
-      const key = messageKeyFor(d.state);
-      // Solo se avisa al CAMBIAR de estado: no se repite el banner cada minuto.
-      setNetState((prev) => {
-        if (key && prev !== d.state) setBanner({ text: t(key as TKey), tone: d.state === 'lento' ? 'info' : 'warn' });
-        return d.state;
-      });
-    };
-    void check();
-    const iv = setInterval(() => { void check(); }, 60000);
-    return () => { alive = false; clearInterval(iv); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Estado del servicio (/health cada 60 s, con diagnóstico): punto verde/coral del
+  // chip de ciudad y aviso SOLO al cambiar de estado.
+  const { healthOk } = useHealth((key, state) => setBanner({ text: t(key), tone: state === 'lento' ? 'info' : 'warn' }));
+
 
   // Ubicación por defecto al abrir: se pide con el DIÁLOGO NATIVO directamente
   // (cero fricción — nunca mandar al usuario a buscar el ajuste a mano).
@@ -262,46 +175,6 @@ export default function MapScreen() {
     locate().finally(() => markBootReady('location'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Capa de riesgo POR CIUDAD (U3): al cambiar de ciudad se recarga la malla.
-  useEffect(() => {
-    let alive = true;
-    // La carga de la capa se ve: el usuario entiende por qué el mapa aún no
-    // muestra el riesgo, en vez de quedarse mirando un mapa vacío sin explicación.
-    if (alive) setBanner({ text: t('map.banner.loadingRisk'), tone: 'info' });
-    api.riskZones(undefined, city)
-      .then((d) => { if (alive) { setRiskData(d); setBanner(null); } })
-      .catch(() => {
-        // Sin riesgo no bloqueamos el mapa, pero el usuario debe saberlo (estado de error).
-        if (alive) setBanner({ text: t('map.banner.riskLoadError'), tone: 'warn' });
-      })
-      .finally(() => markBootReady('risk'));
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [city]);
-
-  // Capa Lugares: se carga la primera vez que se activa en Ajustes.
-  // Los POIs del backend son de Tumaco; en otras ciudades la capa no aplica.
-  useEffect(() => {
-    if (!settings.poisOn || poisData || city !== DEFAULT_CITY) return;
-    let alive = true;
-    api.pois(500)
-      .then((d) => { if (alive) setPoisData(d as RiskZonesResponse); })
-      .catch(() => { /* sin POIs la capa queda vacía */ });
-    return () => { alive = false; };
-  }, [settings.poisOn, poisData, city]);
-
-  // Cambio de ciudad: encuadra, limpia el viaje en curso y es honesto con lo disponible.
-  function switchCity(k: CityKey) {
-    if (k === city) return;
-    stopTrip();
-    setDest(null); setRoutes(null); setQuery(''); setResults([]);
-    setCity(k);
-    setCitySuggest(null);
-    setFocus({ center: CITIES[k].center, zoom: CITIES[k].zoom });
-    // La nota fija de la barra inferior ya explica lo disponible; sin banner duplicado.
-    setBanner(null);
-  }
 
   // Búsqueda con debounce; se descartan respuestas viejas.
   useEffect(() => {
@@ -450,444 +323,20 @@ export default function MapScreen() {
     setDest(null); setRoutes(null); setBanner(null); setQuery(''); setResults([]);
   }
 
-  // Notificación local (nativa). En web solo banner in-app.
-  // Los avisos de riesgo van por el canal de ALTA importancia con vibración
-  // (lib/notify): silenciosos o tarde no sirven de nada en la calle.
-  function notifyLocal(title: string, body: string, level: AlertLevel = 'precaucion') {
-    void notifyAlert(title, body, level);
-  }
+  // RECORRIDO: seguimiento, alertas, recálculo, inactividad y segundo plano viven en
+  // hooks/use-trip.ts (U7-ARCH). goSafe entra por callback porque necesita los refs
+  // de comparación que allí se crean.
+  const {
+    onTrip, heading, tripLevel, startTrip, stopTrip, handlePosition, comparisonRef, distancesRef,
+  } = useTrip({
+    t, accent: c.accent, settings, hydrated, city, canPredict, riskRef, routesRef, destRef, dest,
+    effVehicle, effVehicleRef, priority, setPriority, setTripVehicle,
+    userLoc, setUserLoc, locate,
+    goSafe: (prioIdx, origin, silent) => goSafe(prioIdx, origin, silent),
+    setBanner, setFocus, setUnread,
+  });
+  stopTripRef.current = stopTrip;
 
-  // Prefijo del recorrido para el modelo de predicción (OE1): puntos [lon,lat,t].
-  const tripPtsRef = useRef<{ lon: number; lat: number; t: number }[]>([]);
-  const lastPredictRef = useRef(0);
-  const alertsRef = useRef(0); // alertas emitidas a tiempo en este viaje (para «Tu protección»)
-  const comparisonRef = useRef<BuildRouteResponse['comparison'] | null>(null);
-  const distancesRef = useRef<{ safe: number | null; direct: number | null }>({ safe: null, direct: null });
-
-  // Movimiento real → modelo: con velocidad sostenida (~≥15 km/h) el prefijo se envía a
-  // /predict/online, que predice el destino y devuelve la ALERTA ANTICIPADA de riesgo.
-  async function feedModel(speedMps: number) {
-    if (!canPredict) return; // sin modelo entrenado no hay alerta anticipada
-    const now = Date.now();
-    if (now - lastPredictRef.current < 15000) return; // máx. 1 llamada cada 15 s
-    const pts = tripPtsRef.current.slice(-40);        // prefijo acotado (payload pequeño)
-    if (pts.length < 4) return;
-    lastPredictRef.current = now;
-    try {
-      const d = new Date();
-      const r = await api.predictOnline({
-        points: pts,
-        type: effVehicle ?? undefined,
-        t_seconds: d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds(),
-        day: (d.getDay() + 6) % 7, // JS 0=dom → API 0=lun
-        speed_mps: Math.min(Math.max(speedMps, 1), 39),
-        threshold: settings.threshold,
-      });
-      const a = r.alert;
-      // Alerta anticipada: llega ANTES de entrar a la zona; misma regla una-vez-por-zona.
-      if (a?.is_high && trackerRef.current.seenOnce(`pre:${a.cell_id}`)) {
-        alertsRef.current += 1;
-        const lvl = levelFor(a.risk_norm);
-        const eta = a.arrival_min > 0 ? t('map.pre.etaMin', { min: a.arrival_min }) : t('map.pre.etaAhead');
-        const title = lvl === 'atencion' ? t('map.pre.title.attention') : t('map.pre.title.caution');
-        const body = t('map.pre.body', { eta });
-        setBanner({ text: `${title}: ${body}`, tone: lvl === 'atencion' ? 'coral' : 'warn' });
-        notifyLocal(t('map.pre.notifTitle', { title, eta }), body, lvl);
-        logAlert({
-          zone: String(a.cell_id),
-          level: lvl === 'atencion' ? 'atencion' : 'precaucion',
-          action: body,
-          kind: 'anticipada',
-        });
-        setUnread(true);
-      }
-    } catch { /* sin red no interrumpimos el recorrido */ }
-  }
-
-  // Cada posición del recorrido: nivel en vivo + alerta 1 vez por zona + modelo.
-  function handlePosition(pos: Coordinate) {
-    setUserLoc(pos as [number, number]);
-    const hit = zoneAt(riskRef.current, pos);
-    setTripLevel(hit?.level ?? 'despejado');
-    const alert = trackerRef.current.check(riskRef.current, pos);
-    if (alert) {
-      alertsRef.current += 1;
-      // Mensajes por acción desde el diccionario (U2): mismo texto en banner y notificación.
-      // En «Atención», el consejo se adapta al vehículo efectivo del viaje: carro →
-      // ventanas arriba; moto → casco; otro/ninguno → genérico.
-      const veh = effVehicleRef.current;
-      const attBody = veh === 'car' ? t('alert.attention.body.car')
-        : veh === 'moto' ? t('alert.attention.body.moto')
-        : t('alert.attention.body');
-      const title = alert.level === 'atencion' ? t('alert.attention.title') : t('alert.caution.title');
-      const body = alert.level === 'atencion' ? attBody : t('alert.caution.body');
-      setBanner({ text: `${title}: ${body}`, tone: alert.level === 'atencion' ? 'coral' : 'warn' });
-      notifyLocal(title, body, alert.level);
-      logAlert({
-        zone: alert.cellId,
-        level: alert.level === 'atencion' ? 'atencion' : 'precaucion',
-        action: body,
-        kind: 'proximidad',
-      });
-      setUnread(true);
-    }
-    // Acumula el prefijo y estima velocidad entre las dos últimas posiciones.
-    const now = Date.now() / 1000;
-    const pts = tripPtsRef.current;
-    const prev = pts[pts.length - 1];
-    pts.push({ lon: pos[0], lat: pos[1], t: now });
-    if (pts.length > 120) pts.splice(0, pts.length - 120);
-    // Movimiento real (>8 m) reinicia el reloj de inactividad.
-    if (prev && distM([prev.lon, prev.lat], pos) > 8) {
-      lastMoveAtRef.current = Date.now();
-      idlePromptsRef.current = 0;
-    }
-    persistTrip();
-    // RECÁLCULO AL DESVIARSE: si te alejas >45 m de la ruta segura, se traza una
-    // nueva desde tu posición actual (máx. 1 recálculo cada 12 s).
-    const rt = routesRef.current;
-    if (rt?.safe && rt.safe.length > 1 && destRef.current && !reroutingRef.current) {
-      const off = distToPath(pos, rt.safe);
-      if (off > 45 && Date.now() - lastRerouteRef.current > 12000) {
-        lastRerouteRef.current = Date.now();
-        reroutingRef.current = true;
-        goSafe(priority, pos, true).finally(() => { reroutingRef.current = false; });
-      }
-    }
-    // Rumbo estimado por movimiento (fallback web y respaldo si no hay brújula).
-    if (prev && Platform.OS === 'web' && distM([prev.lon, prev.lat], pos) > 3) {
-      setHeading(bearingDeg([prev.lon, prev.lat], pos));
-    }
-    if (prev) {
-      const dt = now - prev.t;
-      const speed = dt > 0 ? distM([prev.lon, prev.lat], pos) / dt : 0;
-      if (speed >= 4) feedModel(speed); // ~15 km/h: hay desplazamiento real (moto/carro/bus)
-    }
-  }
-
-  // ---------- piezas del recorrido, compartidas por «iniciar» y «reanudar» ----------
-
-  // Vigilancia de inactividad: revisa cada 30 s cuánto llevas quieto.
-  function startIdleTimer() {
-    if (idleTimerRef.current) clearInterval(idleTimerRef.current);
-    idleTimerRef.current = setInterval(() => {
-      const idleMin = (Date.now() - lastMoveAtRef.current) / 60000;
-      if (idleMin >= 30 && idlePromptsRef.current >= 1) {
-        // Segunda vez sin moverse ni responder → se finaliza solo.
-        setBanner({ text: t('map.banner.tripAutoEnd'), tone: 'info' });
-        stopTrip();
-      } else if (idleMin >= 15 && idlePromptsRef.current < 1) {
-        idlePromptsRef.current = 1;
-        Alert.alert(t('map.idle.title'), t('map.idle.body'), [
-          { text: t('map.idle.end'), style: 'destructive', onPress: stopTrip },
-          { text: t('map.idle.continue'), onPress: () => { lastMoveAtRef.current = Date.now(); idlePromptsRef.current = 0; } },
-        ]);
-      }
-    }, 30000);
-  }
-
-  // TIEMPO REAL: máxima precisión y refresco ~1 s / 3 m (antes 4 s / 15 m = el
-  // «relento»). El rumbo del propio GPS (course) es más estable que la brújula
-  // cuando hay velocidad, así que se usa como fuente principal en movimiento.
-  async function startWatchers() {
-    watchRef.current?.remove();
-    watchRef.current = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 3 },
-      (p) => {
-        if (typeof p.coords.heading === 'number' && p.coords.heading >= 0 && (p.coords.speed ?? 0) > 1.5) {
-          setHeading(p.coords.heading);
-        }
-        handlePosition([p.coords.longitude, p.coords.latitude]);
-      },
-    );
-    // Brújula (nativo): el mapa/vehículo se orientan a donde apunta el teléfono.
-    if (Platform.OS !== 'web') {
-      try {
-        headingSubRef.current?.remove();
-        headingSubRef.current = await Location.watchHeadingAsync((h) => {
-          const deg = h.trueHeading >= 0 ? h.trueHeading : h.magHeading;
-          if (deg >= 0) setHeading(deg);
-        });
-      } catch { /* sin brújula: rumbo por movimiento */ }
-    }
-  }
-
-  // Consume las posiciones que la tarea de fondo capturó sin pantalla. Se descarta
-  // lo que ya conocemos (la tarea también corre con la app abierta, así que la cola
-  // puede traer posiciones viejas) y solo la ÚLTIMA pasa por el evaluador completo:
-  // así el rastro queda continuo sin una lluvia de alertas atrasadas.
-  function applyQueuedPoints(queued: { lon: number; lat: number; t: number }[]) {
-    const pts = tripPtsRef.current;
-    const lastKnownT = pts.length ? pts[pts.length - 1].t : 0;
-    const fresh = queued.filter((p) => p.t > lastKnownT).sort((a, b) => a.t - b.t);
-    if (!fresh.length) return;
-    pts.push(...fresh.slice(0, -1));
-    if (pts.length > 120) pts.splice(0, pts.length - 120);
-    const last = fresh[fresh.length - 1];
-    lastMoveAtRef.current = Date.now();
-    idlePromptsRef.current = 0;
-    handlePosition([last.lon, last.lat]);
-  }
-
-  // Instantánea del viaje en disco: permite REANUDAR si la app se cierra o el
-  // sistema la mata durante el recorrido. Se escribe con freno (cada 10 s).
-  function persistTrip() {
-    if (Platform.OS === 'web') return;
-    const meta = tripMetaRef.current;
-    if (!meta) return;
-    const now = Date.now();
-    if (now - lastPersistRef.current < 10000) return;
-    lastPersistRef.current = now;
-    void saveActiveTrip({
-      startedAt: tripStartedAtRef.current || now,
-      updatedAt: now,
-      city: meta.city,
-      vehicle: meta.vehicle,
-      priority: meta.priority,
-      alerts: alertsRef.current,
-      dest: meta.dest,
-      points: tripPtsRef.current,
-    });
-  }
-
-  async function startTrip() {
-    if (onTrip) return;
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      setBanner({ text: t('map.banner.tripNeedsLocation'), tone: 'warn' });
-      return;
-    }
-    // SIN posición no hay viaje: se informa lo que pasa de fondo y se exige un
-    // fix real antes de arrancar (lo que prometemos es tiempo real).
-    if (!userLoc) {
-      setBanner({ text: t('map.banner.locating'), tone: 'info' });
-      const loc = await locate();
-      if (!loc) return; // locate() ya explicó el porqué
-    }
-    // Notificaciones: permiso EN CONTEXTO, justo cuando empieza el primer recorrido.
-    if (Platform.OS !== 'web') {
-      try {
-        const Notifications = await import('expo-notifications');
-        await Notifications.requestPermissionsAsync();
-        await setupAlerts();
-      } catch { /* opcional: sin notificaciones seguimos con banners */ }
-    }
-    trackerRef.current.reset();
-    tripPtsRef.current = [];
-    lastPredictRef.current = 0;
-    alertsRef.current = 0;
-    lastMoveAtRef.current = Date.now();
-    idlePromptsRef.current = 0;
-    tripStartedAtRef.current = Date.now();
-    lastPersistRef.current = 0;
-    startIdleTimer();
-    setTripLevel('despejado');
-    setOnTrip(true);
-    setBanner({ text: t('map.banner.tripStarted'), tone: 'info' });
-    await startWatchers();
-    persistTrip();
-    void stopAutoTripWatch(); // el seguimiento fino del viaje sustituye al vigía
-    // SEGUNDO PLANO: la protección no puede depender de que la pantalla esté
-    // encendida. Se pide «Permitir siempre» EN CONTEXTO (ya empezaste a andar) y,
-    // si el usuario dice que no, el recorrido sigue igual solo en primer plano.
-    if (Platform.OS !== 'web') {
-      const bgOn = await startBackgroundTrip({
-        title: t('map.bg.notifTitle'),
-        body: t('map.bg.notifBody'),
-        color: c.accent,
-      });
-      // Si quedó activo, la notificación persistente (Android) y el indicador del
-      // sistema (iOS) ya lo dicen; solo hace falta avisar cuando NO quedó activo.
-      if (!bgOn) setBanner({ text: t('map.bg.off'), tone: 'warn' });
-    }
-  }
-
-  function stopTrip() {
-    watchRef.current?.remove();
-    watchRef.current = null;
-    headingSubRef.current?.remove();
-    headingSubRef.current = null;
-    if (idleTimerRef.current) { clearInterval(idleTimerRef.current); idleTimerRef.current = null; }
-    // El seguimiento de fondo y el rastro guardado se apagan y se BORRAN al
-    // terminar: no dejamos ubicaciones del usuario vivas en el dispositivo.
-    void stopBackgroundTrip();
-    void clearActiveTrip();
-    tripStartedAtRef.current = 0;
-    // Al terminar, si la protección automática sigue activa vuelve a quedar el
-    // vigía de bajo consumo esperando el próximo arranque.
-    if (settingsRef.current.autoTrip) {
-      void startAutoTripWatch({ title: t('map.bg.watchTitle'), body: t('map.bg.watchBody'), color: c.accent });
-    }
-    setHeading(null);
-    // Salida GARANTIZADA del modo navegación: además del reset de pitch/rumbo,
-    // se fuerza un encuadre normal sobre la última posición conocida.
-    // SIEMPRE se reencuadra (aunque no haya última posición): si no, el mapa se
-    // queda rotado y con pitch del modo navegación hasta que cambies de ciudad.
-    setFocus({ center: userLoc ?? CITIES[city].center, zoom: userLoc ? 15 : CITIES[city].zoom });
-    // Sin movimiento real no hay viaje que registrar: evita el «viaje fantasma»
-    // de pulsar Recorrido libre y finalizar sin haberse movido.
-    const moved = tripPtsRef.current.length >= 4;
-    if (onTrip && moved) {
-      setBanner(null);
-      // Registra el viaje real en «Tu protección» (mode: mobile — BI lo separa del simulador).
-      const comp = comparisonRef.current;
-      logTrip({
-        vehicle: effVehicle,
-        hour: new Date().getHours(),
-        alerts: alertsRef.current,
-        exposure_reduction_pct: comp?.exposure_reduction_pct ?? null,
-        safe_exposure: comp?.safe_exposure ?? null,
-        direct_exposure: comp?.direct_exposure ?? null,
-        safe_dist_m: distancesRef.current.safe,
-        direct_dist_m: distancesRef.current.direct,
-      });
-    }
-    setOnTrip(false);
-    setTripLevel('despejado');
-  }
-
-  useEffect(() => () => { watchRef.current?.remove(); headingSubRef.current?.remove(); }, []);
-
-  // PROTECCIÓN AUTOMÁTICA EN SEGUNDO PLANO: mientras el ajuste esté activo y no
-  // haya viaje, queda un vigía de bajo consumo que enciende la protección solo,
-  // aunque la app esté cerrada. Los textos se guardan en disco porque la tarea
-  // headless no tiene acceso al contexto de idioma de React.
-  const settingsRef = useRef(settings);
-  useEffect(() => { settingsRef.current = settings; }, [settings]);
-  useEffect(() => {
-    if (Platform.OS === 'web' || !hydrated) return;
-    void saveNotificationCopy({
-      title: t('map.bg.notifTitle'), body: t('map.bg.notifBody'), color: c.accent,
-      autoTitle: t('map.bg.autoTitle'), autoBody: t('map.bg.autoBody'),
-    });
-    if (settings.autoTrip && !onTrip) {
-      void startAutoTripWatch({ title: t('map.bg.watchTitle'), body: t('map.bg.watchBody'), color: c.accent });
-    } else if (!settings.autoTrip) {
-      void stopAutoTripWatch();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.autoTrip, onTrip, hydrated]);
-
-  // Meta del viaje siempre fresca para la instantánea (la escribe un callback de
-  // GPS que no ve re-renders).
-  useEffect(() => {
-    tripMetaRef.current = {
-      city,
-      vehicle: effVehicle ?? null,
-      priority,
-      dest: dest ? { name: dest.name, center: dest.coord as [number, number] } : null,
-    };
-  }, [city, effVehicle, priority, dest]);
-
-  // REANUDAR AL VOLVER: si la app se cerró (o el sistema la mató) con un recorrido
-  // en curso, al abrir se retoma donde quedó en vez de perderlo.
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    let alive = true;
-    (async () => {
-      const trip = await loadActiveTrip();
-      if (!alive) return;
-      if (!isResumable(trip)) { void clearActiveTrip(); void stopBackgroundTrip(); return; }
-      // Sin permiso vigente no se puede retomar nada: se limpia y se sigue normal.
-      const perm = await Location.getForegroundPermissionsAsync();
-      if (!alive) return;
-      if (perm.status !== 'granted') { void clearActiveTrip(); void stopBackgroundTrip(); return; }
-      tripStartedAtRef.current = trip.startedAt;
-      tripPtsRef.current = trip.points ?? [];
-      alertsRef.current = trip.alerts ?? 0;
-      lastMoveAtRef.current = Date.now();
-      idlePromptsRef.current = 0;
-      setPriority(trip.priority);
-      if (trip.vehicle !== null) setTripVehicle(trip.vehicle);
-      setOnTrip(true);
-      startIdleTimer();
-      try { await startWatchers(); } catch { /* sin GPS el viaje sigue con la última posición */ }
-      if (!alive) return;
-      // Se consume lo capturado mientras la app estuvo cerrada.
-      const queued = await drainQueuedPoints();
-      if (!alive) return;
-      applyQueuedPoints(queued);
-      // Si lo abrió el vigía automático, el usuario nunca tocó «iniciar»: hay que
-      // decírselo con el copy de protección automática, no con el de «retomamos».
-      setBanner({ text: trip.auto ? t('map.banner.autoTrip') : t('map.banner.tripResumed'), tone: 'info' });
-    })();
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // RECONCILIACIÓN: mientras haya viaje, el seguimiento de fondo TIENE que estar
-  // vivo. Se comprueba aquí en vez de encadenarlo al arranque porque ese camino se
-  // puede interrumpir a mitad (la app se cerró, el efecto se canceló, el sistema
-  // mató el servicio) y el usuario se quedaría sin protección sin enterarse.
-  useEffect(() => {
-    if (Platform.OS === 'web' || !onTrip) return;
-    void (async () => {
-      // NO se comprueba aquí `isBackgroundTripRunning()`: esa función informa del
-      // REGISTRO de la tarea, que sobrevive a que el sistema mate la app, así que
-      // devolvía «sí está corriendo» cuando el servicio ya estaba muerto y nunca
-      // se reenganchaba. `resumeBackgroundTrip` hace el ciclo limpio de parada y
-      // arranque, que es idempotente y seguro de llamar siempre.
-      const ok = await resumeBackgroundTrip({
-        title: t('map.bg.notifTitle'), body: t('map.bg.notifBody'), color: c.accent,
-      });
-      // Si no se pudo enganchar, el usuario TIENE que saberlo: creería que está
-      // protegido con la pantalla apagada y no lo estaría. (En release los
-      // console.warn se eliminan, así que el aviso en pantalla es además la única
-      // señal observable de este fallo.)
-      if (!ok) setBanner({ text: t('map.bg.off'), tone: 'warn' });
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onTrip]);
-
-  // Al volver del segundo plano se consumen las posiciones capturadas mientras la
-  // app no estaba en pantalla: el rastro queda continuo, sin lluvia de alertas
-  // viejas (solo la última posición pasa por el evaluador completo).
-  const onTripStateRef = useRef(onTrip);
-  useEffect(() => { onTripStateRef.current = onTrip; }, [onTrip]);
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state !== 'active' || !onTripStateRef.current) return;
-      void drainQueuedPoints().then(applyQueuedPoints);
-    });
-    return () => sub.remove();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Recorrido libre AUTOMÁTICO (Ajustes): vigilancia ligera SOLO si el permiso ya fue
-  // concedido; al detectar movimiento sostenido (~≥15 km/h) el recorrido arranca solo.
-  const onTripRef = useRef(onTrip);
-  useEffect(() => { onTripRef.current = onTrip; }, [onTrip]);
-  useEffect(() => {
-    // Basta con la capa de riesgo: el recorrido y las alertas en zona no
-    // dependen del modelo de predicción.
-    if (!settings.autoTrip || onTrip) return;
-    let sub: Location.LocationSubscription | null = null;
-    let prev: { lon: number; lat: number; t: number } | null = null;
-    let cancelled = false;
-    (async () => {
-      const perm = await Location.getForegroundPermissionsAsync().catch(() => null);
-      if (!perm?.granted || cancelled) return; // el permiso se pide en contexto, no aquí
-      sub = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.Balanced, timeInterval: 8000, distanceInterval: 30 },
-        (p) => {
-          const cur = { lon: p.coords.longitude, lat: p.coords.latitude, t: Date.now() / 1000 };
-          if (prev && !onTripRef.current) {
-            const dt = cur.t - prev.t;
-            const speed = dt > 0 ? distM([prev.lon, prev.lat], [cur.lon, cur.lat]) / dt : 0;
-            if (speed >= 4) {
-              sub?.remove(); sub = null;
-              startTrip();
-              setBanner({ text: t('map.banner.autoTrip'), tone: 'info' });
-            }
-          }
-          prev = cur;
-        },
-      );
-    })();
-    return () => { cancelled = true; sub?.remove(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.autoTrip, onTrip]);
 
   // Sonda de desarrollo: permite inyectar posiciones para verificar alertas sin GPS.
   if (__DEV__ && Platform.OS === 'web') {
