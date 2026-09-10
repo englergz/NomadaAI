@@ -17,6 +17,7 @@ import type { BuildRouteResponse, Coordinate, RiskZonesResponse } from '@nomadaa
 
 import BrandWordmark from '@/components/brand';
 import CitySheet from '@/components/city-sheet';
+import WhatsNewSheet from '@/components/whats-new-sheet';
 import { CLERK_ENABLED } from '@/lib/auth';
 import ProtectionSheet from '@/components/protection-sheet';
 import ReportSheet from '@/components/report-sheet';
@@ -28,6 +29,8 @@ import LegalSheet from '@/components/legal-sheet';
 import PrivacySheet from '@/components/privacy-sheet';
 import ProtectionSlider from '@/components/protection-slider';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
+import { markBootReady } from '@/lib/boot';
+import { applyUpdate, shouldShowWhatsNew, subscribeUpdatePending } from '@/lib/ota';
 import { hasUnseenAlerts, logAlert } from '@/lib/alert-log';
 import { notifyAlert, setupAlerts } from '@/lib/notify';
 import {
@@ -40,7 +43,7 @@ import { logTrip } from '@/lib/history';
 import type { RouteLines } from '@/components/risk-map.types';
 import { useT, type TKey } from '@/lib/i18n';
 import { useResolvedScheme, useSettings } from '@/lib/settings';
-import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
+import { CITIES, DEFAULT_CITY, SERVED_CITIES, type CityKey } from '@/constants/map';
 import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { diagnose, messageKeyFor, type NetState } from '@/lib/connectivity';
@@ -108,12 +111,29 @@ export default function MapScreen() {
   // predicción es la anticipación cuando el usuario no declara destino.
   // Ver docs/DISENO_FUTURO.md §1.
   const [routeCities, setRouteCities] = useState<string[]>([DEFAULT_CITY]);
+  // Ciudades con capa de riesgo publicada: alimenta el selector por país y la
+  // sugerencia «¿Estás en X?» (solo se sugiere lo que el servidor sirve).
+  const [riskCities, setRiskCities] = useState<string[]>([...SERVED_CITIES]);
   useEffect(() => {
     // Si la consulta falla se conserva el valor por defecto: sin red no se promete de más.
     api.routeCities()
       .then((r) => { if (r?.cities?.length) setRouteCities(r.cities); })
       .catch(() => {});
+    api.riskCities()
+      .then((r) => { if (r?.cities?.length) setRiskCities(r.cities); })
+      .catch(() => {});
   }, []);
+  const riskCitiesRef = useRef(riskCities);
+  useEffect(() => { riskCitiesRef.current = riskCities; }, [riskCities]);
+
+  // OTA: la actualización descargada se AVISA con una tarjeta; solo se aplica a
+  // petición del usuario y nunca con un recorrido en curso (regla del producto).
+  const [otaPending, setOtaPending] = useState(false);
+  const [otaDismissed, setOtaDismissed] = useState(false);
+  useEffect(() => subscribeUpdatePending(setOtaPending), []);
+  // Novedades: una vez, en el primer arranque con una versión nueva.
+  const [showNews, setShowNews] = useState(false);
+  useEffect(() => { shouldShowWhatsNew().then(setShowNews).catch(() => {}); }, []);
   const canRoute = routeCities.includes(city);  // buscar destino y trazar ruta segura
   const canPredict = city === DEFAULT_CITY;     // alerta anticipada sin destino
   const cityFull = canRoute;                    // compatibilidad con el resto del archivo
@@ -238,7 +258,8 @@ export default function MapScreen() {
   // Ubicación por defecto al abrir: se pide con el DIÁLOGO NATIVO directamente
   // (cero fricción — nunca mandar al usuario a buscar el ajuste a mano).
   useEffect(() => {
-    locate();
+    // El splash espera este paso: se marca al terminar, salga bien o mal.
+    locate().finally(() => markBootReady('location'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -253,7 +274,8 @@ export default function MapScreen() {
       .catch(() => {
         // Sin riesgo no bloqueamos el mapa, pero el usuario debe saberlo (estado de error).
         if (alive) setBanner({ text: t('map.banner.riskLoadError'), tone: 'warn' });
-      });
+      })
+      .finally(() => markBootReady('risk'));
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [city]);
@@ -336,7 +358,7 @@ export default function MapScreen() {
       // Centrar SIEMPRE al ubicar (antes solo volaba la primera vez).
       setFocus({ center: loc, zoom: 16 });
       // Cobertura: si está lejos de toda ciudad soportada, avisamos con honestidad.
-      const cov = coverageCity(loc as Coordinate);
+      const cov = coverageCity(loc as Coordinate, 40, riskCitiesRef.current as CityKey[]);
       setOutOfCoverage(!cov);
       if (!cov) {
         setBanner({
@@ -974,6 +996,30 @@ export default function MapScreen() {
       </View>
 
       {/* U3: «¿Estás en X?» — arriba, bajo el chip de ciudad; se pregunta, no se impone */}
+      {otaPending && !otaDismissed && !citySuggest && (
+        <View style={[styles.citySuggest, { top: insets.top + 94, backgroundColor: c.backgroundElement, borderColor: c.accent }]}>
+          <Text style={{ color: c.text, fontSize: 12.5, textAlign: 'center' }}>
+            {onTrip ? t('ota.onTrip') : t('ota.ready')}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {!onTrip && (
+              <Pressable
+                onPress={() => { void applyUpdate(); }}
+                style={[styles.citySuggestBtn, { backgroundColor: c.accent }]}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('ota.applyNow')}</Text>
+              </Pressable>
+            )}
+            <Pressable
+              onPress={() => setOtaDismissed(true)}
+              style={[styles.citySuggestBtn, { borderWidth: 1, borderColor: c.border }]}
+            >
+              <Text style={{ color: c.textSecondary, fontSize: 12, fontWeight: '600' }}>{t('ota.later')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
       {citySuggest && (
         <View style={[styles.citySuggest, { top: insets.top + 94, backgroundColor: c.backgroundElement, borderColor: c.accent }]}>
           <Text style={{ color: c.text, fontSize: 12.5, textAlign: 'center' }}>
@@ -998,7 +1044,7 @@ export default function MapScreen() {
 
       {/* Banner de estado ARRIBA, bajo el chip de ciudad (no tapa marca ni ubicación);
           si la tarjeta de ciudad está visible, ella tiene prioridad. */}
-      {banner && !citySuggest && (
+      {banner && !citySuggest && !(otaPending && !otaDismissed) && (
         <View style={[styles.banner, { top: insets.top + 94, backgroundColor: c.backgroundElement, borderColor: toneColor[banner.tone] }]}>
           <Text style={{ color: c.text, fontSize: 12.5, flex: 1 }}>{banner.text}</Text>
           <Pressable onPress={() => setBanner(null)} hitSlop={10}>
@@ -1176,7 +1222,8 @@ export default function MapScreen() {
         onPrivacy={() => { setShowSettings(false); setShowPrivacy(true); }} onClose={() => setShowSettings(false)} />
       <ReportSheet visible={showReport} onClose={() => setShowReport(false)} location={userLoc} city={city} />
       <ProtectionSheet visible={showProtection} onClose={() => setShowProtection(false)} />
-      <CitySheet visible={showCity} current={city} onSelect={switchCity} onClose={() => setShowCity(false)} />
+      <CitySheet visible={showCity} current={city} riskCities={riskCities} routeCities={routeCities} onSelect={switchCity} onClose={() => setShowCity(false)} />
+      <WhatsNewSheet visible={showNews} onClose={() => setShowNews(false)} />
       <NotificationsSheet visible={showNotifs} onClose={() => setShowNotifs(false)} />
     </View>
   );

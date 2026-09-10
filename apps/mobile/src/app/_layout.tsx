@@ -17,10 +17,12 @@ import AnimatedSplash from '@/components/animated-splash';
 // pueda ejecutarla sin montar ninguna vista.
 import '@/lib/background-trip';
 import { Colors } from '@/constants/theme';
+import { markBootReady, useBoot } from '@/lib/boot';
+import { useT } from '@/lib/i18n';
 import { setupAlerts } from '@/lib/notify';
 import { checkForUpdate } from '@/lib/ota';
 import { CLERK_ENABLED, registerAuth } from '@/lib/auth';
-import { SettingsProvider, useResolvedScheme } from '@/lib/settings';
+import { SettingsProvider, useResolvedScheme, useSettings } from '@/lib/settings';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -73,11 +75,17 @@ function Root() {
 }
 
 // Splash animado SOLO en arranque en frío: este componente raíz se monta una vez
-// por proceso; la app carga detrás mientras la ruta se dibuja (~3 s).
+// por proceso. Dura lo que dura la CARGA REAL (ajustes → ubicación → capa de
+// riesgo, marcados por cada pantalla en lib/boot.ts), con tope de 4 s.
 function SplashGate({ fontsReady }: { fontsReady: boolean }) {
   const [done, setDone] = useState(false);
+  const { hydrated } = useSettings();
+  const { ready, step } = useBoot();
+  const t = useT();
+  useEffect(() => { if (hydrated) markBootReady('settings'); }, [hydrated]);
   if (done) return null;
-  return <AnimatedSplash fontsReady={fontsReady} onDone={() => setDone(true)} />;
+  const status = step ? t(`boot.${step}` as const) : t('boot.ready');
+  return <AnimatedSplash fontsReady={fontsReady} ready={ready} status={status} onDone={() => setDone(true)} />;
 }
 
 export default function RootLayout() {
