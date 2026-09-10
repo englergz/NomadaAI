@@ -30,10 +30,17 @@ Leyenda: ✅ hecho y verificado · 🟡 parcial · ❌ no hecho · ⚠️ sin co
 para la huella del APK, 204 para la vieja). Lo único que falta es que **instales el APK del
 2026-09-10** (§6.1): los APK anteriores no reciben nada.
 
+**Incidente del 2026-09-10 (encontrado al verificar en el emulador):** CARTO empezó a exigir
+API key y servía «API KEY REQUIRED» sobre todo el mapa, en escritorio y app. Los lienzos de
+Esri no tienen calles de Tumaco a zoom de ciudad. Se pasó a teselas vectoriales de
+OpenFreeMap (Positron / Dark, datos de OpenStreetMap, sin clave) desde una fuente única en
+`packages/shared/src/basemap.ts`; satelital sigue en Esri. Verificado en el emulador
+(Tumaco y Cali con calles, riesgo y lugares) y en el escritorio local.
+
 **Tanda del 2026-09-10 (commit 57d8e53):** cerrados los puntos 2 a 6 del orden sugerido —
 onboarding de valor + Círculos «próximamente» + botones legales, Novedades tras OTA, ciudad por
-país, iconos POI nativos y splash ligado a la carga real. Todos van por OTA. ⚠️ Pendiente de que
-los veas en tu teléfono.
+país, iconos POI nativos y splash ligado a la carga real. Todos van por OTA. Verificados en el
+emulador Pixel 7a (onboarding, Configuración, selector de ciudad, tarjeta OTA, splash con estados, iconos).
 
 ---
 
@@ -117,7 +124,7 @@ los veas en tu teléfono.
 | Radios coherentes en toda la app (07-10, 08-03) | ✅ tokens `Radii` |
 | Wordmark Sora, «.AI» azul, punto redondo, sin relleno (07-10, 07-11) | ✅ `BrandWordmark` |
 | Agrupar los 4 botones de configuración en «más opciones» desplegable (08-04 14:04) | ❌ sin commit que lo toque |
-| **Iconos de lugares (POI) en el mapa nativo** como en web (07-09, 07-11, 08-04) | ✅ **(09-10)** PNG generados de la misma tabla que la web (`scripts/gen_poi_icons.py`), capa `symbol` con `<Images/>` · ⚠️ verlo en teléfono |
+| **Iconos de lugares (POI) en el mapa nativo** como en web (07-09, 07-11, 08-04) | ✅ **(09-10)** PNG generados de la misma tabla que la web (`scripts/gen_poi_icons.py`), capa `symbol` con `<Images/>`; verificado en el emulador Pixel 7a (tamaño corregido: el @2x se registraba como @1x) |
 | Botón «centrar» no centra (07-10, 07-11, **08-04 19:36**) | ⚠️ `a2fa92a` lo arregló el 07-11; lo volviste a reportar el 08-04 y no hay commit posterior. Hay que probarlo en teléfono |
 | Tocar fuera cierra el teclado (08-03) | ⚠️ sin confirmar |
 

@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { baseLabelTiles, baseStyle, baseTiles, CITIES, DEFAULT_CITY, RISK_FILL_COLOR, riskFillColor } from '@/constants/map';
+import { baseStyle, CITIES, DEFAULT_CITY, keepOwnLayers, RISK_FILL_COLOR, riskFillColor } from '@/constants/map';
 // Glyphmap oficial de MaterialCommunityIcons (nombre → codepoint): iconos literales
 // por categoría (gas-station, hospital-box, church…), nada de emojis.
 import MCIGlyphs from '@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/MaterialCommunityIcons.json';
@@ -144,19 +144,21 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Tema/satélite: cambia la base sin perder cámara ni capas. Si el mapa aún no terminó
-  // de cargar (p. ej. los ajustes persistidos llegan antes del primer frame), se difiere.
+  // Tema/satélite: cambia la base sin perder cámara ni capas. La base es un estilo
+  // vectorial remoto, así que es `setStyle`; `keepOwnLayers` conserva riesgo, rutas
+  // y lugares (fuentes GeoJSON) encima de la base nueva. Las imágenes de los iconos
+  // no sobreviven al cambio de estilo: se vuelven a rasterizar al cargar.
+  const baseRef = useRef<{ dark: boolean; satellite: boolean } | null>(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
-      const src = map.getSource('base') as maplibregl.RasterTileSource | undefined;
-      if (src?.setTiles) src.setTiles(baseTiles(dark, satellite));
-      // Rótulos: siguen al tema; en satelital se ocultan (esa base no los tiene).
-      const labels = baseLabelTiles(dark, satellite);
-      const lsrc = map.getSource('labels') as maplibregl.RasterTileSource | undefined;
-      if (lsrc?.setTiles && labels) lsrc.setTiles(labels);
-      if (map.getLayer('labels')) map.setLayoutProperty('labels', 'visibility', labels ? 'visible' : 'none');
+      if (baseRef.current && baseRef.current.dark === dark && baseRef.current.satellite === !!satellite) return;
+      const first = baseRef.current === null;
+      baseRef.current = { dark, satellite: !!satellite };
+      if (first) return; // el estilo inicial ya se creó con el tema correcto
+      map.setStyle(baseStyle(dark, satellite) as never, { transformStyle: keepOwnLayers as never });
+      map.once('style.load', () => { addPoiIcons(map).then(() => map.triggerRepaint()).catch(() => { /* sin iconos */ }); });
     };
     if (loadedRef.current) apply(); else map.once('load', apply);
   }, [dark, satellite]);

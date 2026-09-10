@@ -8,7 +8,7 @@ import type {
   TripSummary,
 } from "@nomadaai/shared";
 import { api } from "./lib/api";
-import { labelLayers, osmStyle, TUMACO_CENTER, TUMACO_ZOOM } from "./lib/mapStyle";
+import { basemapStyle, keepOwnLayers, TUMACO_CENTER, TUMACO_ZOOM } from "./lib/mapStyle";
 import { HEAT_PALETTES, loadRiskPrefs, paletteGradient, riskFillColor, saveRiskPrefs, type HeatPaletteKey, type RiskPrefs } from "./lib/riskStyle";
 import { LEGAL_DOCS, LEGAL_EFFECTIVE_DATE, LEGAL_VERSION } from "@nomadaai/shared";
 import AdminPanel from "./components/AdminPanel";
@@ -170,6 +170,7 @@ function getUid(): string {
 
 export default function App() {
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const baseRef = useRef<{ sat: boolean; th: "dark" | "light" } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const vehMarkerRef = useRef<maplibregl.Marker | null>(null);
   const lastPosRef = useRef<[number, number] | null>(null);
@@ -467,14 +468,11 @@ export default function App() {
   // init map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    // Estilo inicial con la base correcta según el tema → evita el flash de teselas claras al cargar.
-    const initStyle = JSON.parse(JSON.stringify({ ...osmStyle, layers: [...osmStyle.layers, ...labelLayers] }));
-    for (const l of initStyle.layers) {
-      if (l.id === "light" || l.id === "light-labels") l.layout = { visibility: theme === "light" ? "visible" : "none" };
-      if (l.id === "dark" || l.id === "dark-labels") l.layout = { visibility: theme === "dark" ? "visible" : "none" };
-    }
+    // Estilo inicial con la base correcta según el tema → evita el flash al cargar.
+    baseRef.current = { sat: false, th: theme };
     const map = new maplibregl.Map({
-      container: containerRef.current, style: initStyle, center: TUMACO_CENTER, zoom: TUMACO_ZOOM,
+      container: containerRef.current, style: basemapStyle(theme === "dark", false) as never,
+      center: TUMACO_CENTER, zoom: TUMACO_ZOOM,
     });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl(), "bottom-right");
@@ -581,19 +579,15 @@ export default function App() {
     setSat(next);
     applyBase(next, theme);
   }
-  // Aplica la base del mapa según satélite y tema (claro=Positron, oscuro=Dark Matter).
+  // Aplica la base del mapa según satélite y tema. La base es un estilo vectorial
+  // remoto (Positron / Dark) o el raster satelital: se cambia con `setStyle` y
+  // `keepOwnLayers` conserva riesgo, corredores, rutas y lugares (fuentes GeoJSON).
   function applyBase(satOn: boolean, th: "dark" | "light") {
-    const map = mapRef.current; if (!map || !map.getLayer("light")) return;
+    const map = mapRef.current; if (!map) return;
+    if (baseRef.current && baseRef.current.sat === satOn && baseRef.current.th === th) return;
+    baseRef.current = { sat: satOn, th };
     try {
-      map.setLayoutProperty("satellite", "visibility", satOn ? "visible" : "none");
-      map.setLayoutProperty("light", "visibility", !satOn && th === "light" ? "visible" : "none");
-      map.setLayoutProperty("dark", "visibility", !satOn && th === "dark" ? "visible" : "none");
-      // Rótulos: siguen a la base (el satelital no los trae) y quedan arriba del todo.
-      for (const id of ["light-labels", "dark-labels"]) {
-        if (!map.getLayer(id)) continue;
-        map.moveLayer(id);
-        map.setLayoutProperty(id, "visibility", !satOn && id.startsWith(th) ? "visible" : "none");
-      }
+      map.setStyle(basemapStyle(th === "dark", satOn) as never, { transformStyle: keepOwnLayers as never });
     } catch (e) { console.error(e); }
   }
 
