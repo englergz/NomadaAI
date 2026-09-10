@@ -133,10 +133,36 @@ npx expo-updates runtimeversion:resolve --platform android | python3 -c "import 
 npx eas-cli@latest update:list --branch production --limit 2
 ```
 
+> **La huella depende del estado de `node_modules`, incluidos los restos de compilación.**
+> Verificado el 2026-09-10: con `node_modules` recién salido de `npm ci` la huella Android es
+> `a11983300cae…`; en cuanto gradle compila, deja `android/build/` dentro de paquetes como
+> `@react-native-masked-view/masked-view` y la huella pasa a `be94deb1…` (@expo/fingerprint
+> 0.20 cambia el hash del directorio aunque ignore los ficheros de `build/`). El APK siempre
+> se graba en el estado «después de compilar», así que **`eas update` se publica justo
+> después de compilar y con esta comprobación, que debe dar dos valores iguales:**
+>
+> ```bash
+> cd apps/mobile && unzip -p android/app/build/outputs/apk/release/app-arm64-v8a-release.apk assets/fingerprint; echo
+> npx expo-updates runtimeversion:resolve --platform android | python3 -c "import json,sys; print(json.load(sys.stdin)['runtimeVersion'])"
+> ```
+>
+> Si difieren, no publicar: el update quedaría huérfano. Y la tarea de gradle
+> `createReleaseUpdatesResources` cachea la huella entre builds: ante la duda,
+> `./gradlew :app:createReleaseUpdatesResources --rerun-tasks`.
+
 Antes de compilar un APK, la comprobación equivalente sin teléfono:
 
 ```bash
 cd apps/mobile/android && ANDROID_HOME=~/Library/Android/sdk ./gradlew :app:createReleaseUpdatesResources --rerun-tasks -q >/dev/null; cat app/build/generated/assets/createReleaseUpdatesResources/fingerprint
+```
+
+**Novedades y iconos de Lugares (al publicar un update con cambios visibles):**
+
+```bash
+# 1) añadir la entrada [0] en apps/mobile/src/constants/changelog.ts (es/en): la app
+#    la muestra UNA vez, en el primer arranque con la versión nueva.
+# 2) si cambió POI_ICON_DEFS (risk-map.types.ts), regenerar los PNG del mapa nativo:
+cd apps/mobile && python3 scripts/gen_poi_icons.py
 ```
 
 > Si `npm ci` falla en EAS con «lock file out of sync», es que se instaló una
