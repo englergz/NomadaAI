@@ -1,6 +1,9 @@
 # Nómada.AI · Cumplimiento y pendientes
 
-Estado a 2026-08-03. Lo que dice **✅** está verificado ejecutando, no solo escrito.
+Estado a 2026-08-03 (filas actualizadas hasta 2026-09-08). Lo que dice **✅** está verificado ejecutando, no solo escrito.
+
+> La lista completa de pendientes del producto (pedido vs hecho en todas las sesiones) vive en
+> [`PENDIENTES_PRODUCTO.md`](PENDIENTES_PRODUCTO.md); aquí queda la matriz de cumplimiento.
 
 ---
 
