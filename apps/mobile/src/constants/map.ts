@@ -89,9 +89,31 @@ export function heatmapPaint(palette: HeatPaletteKey, intensity: number, opacity
   };
 }
 
-export type CityKey = 'tumaco' | 'cali';
-export const CITIES: Record<CityKey, { label: string; center: [number, number]; zoom: number }> = {
-  tumaco: { label: 'Tumaco', center: [-78.785, 1.806], zoom: 13 },
-  cali: { label: 'Cali', center: [-76.532, 3.451], zoom: 12 },
+// CATÁLOGO DE CIUDADES por país. Estar aquí NO significa tener cobertura: el estado
+// real (disponible / próximamente / no disponible) lo dicen /risk/cities y
+// /route/cities del servidor (ver lib/city-status.ts). El catálogo existe para que
+// el usuario encuentre su ciudad con su nombre oficial y sepa qué hay en ella.
+export type CountryCode = 'CO' | 'EC' | 'PE';
+export type CityKey =
+  | 'tumaco' | 'cali' | 'pasto' | 'buenaventura' | 'bogota' | 'medellin' | 'barranquilla' | 'cartagena'
+  | 'quito' | 'guayaquil' | 'esmeraldas'
+  | 'lima';
+export interface CityDef { label: string; country: CountryCode; center: [number, number]; zoom: number }
+export const CITIES: Record<CityKey, CityDef> = {
+  tumaco: { label: 'Tumaco', country: 'CO', center: [-78.785, 1.806], zoom: 13 },
+  cali: { label: 'Cali', country: 'CO', center: [-76.532, 3.451], zoom: 12 },
+  pasto: { label: 'Pasto', country: 'CO', center: [-77.281, 1.214], zoom: 13 },
+  buenaventura: { label: 'Buenaventura', country: 'CO', center: [-77.032, 3.883], zoom: 13 },
+  bogota: { label: 'Bogotá', country: 'CO', center: [-74.081, 4.652], zoom: 11 },
+  medellin: { label: 'Medellín', country: 'CO', center: [-75.574, 6.245], zoom: 12 },
+  barranquilla: { label: 'Barranquilla', country: 'CO', center: [-74.797, 10.981], zoom: 12 },
+  cartagena: { label: 'Cartagena', country: 'CO', center: [-75.514, 10.400], zoom: 12 },
+  quito: { label: 'Quito', country: 'EC', center: [-78.483, -0.188], zoom: 12 },
+  guayaquil: { label: 'Guayaquil', country: 'EC', center: [-79.896, -2.190], zoom: 12 },
+  esmeraldas: { label: 'Esmeraldas', country: 'EC', center: [-79.652, 0.968], zoom: 13 },
+  lima: { label: 'Lima', country: 'PE', center: [-77.043, -12.046], zoom: 11 },
 };
 export const DEFAULT_CITY: CityKey = 'tumaco';
+// Ciudades que el servidor publica HOY (se usa solo si /risk/cities no responde):
+// la cobertura de verdad la decide el backend en tiempo de ejecución.
+export const SERVED_CITIES: readonly CityKey[] = ['tumaco', 'cali'];

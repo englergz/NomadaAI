@@ -40,7 +40,14 @@ const FRACS = PTS.map((_, i) =>
 /** Tope de la pantalla de bienvenida: pasado esto se entra sí o sí. */
 const SPLASH_MAX_MS = 4000;
 
-export default function AnimatedSplash({ onDone, fontsReady = true }: { onDone: () => void; fontsReady?: boolean }) {
+export default function AnimatedSplash({ onDone, fontsReady = true, ready = true, status }: {
+  onDone: () => void;
+  fontsReady?: boolean;
+  /** Carga real terminada (ajustes, ubicación, capa de riesgo). Sin esto, el splash espera hasta el tope. */
+  ready?: boolean;
+  /** Texto de lo que se está cargando ahora mismo, para que la espera no sea muda. */
+  status?: string | null;
+}) {
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
   const progress = useRef(new Animated.Value(0)).current;  // ruta + punto
@@ -53,6 +60,15 @@ export default function AnimatedSplash({ onDone, fontsReady = true }: { onDone: 
   const slotRef = useRef<View>(null);
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
+  // La animación y la carga corren en paralelo; se sale cuando TERMINAN LAS DOS
+  // (o al tope). Así el splash dura lo que dura la carga, no un tiempo fijo.
+  const animDoneRef = useRef(false);
+  const readyRef = useRef(ready);
+  const finishRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    readyRef.current = ready;
+    if (ready && animDoneRef.current) finishRef.current();
+  }, [ready]);
 
   useEffect(() => {
     let finished = false;
@@ -67,12 +83,15 @@ export default function AnimatedSplash({ onDone, fontsReady = true }: { onDone: 
       ]),
       Animated.delay(500),
       Animated.timing(fade, { toValue: 0, duration: 350, useNativeDriver: false }),
-    ]).start(() => { grid.removeListener(gsub); finish(); });
+    ]).start(() => {
+      grid.removeListener(gsub);
+      animDoneRef.current = true;
+      if (readyRef.current) finish();
+    });
 
-    // TOPE DURO: la animación NO espera a que la app termine de cargar. Si algo se
-    // atasca (fuente, mapa, red), a los 4 s se sale igual y la carga sigue a la
-    // vista con los avisos del inicio. Nunca dejar al usuario mirando una
-    // animación bonita mientras no puede hacer nada.
+    // TOPE DURO: si la carga se atasca (fuente, mapa, red), a los 4 s se sale igual
+    // y la carga sigue a la vista con los avisos del inicio. Nunca dejar al usuario
+    // mirando una animación bonita mientras no puede hacer nada.
     const cap = setTimeout(finish, SPLASH_MAX_MS);
     function finish() {
       if (finished) return;
@@ -80,6 +99,7 @@ export default function AnimatedSplash({ onDone, fontsReady = true }: { onDone: 
       clearTimeout(cap);
       doneRef.current();
     }
+    finishRef.current = finish;
     // Posición del hueco del «.» (destino del vuelo del punto).
     const t = setTimeout(() => {
       slotRef.current?.measureInWindow((x, y) => setSlot({ x, y }));
@@ -130,6 +150,10 @@ export default function AnimatedSplash({ onDone, fontsReady = true }: { onDone: 
           </View>
           <Text style={[styles.word, { color: c.accent }]}>AI</Text>
         </Animated.View>
+      )}
+      {/* Qué se está cargando de verdad: aparece con el wordmark y cambia con el paso. */}
+      {!!status && (
+        <Animated.Text style={[styles.status, { color: c.textSecondary, opacity: wordmark }]}>{status}</Animated.Text>
       )}
     </Animated.View>
   );
@@ -185,6 +209,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
   },
   wordRow: { flexDirection: 'row', alignItems: 'baseline' },
+  status: { position: 'absolute', bottom: 56, fontSize: 12.5, letterSpacing: 0.2 },
   word: { fontFamily: BRAND_FONT, fontSize: 32, letterSpacing: 0.3 },
   dotSlot: { width: 13, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 4 },
   slotDot: { width: 8, height: 8, borderRadius: 999 }, // redondo, como el punto del mapa

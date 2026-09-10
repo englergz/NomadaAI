@@ -227,19 +227,38 @@ export default function SettingsSheet({ visible, onClose, onHelp, onLegal, onPri
         </View>
         </View>
 
-        <Pressable
-          onPress={onPrivacy}
-          style={({ pressed }) => [styles.resetBtn, { borderColor: c.border, opacity: pressed ? 0.7 : 1, marginTop: 22 }]}
-        >
-          <Text style={{ color: c.textSecondary, fontSize: 13, fontWeight: '600' }}>{t('privacy.open')}</Text>
-        </Pressable>
+        {/* CÍRCULOS: existe en el diseño (docs/DISENO_FUTURO.md §2), no en el código.
+            Se muestra con honestidad —«próximamente»— para que el usuario sepa a
+            dónde va el producto, sin un botón que no haga nada. */}
+        <Text style={[styles.sec, { color: c.textSecondary, marginTop: 14 }]}>{t('circles.sec')}</Text>
+        <View style={[styles.circles, { borderColor: c.border, backgroundColor: c.background }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ color: c.text, fontSize: 14, fontWeight: '700', flex: 1 }}>{t('circles.card.title')}</Text>
+            <View style={[styles.soon, { borderColor: c.accent }]}>
+              <Text style={{ color: c.accent, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>
+                {t('wel.soon').toUpperCase()}
+              </Text>
+            </View>
+          </View>
+          <Text style={{ color: c.textSecondary, fontSize: 12.5, lineHeight: 18 }}>{t('circles.card.body')}</Text>
+        </View>
 
-        <Pressable
-          onPress={onLegal}
-          style={({ pressed }) => [styles.resetBtn, { borderColor: c.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
-        >
-          <Text style={{ color: c.textSecondary, fontSize: 13, fontWeight: '600' }}>{t('legal.open')}</Text>
-        </Pressable>
+        {/* Datos y legal en UNA fila: son dos cosas distintas (mis datos/opinión vs.
+            el texto legal) y con nombres distintos; antes parecían el mismo botón. */}
+        <View style={styles.legalRow}>
+          <Pressable
+            onPress={onPrivacy}
+            style={({ pressed }) => [styles.resetBtn, styles.legalBtn, { borderColor: c.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={{ color: c.textSecondary, fontSize: 12.5, fontWeight: '600', textAlign: 'center' }}>{t('privacy.open')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={onLegal}
+            style={({ pressed }) => [styles.resetBtn, styles.legalBtn, { borderColor: c.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={{ color: c.textSecondary, fontSize: 12.5, fontWeight: '600', textAlign: 'center' }}>{t('legal.open')}</Text>
+          </Pressable>
+        </View>
 
         <Pressable
           onPress={onHelp}
@@ -278,6 +297,10 @@ export default function SettingsSheet({ visible, onClose, onHelp, onLegal, onPri
 }
 
 const styles = StyleSheet.create({
+  circles: { marginHorizontal: 16, borderWidth: 1, borderRadius: Radii.card, padding: 12, gap: 6 },
+  soon: { borderWidth: 1.5, borderRadius: Radii.pill, paddingVertical: 3, paddingHorizontal: 9 },
+  legalRow: { flexDirection: 'row', gap: 8, marginHorizontal: 16, marginTop: 22 },
+  legalBtn: { flex: 1, marginHorizontal: 0, marginTop: 0, marginBottom: 0, paddingHorizontal: 8 },
   resetBtn: {
     marginTop: 18, marginHorizontal: 16, marginBottom: 6, paddingVertical: 11,
     borderWidth: 1, borderRadius: Radii.control, alignItems: 'center',

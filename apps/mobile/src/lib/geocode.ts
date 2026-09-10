@@ -6,7 +6,7 @@ import { distM } from '@/lib/geo';
 // Se re-exportan para no romper los imports existentes de la app.
 export { distToPath, bearingDeg, distM } from '@/lib/geo';
 
-import { CITIES, type CityKey } from '@/constants/map';
+import { CITIES, SERVED_CITIES, type CityKey } from '@/constants/map';
 import { api } from '@/lib/api';
 
 export interface Place {
@@ -87,9 +87,13 @@ export async function searchPlaces(query: string, city: CityKey): Promise<Place[
 
 
 // Cobertura: ciudad soportada más cercana a menos de `maxKm`, o null si está fuera.
-export function coverageCity(loc: Coordinate, maxKm = 40): CityKey | null {
+// Solo se sugieren ciudades que el servidor publica (`served`): el catálogo trae más
+// ciudades para que el usuario las encuentre, pero proponer «¿Estás en Bogotá?» sin
+// mapa de riesgo sería prometer cobertura que no existe.
+export function coverageCity(loc: Coordinate, maxKm = 40, served: readonly CityKey[] = SERVED_CITIES): CityKey | null {
   let best: { c: CityKey; d: number } | null = null;
-  for (const key of Object.keys(CITIES) as CityKey[]) {
+  for (const key of served) {
+    if (!CITIES[key]) continue;
     const d = distM(loc, CITIES[key].center) / 1000;
     if (!best || d < best.d) best = { c: key, d };
   }

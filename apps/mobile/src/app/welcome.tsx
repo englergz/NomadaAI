@@ -16,6 +16,7 @@ import { useAuth, useSSO } from '@clerk/clerk-expo';
 import BrandWordmark from '@/components/brand';
 import { Colors, Radii } from '@/constants/theme';
 import { CLERK_ENABLED } from '@/lib/auth';
+import { markBootReady } from '@/lib/boot';
 import { useT, type TKey } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
 
@@ -93,11 +94,15 @@ function WelcomeAuth({ onDone }: { onDone: () => void }) {
   );
 }
 
-const SLIDES: { icon: keyof typeof Ionicons.glyphMap; title: TKey; body: TKey }[] = [
+// ONBOARDING DE VALOR: cada página es algo que la app HACE por la persona, en el
+// orden en que lo va a vivir. La protección automática y los reportes son lo que
+// diferencia el producto; Círculos se anuncia como «próximamente» sin fingir que existe.
+const SLIDES: { icon: keyof typeof Ionicons.glyphMap; title: TKey; body: TKey; soon?: boolean }[] = [
   { icon: 'heart-circle-outline', title: 'wel.1.title', body: 'wel.1.body' },
-  { icon: 'map-outline', title: 'wel.2.title', body: 'wel.2.body' },
-  { icon: 'navigate-circle-outline', title: 'wel.3.title', body: 'wel.3.body' },
-  { icon: 'notifications-outline', title: 'wel.4.title', body: 'wel.4.body' },
+  { icon: 'shield-checkmark-outline', title: 'wel.auto.title', body: 'wel.auto.body' },
+  { icon: 'navigate-circle-outline', title: 'wel.route.title', body: 'wel.route.body' },
+  { icon: 'megaphone-outline', title: 'wel.report.title', body: 'wel.report.body' },
+  { icon: 'people-circle-outline', title: 'wel.circles.title', body: 'wel.circles.body', soon: true },
 ];
 
 export default function Welcome() {
@@ -110,6 +115,8 @@ export default function Welcome() {
   // apiladas (ancho aún incorrecto) — el «cuelgue» visual al (re)cargar.
   const [width, setWidth] = useState(0);
   const last = page === SLIDES.length - 1;
+  // Aquí no hay ubicación ni capa de riesgo que esperar: el splash puede irse.
+  useEffect(() => { markBootReady('location'); markBootReady('risk'); }, []);
 
   async function finish() {
     try { await AsyncStorage.setItem(ONBOARDED_KEY, '1'); } catch { /* sin storage, igual entra */ }
@@ -167,6 +174,13 @@ export default function Welcome() {
               <Ionicons name={item.icon} size={64} color={c.accent} />
             </View>
             <Text style={[styles.title, { color: c.text }]}>{t(item.title)}</Text>
+            {item.soon && (
+              <View style={[styles.soon, { borderColor: c.accent }]}>
+                <Text style={{ color: c.accent, fontSize: 11, fontWeight: '800', letterSpacing: 0.6 }}>
+                  {t('wel.soon').toUpperCase()}
+                </Text>
+              </View>
+            )}
             <Text style={[styles.body, { color: c.textSecondary }]}>{t(item.body)}</Text>
           </View>
         )}
@@ -184,7 +198,12 @@ export default function Welcome() {
           ))}
         </View>
         {last && CLERK_ENABLED ? (
-          <WelcomeAuth onDone={finish} />
+          <>
+            <Text style={{ color: c.textSecondary, fontSize: 12, textAlign: 'center', marginTop: -6 }}>
+              {t('wel.session.note')}
+            </Text>
+            <WelcomeAuth onDone={finish} />
+          </>
         ) : (
           <>
             <Pressable
@@ -217,6 +236,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   title: { fontSize: 24, fontWeight: '800', textAlign: 'center' },
+  soon: { borderWidth: 1.5, borderRadius: Radii.pill, paddingVertical: 4, paddingHorizontal: 12, marginTop: -8 },
   body: { fontSize: 15, lineHeight: 22, textAlign: 'center' },
   footer: { paddingHorizontal: 24, paddingBottom: 18, gap: 16 },
   dots: { flexDirection: 'row', gap: 6, alignSelf: 'center', alignItems: 'center' },

@@ -1,74 +1,135 @@
-// Selector de CIUDAD (U3, estilo inDrive): lista las ciudades con superficie de
-// riesgo publicada (/risk/cities ∩ ciudades con coordenadas conocidas) y es honesto
-// con las capacidades: hoy solo Tumaco tiene predicción y rutas; el resto, capa de riesgo.
-import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+// Selector de CIUDAD por PAÍS (estilo inDrive).
+//
+// Abre en el país de la ciudad activa y lista sus ciudades con nombre oficial y
+// ESTADO real, dicho por el servidor (lib/city-status.ts):
+//   · Disponible    → riesgo + red vial: se elige y funciona todo.
+//   · Próximamente  → ya hay mapa de riesgo, aún sin rutas: se puede elegir, con aviso.
+//   · No disponible → en el catálogo para que se encuentre, pero deshabilitada.
+// Abajo: «¿Cambiar de país? Ver todas» abre el buscador sobre el catálogo completo.
+import { useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
+import { CITIES, type CityKey, type CountryCode } from '@/constants/map';
 import { Colors, Radii } from '@/constants/theme';
-import { api } from '@/lib/api';
-import { useT } from '@/lib/i18n';
+import { citiesOfCountry, cityStatus, searchCities, sortByStatus, type CityStatus } from '@/lib/city-status';
+import { useT, type TKey } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
 
+const STATUS_KEY: Record<CityStatus, TKey> = {
+  available: 'city.status.available',
+  soon: 'city.status.soon',
+  unavailable: 'city.status.unavailable',
+};
+
 export default function CitySheet({
-  visible, current, onSelect, onClose,
+  visible, current, riskCities, routeCities, onSelect, onClose,
 }: {
   visible: boolean;
   current: CityKey;
+  /** Ciudades con capa de riesgo publicada (GET /risk/cities). */
+  riskCities: readonly string[];
+  /** Ciudades con red vial cargada (GET /route/cities). */
+  routeCities: readonly string[];
   onSelect: (city: CityKey) => void;
   onClose: () => void;
 }) {
   const t = useT();
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
-  const [available, setAvailable] = useState<CityKey[]>(Object.keys(CITIES) as CityKey[]);
+  const { height: winH } = useWindowDimensions();
+  const country: CountryCode = CITIES[current].country;
+  const [all, setAll] = useState(false);
+  const [query, setQuery] = useState('');
 
-  useEffect(() => {
-    if (!visible) return;
-    let alive = true;
-    api.riskCities()
-      .then((r) => {
-        // Solo ciudades que el servidor publica Y que sabemos encuadrar en el mapa.
-        const known = (Object.keys(CITIES) as CityKey[]).filter((k) => r.cities.includes(k));
-        if (alive && known.length) setAvailable(known);
-      })
-      .catch(() => { /* sin red usamos la lista local */ });
-    return () => { alive = false; };
-  }, [visible]);
+  const keys = useMemo(() => {
+    const base = all ? searchCities(query) : citiesOfCountry(country);
+    return sortByStatus(base, riskCities, routeCities);
+  }, [all, query, country, riskCities, routeCities]);
+
+  function close() { setAll(false); setQuery(''); onClose(); }
+
+  const countryName = t(`country.${country}` as TKey);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: c.backgroundElement, borderColor: c.border }]}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+      <Pressable style={styles.backdrop} onPress={close} />
+      <View style={[styles.sheet, { maxHeight: winH * 0.85, backgroundColor: c.backgroundElement, borderColor: c.border }]}>
         <View style={[styles.handle, { backgroundColor: c.border }]} />
         <Text style={[styles.title, { color: c.text }]}>{t('city.title')}</Text>
-        <Text style={{ color: c.textSecondary, fontSize: 12 }}>{t('city.subtitle')}</Text>
+        <Text style={{ color: c.textSecondary, fontSize: 12 }}>
+          {all ? t('city.subtitle') : t('city.inCountry', { country: countryName })}
+        </Text>
 
-        {available.map((k) => {
-          const on = k === current;
-          const full = k === DEFAULT_CITY; // solo Tumaco tiene pipeline completo hoy
-          return (
-            <Pressable
-              key={k}
-              onPress={() => { onSelect(k); onClose(); }}
-              style={[styles.row, {
-                borderColor: on ? c.accent : c.border,
-                backgroundColor: on ? c.backgroundSelected : 'transparent',
-              }]}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: on ? c.accent : c.text, fontSize: 15, fontWeight: '700' }}>
-                  {CITIES[k].label}
-                </Text>
-                <Text style={{ color: c.textSecondary, fontSize: 11.5 }}>
-                  {full ? t('city.full') : t('city.partial')}
-                </Text>
-              </View>
-              {on && <Ionicons name="checkmark-circle" size={20} color={c.accent} />}
-            </Pressable>
-          );
-        })}
+        {all && (
+          <View style={[styles.search, { borderColor: c.border, backgroundColor: c.background }]}>
+            <Ionicons name="search" size={16} color={c.textSecondary} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder={t('city.search')}
+              placeholderTextColor={c.textSecondary}
+              autoCorrect={false}
+              style={[styles.input, { color: c.text }]}
+            />
+          </View>
+        )}
+
+        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
+          {keys.length === 0 && (
+            <Text style={{ color: c.textSecondary, fontSize: 12.5, textAlign: 'center', paddingVertical: 10 }}>
+              {t('city.noMatch')}
+            </Text>
+          )}
+          {keys.map((k) => {
+            const on = k === current;
+            const st = cityStatus(k, riskCities, routeCities);
+            const disabled = st === 'unavailable';
+            const badge = st === 'available' ? c.accent : st === 'soon' ? '#f5a524' : c.textSecondary;
+            return (
+              <Pressable
+                key={k}
+                disabled={disabled}
+                accessibilityState={{ disabled, selected: on }}
+                onPress={() => { onSelect(k); close(); }}
+                style={[styles.row, {
+                  borderColor: on ? c.accent : c.border,
+                  backgroundColor: on ? c.backgroundSelected : 'transparent',
+                  opacity: disabled ? 0.55 : 1,
+                }]}
+              >
+                <View style={{ flex: 1, gap: 2 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ color: on ? c.accent : c.text, fontSize: 15, fontWeight: '700' }}>
+                      {CITIES[k].label}
+                    </Text>
+                    {all && (
+                      <Text style={{ color: c.textSecondary, fontSize: 11.5 }}>
+                        {t(`country.${CITIES[k].country}` as TKey)}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={{ color: c.textSecondary, fontSize: 11.5 }}>
+                    {st === 'available' ? t('city.full') : st === 'soon' ? t('city.status.soonHint') : t('city.status.unavailableHint')}
+                  </Text>
+                </View>
+                <View style={[styles.badge, { borderColor: badge }]}>
+                  <Text style={{ color: badge, fontSize: 10, fontWeight: '800', letterSpacing: 0.4 }}>
+                    {t(STATUS_KEY[st]).toUpperCase()}
+                  </Text>
+                </View>
+                {on && <Ionicons name="checkmark-circle" size={20} color={c.accent} />}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        <Pressable onPress={() => { setAll((v) => !v); setQuery(''); }} hitSlop={6} style={styles.toggle}>
+          <Ionicons name={all ? 'chevron-back' : 'globe-outline'} size={15} color={c.accent} />
+          <Text style={{ color: c.accent, fontSize: 13, fontWeight: '700' }}>
+            {all ? t('city.backCountry', { country: countryName }) : t('city.changeCountry')}
+          </Text>
+        </Pressable>
       </View>
     </Modal>
   );
@@ -79,13 +140,17 @@ const styles = StyleSheet.create({
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet: {
     marginTop: 'auto',
-    borderWidth: 1, borderBottomWidth: 0, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    borderWidth: 1, borderBottomWidth: 0, borderTopLeftRadius: Radii.sheet, borderTopRightRadius: Radii.sheet,
     overflow: 'hidden', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28, gap: 10,
   },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
   title: { fontSize: 17, fontWeight: '800' },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: Radii.pill, paddingHorizontal: 14 },
+  input: { flex: 1, paddingVertical: 10, fontSize: 14 },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1, borderRadius: Radii.control, paddingVertical: 12, paddingHorizontal: 14,
   },
+  badge: { borderWidth: 1.5, borderRadius: Radii.pill, paddingVertical: 3, paddingHorizontal: 8 },
+  toggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 },
 });

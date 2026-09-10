@@ -74,8 +74,8 @@ export function vehicleTopSvg(t?: string | null): string {
 
 // B4: iconos de Lugares por categoría (no puntos, no emojis). En web se rasterizan
 // glyphs de MaterialCommunityIcons a imágenes PNG del mapa (canvas, SIN fondo),
-// coloreados con la paleta de categorías del escritorio; en nativo, mientras no haya
-// assets PNG, se mantiene el círculo de color (Expo Go ni carga MapLibre Native).
+// coloreados con la paleta de categorías del escritorio; en nativo se registran los
+// PNG de assets/images/poi, generados de ESTA misma tabla con scripts/gen_poi_icons.py.
 // MCI tiene iconos literales por categoría (gas-station, hospital-box, church…).
 export const POI_ICON_DEFS: Record<string, { glyph: string; color: string }> = {
   seguridad: { glyph: 'police-badge', color: '#2563eb' },
@@ -88,6 +88,22 @@ export const POI_ICON_DEFS: Record<string, { glyph: string; color: string }> = {
   culto: { glyph: 'church', color: '#64748b' },
   default: { glyph: 'map-marker', color: '#94a3b8' },
 };
+
+/** Nombre de imagen de un POI: sin tildes ('educación' → 'poi-educacion'), igual que el PNG del asset. */
+export function poiImageName(category: string): string {
+  return `poi-${category.normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
+}
+
+// Expresión icon-image: match por categoría → poi-<cat>, con poi-default de respaldo.
+// COMPARTIDA por web (imágenes rasterizadas en canvas) y nativo (PNG de assets/images/poi).
+export const POI_ICON_IMAGE = [
+  'match', ['get', 'category'],
+  ...Object.keys(POI_ICON_DEFS).filter((k) => k !== 'default').flatMap((k) => [k, poiImageName(k)]),
+  poiImageName('default'),
+] as const;
+
+// Tamaño del icono según zoom: crece al acercarse (no se queda diminuto al hacer zoom).
+export const POI_ICON_SIZE = ['interpolate', ['linear'], ['zoom'], 12, 0.65, 15, 0.95, 18, 1.35] as const;
 
 // Emoji por categoría para el mapa NATIVO (text-field de un SymbolLayer): no hay
 // canvas para rasterizar iconos, así que se usa el glifo de emoji sobre un círculo.

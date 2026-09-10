@@ -12,7 +12,7 @@ import MCIGlyphs from '@expo/vector-icons/build/vendor/react-native-vector-icons
 import MCI from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Font from 'expo-font';
 
-import { POI_ICON_DEFS, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, vehicleTopSvg, type RiskMapProps } from './risk-map.types';
+import { POI_ICON_DEFS, POI_ICON_IMAGE, POI_ICON_SIZE, poiImageName, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, vehicleTopSvg, type RiskMapProps } from './risk-map.types';
 
 // B4: rasteriza cada glyph a una imagen PNG del mapa — SIN fondo (nada de círculo
 // blanco): icono coloreado por categoría con halo blanco fino para que sea legible
@@ -40,21 +40,13 @@ async function addPoiIcons(map: maplibregl.Map) {
     ctx.strokeText(ch, size / 2, size / 2);
     ctx.fillStyle = def.color;
     ctx.fillText(ch, size / 2, size / 2);
-    if (!map.hasImage(`poi-${key}`)) {
-      map.addImage(`poi-${key}`, ctx.getImageData(0, 0, size, size), { pixelRatio: 2 });
+    const name = poiImageName(key);
+    if (!map.hasImage(name)) {
+      map.addImage(name, ctx.getImageData(0, 0, size, size), { pixelRatio: 2 });
     }
   }
 }
 
-// Expresión icon-image: match por categoría → poi-<cat>, con poi-default de respaldo.
-const POI_ICON_IMAGE = [
-  'match', ['get', 'category'],
-  ...Object.keys(POI_ICON_DEFS).filter((k) => k !== 'default').flatMap((k) => [k, `poi-${k}`]),
-  'poi-default',
-] as const;
-
-// Tamaño del icono según zoom: crece al acercarse (no se queda diminuto al hacer zoom).
-const POI_ICON_SIZE = ['interpolate', ['linear'], ['zoom'], 12, 0.65, 15, 0.95, 18, 1.35] as const;
 
 export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, destination, riskStyle, satellite, poisData, poisOn, poiCategoryLabel, focus, nav }: RiskMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);

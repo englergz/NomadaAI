@@ -6,7 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { baseStyle, CITIES, DEFAULT_CITY, riskFillColor } from '@/constants/map';
-import { POI_CIRCLE_COLOR, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
+import { POI_ICON_IMAGE, POI_ICON_SIZE, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
 import { VehicleSpriteView } from './vehicle-sprite';
 
 // Carga perezosa: si el módulo nativo no está (Expo Go), no reventamos el bundle.
@@ -17,6 +17,21 @@ try {
 } catch {
   ML = null;
 }
+
+// Iconos de Lugares (B4) para MapLibre Native: PNG generados de POI_ICON_DEFS con
+// scripts/gen_poi_icons.py (mismo glyph, color y halo que la web). Los `require`
+// deben ser literales para que Metro los empaquete (y viajen en las OTA).
+const POI_IMAGES = {
+  'poi-seguridad': require('@/assets/images/poi/seguridad.png'),
+  'poi-salud': require('@/assets/images/poi/salud.png'),
+  'poi-educacion': require('@/assets/images/poi/educacion.png'),
+  'poi-combustible': require('@/assets/images/poi/combustible.png'),
+  'poi-banco': require('@/assets/images/poi/banco.png'),
+  'poi-transporte': require('@/assets/images/poi/transporte.png'),
+  'poi-comercio': require('@/assets/images/poi/comercio.png'),
+  'poi-culto': require('@/assets/images/poi/culto.png'),
+  'poi-default': require('@/assets/images/poi/default.png'),
+};
 
 // Vehículo ilustrado (SVG estilo Uber/Rappi). La cámara nativa rota el mapa, pero no
 // el marcador, así que lo rotamos al rumbo aquí; la leve inclinación le da aire 3D.
@@ -105,7 +120,7 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
   // v11 renombró MarkerView → Marker (por eso el vehículo nunca cargaba y caía al
   // punto azul). Usamos Marker con prop `lngLat` y un hijo (el sprite del vehículo).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { Map, Camera, GeoJSONSource, Layer, Marker } = ML as typeof ML & { Marker?: any };
+  const { Map, Camera, GeoJSONSource, Layer, Marker, Images } = ML as typeof ML & { Marker?: any };
   const navOn = !!nav?.active && !!userLocation;
 
   // Cámara IMPERATIVA (ref): las props declarativas de stop no re-aplicaban el
@@ -148,18 +163,19 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
           />
         </GeoJSONSource>
       )}
+      {/* Imágenes de los iconos de Lugares, registradas en el estilo (una vez). */}
+      <Images images={POI_IMAGES as never} />
       {poisData && poisOn && (
-        // POIs como puntos de color por categoría (fiable en nativo; los iconos tipo
-        // web requieren assets PNG registrados con <Images/> — pendiente U7-B).
+        // Lugares con ICONO por categoría, como en la web (antes círculos de color).
         <GeoJSONSource id="pois" data={poisData as never}>
           <Layer
-            id="pois-bg"
-            type="circle"
-            paint={{
-              'circle-radius': 6,
-              'circle-color': POI_CIRCLE_COLOR as never,
-              'circle-stroke-width': 1.6,
-              'circle-stroke-color': '#ffffff',
+            id="pois-icon"
+            type="symbol"
+            layout={{
+              'icon-image': POI_ICON_IMAGE as never,
+              'icon-size': POI_ICON_SIZE as never,
+              'icon-allow-overlap': false,
+              'icon-ignore-placement': false,
             }}
           />
         </GeoJSONSource>
