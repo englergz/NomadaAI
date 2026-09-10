@@ -7,10 +7,11 @@
 //   · No disponible → en el catálogo para que se encuentre, pero deshabilitada.
 // Abajo: «¿Cambiar de país? Ver todas» abre el buscador sobre el catálogo completo.
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { CITIES, type CityKey, type CountryCode } from '@/constants/map';
+import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
 import { citiesOfCountry, cityStatus, searchCities, sortByStatus, type CityStatus } from '@/lib/city-status';
 import { useT, type TKey } from '@/lib/i18n';
@@ -37,7 +38,6 @@ export default function CitySheet({
   const t = useT();
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
-  const { height: winH } = useWindowDimensions();
   const country: CountryCode = CITIES[current].country;
   const [all, setAll] = useState(false);
   const [query, setQuery] = useState('');
@@ -52,10 +52,7 @@ export default function CitySheet({
   const countryName = t(`country.${country}` as TKey);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <Pressable style={styles.backdrop} onPress={close} />
-      <View style={[styles.sheet, { maxHeight: winH * 0.85, backgroundColor: c.backgroundElement, borderColor: c.border }]}>
-        <View style={[styles.handle, { backgroundColor: c.border }]} />
+    <BaseSheet visible={visible} onClose={close} maxHeightPct={0.85} sheetStyle={{ paddingBottom: 28 }}>
         <Text style={[styles.title, { color: c.text }]}>{t('city.title')}</Text>
         <Text style={{ color: c.textSecondary, fontSize: 12 }}>
           {all ? t('city.subtitle') : t('city.inCountry', { country: countryName })}
@@ -130,20 +127,11 @@ export default function CitySheet({
             {all ? t('city.backCountry', { country: countryName }) : t('city.changeCountry')}
           </Text>
         </Pressable>
-      </View>
-    </Modal>
+    </BaseSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  // B3: backdrop a pantalla completa (también detrás de las esquinas curvas de la hoja).
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: {
-    marginTop: 'auto',
-    borderWidth: 1, borderBottomWidth: 0, borderTopLeftRadius: Radii.sheet, borderTopRightRadius: Radii.sheet,
-    overflow: 'hidden', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28, gap: 10,
-  },
-  handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
   title: { fontSize: 17, fontWeight: '800' },
   search: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: Radii.pill, paddingHorizontal: 14 },
   input: { flex: 1, paddingVertical: 10, fontSize: 14 },

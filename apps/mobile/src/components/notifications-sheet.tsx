@@ -2,8 +2,9 @@
 // hora / zona / acción, filtros por tipo y limpieza con confirmación. Al abrirla
 // se marca todo como visto (el puntico del FAB desaparece hasta la próxima).
 import { useEffect, useState } from 'react';
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
 import { clearAlerts, getAlerts, markAlertsSeen, type AlertRecord } from '@/lib/alert-log';
 import { useDateLocale, useT } from '@/lib/i18n';
@@ -44,10 +45,7 @@ export default function NotificationsSheet({ visible, onClose }: { visible: bool
   }, [visible]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: c.backgroundElement, borderColor: c.border }]}>
-        <View style={[styles.handle, { backgroundColor: c.border }]} />
+    <BaseSheet visible={visible} onClose={onClose} maxHeightPct={null} sheetStyle={{ paddingBottom: 26 }}>
         <View style={styles.secRow}>
           <Text style={[styles.title, { color: c.text }]}>{t('prot.alertLog')}</Text>
           {alerts.length > 0 && (
@@ -103,19 +101,11 @@ export default function NotificationsSheet({ visible, onClose }: { visible: bool
         <Pressable onPress={onClose} style={[styles.btn, { backgroundColor: c.accent }]}>
           <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{t('prot.done')}</Text>
         </Pressable>
-      </View>
-    </Modal>
+    </BaseSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: {
-    marginTop: 'auto',
-    borderWidth: 1, borderBottomWidth: 0, borderTopLeftRadius: Radii.sheet, borderTopRightRadius: Radii.sheet,
-    overflow: 'hidden', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 26, gap: 10,
-  },
-  handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
   title: { fontSize: 15, fontWeight: '800', letterSpacing: 0.4 },
   secRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   filterRow: { flexDirection: 'row', gap: 6 },

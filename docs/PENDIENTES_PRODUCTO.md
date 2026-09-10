@@ -181,7 +181,7 @@ Nada pendiente salvo lo del panel admin (§3).
 | Pruebas automatizadas de lo crítico (08-04) | ✅ 27 móvil + 16 invariantes `/route/build` (Tumaco y Cali) |
 | Cifrado en reposo, `npm audit`, `pip-audit` | ✅ (09-08) |
 | Refactor `map.tsx` en hooks `useTrip/useCity/useBanner/useHealth` (07-10, U7-ARCH) | ✅ **(09-10)** `map.tsx` 1.294 → 744 líneas; `hooks/use-trip` (recorrido, alertas, recálculo, inactividad, segundo plano), `use-city`, `use-banner`, `use-health`, `use-ota`. Sin cambio de comportamiento: código movido tal cual, verificado en el emulador |
-| `BaseSheet` común para las 6 hojas (duplican backdrop/estilos) | ❌ |
+| `BaseSheet` común para las 6 hojas (duplican backdrop/estilos) | ✅ **(09-10)** `components/base-sheet.tsx`; las 9 hojas (ajustes, ciudad, reporte, protección, notificaciones, ayuda, legal, privacidad, novedades) solo ponen su contenido. Valores por hoja conservados (opacidad, tope de altura, relleno) |
 | Sistema formal de banners/estados (`useBanner`) | 🟡 `useBanner` existe (un aviso, auto-descarte por tono); falta la cola por categorías |
 | Splash: calibrar waypoints del punto sobre el PNG (U7 pendiente 6) | ⚠️ |
 
@@ -242,7 +242,7 @@ Nada pendiente salvo lo del panel admin (§3).
 ## 8. Orden sugerido para lo que sigue (valor / esfuerzo)
 ~~1–7~~ ✅ cerrados el 2026-09-10 (commits 57d8e53, 052561d y b65675f) y verificados en el
 emulador Pixel 7a; la OTA republicada corre en el emulador con la hoja de Novedades.
-~~9a. Refactor `map.tsx` → hooks~~ ✅ (09-10). Queda 9b: `BaseSheet` común para las 9 hojas modales.
+~~9. Refactor `map.tsx` → hooks + `BaseSheet`~~ ✅ (09-10). Queda solo la cola de banners por categoría (menor).
 8. Fotos en reportes (bloqueado por la decisión de Storage).
 10. Caché offline + cola de escrituras.
 11. Panel admin de verdad (menú lateral, ciudades, pesos, ingesta, BI) — frente grande.

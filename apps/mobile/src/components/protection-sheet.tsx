@@ -2,10 +2,10 @@
 // Paridad con la tarjeta del panel de escritorio: riesgo evitado, viajes, alertas
 // a tiempo, contexto de comunidad y reinicio del histórico propio.
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import ProfileSection from '@/components/profile-section';
+import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
 import { CLERK_ENABLED } from '@/lib/auth';
 import { fetchSummaries, resetHistory, type HistorySummary } from '@/lib/history';
@@ -39,8 +39,6 @@ export default function ProtectionSheet({ visible, onClose }: { visible: boolean
   const [mine, setMine] = useState<HistorySummary | null>(null);
   const [all, setAll] = useState<HistorySummary | null>(null);
   const [loading, setLoading] = useState(false);
-  const insets = useSafeAreaInsets();
-  const { height: winH } = useWindowDimensions();
 
   useEffect(() => {
     if (!visible) return;
@@ -55,10 +53,7 @@ export default function ProtectionSheet({ visible, onClose }: { visible: boolean
   const red = mine?.proteccion?.exposure_reduction_avg_pct ?? null;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { maxHeight: winH * 0.9, paddingBottom: insets.bottom + 16, backgroundColor: c.backgroundElement, borderColor: c.border }]}>
-        <View style={[styles.handle, { backgroundColor: c.border }]} />
+    <BaseSheet visible={visible} onClose={onClose} sheetStyle={{ gap: 12 }}>
         <Text style={[styles.title, { color: c.text }]}>{t('prot.title')}</Text>
         <Text style={{ color: c.textSecondary, fontSize: 12 }}>{t('prot.subtitle')}</Text>
 
@@ -128,20 +123,11 @@ export default function ProtectionSheet({ visible, onClose }: { visible: boolean
             </Text>
           </Pressable>
         )}
-      </View>
-    </Modal>
+    </BaseSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  // B3: backdrop a pantalla completa (también detrás de las esquinas curvas de la hoja).
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: {
-    marginTop: 'auto',
-    borderWidth: 1, borderBottomWidth: 0, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    overflow: 'hidden', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28, gap: 12,
-  },
-  handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
   title: { fontSize: 17, fontWeight: '800' },
   hero: { borderWidth: 1, borderRadius: Radii.card, padding: 14, alignItems: 'center', gap: 4 },
   heroBig: { fontSize: 30, fontWeight: '800' },
