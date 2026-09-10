@@ -1,6 +1,6 @@
 # Nómada.AI · Pendientes del producto — lo pedido vs lo hecho
 
-**Estado a 2026-09-10.** Fuente de verdad del backlog a partir de hoy; `ROADMAP_SESIONES.md`
+**Estado a 2026-09-10 (actualizado tras la tanda de la tarde).** Fuente de verdad del backlog a partir de hoy; `ROADMAP_SESIONES.md`
 queda como historial y `CUMPLIMIENTO_Y_PENDIENTES.md` como matriz de cumplimiento legal/técnico.
 
 Cómo se construyó: se leyeron los **555 mensajes** del usuario en las 5 sesiones de NomadaAI
@@ -26,9 +26,14 @@ Leyenda: ✅ hecho y verificado · 🟡 parcial · ❌ no hecho · ⚠️ sin co
 | Calidad / arquitectura | 6 | 2 | 1 | 3 |
 | Depende de ti | 10 | 2 | — | 8 |
 
-**Lo que hoy impide que un usuario reciba mejoras sin reinstalar:** la OTA. El código ya está
-bien (huella estable, cabecera de canal, APK compilado), pero falta **crear el canal en EAS,
-publicar el update e instalar el APK nuevo** (§6.1). Todo lo demás son funciones.
+**OTA (2026-09-10):** canal `production` creado, update publicado y manifiesto verificado (200
+para la huella del APK, 204 para la vieja). Lo único que falta es que **instales el APK del
+2026-09-10** (§6.1): los APK anteriores no reciben nada.
+
+**Tanda del 2026-09-10 (commit 57d8e53):** cerrados los puntos 2 a 6 del orden sugerido —
+onboarding de valor + Círculos «próximamente» + botones legales, Novedades tras OTA, ciudad por
+país, iconos POI nativos y splash ligado a la carga real. Todos van por OTA. ⚠️ Pendiente de que
+los veas en tu teléfono.
 
 ---
 
@@ -75,18 +80,18 @@ publicar el update e instalar el APK nuevo** (§6.1). Todo lo demás son funcion
 | Cambio de ciudad animado en nativo (07-10, 07-11) | ✅ verificado 08-03 |
 | Cali funcional sin predicción (08-04) | ✅ riesgo + **grafo vial OSM** (rutea desde 09-07, −19,1 % a λ=2,5) |
 | Ciudades que rutean las dice el servidor (`/route/cities`) | ✅ |
-| **Modal de ciudad por país**: detecta país, nombre oficial, disponible / próximamente / no disponible, «¿cambiar de país?», buscador (07-11) | ❌ el sheet lista ciudades sin país ni estados |
+| **Modal de ciudad por país**: detecta país, nombre oficial, disponible / próximamente / no disponible, «¿cambiar de país?», buscador (07-11) | ✅ **(09-10)** país de la ciudad activa, estado dicho por `/risk/cities` + `/route/cities`, buscador sin tildes; «¿Estás en X?» solo propone ciudades servidas |
 | Predicción en Cali (paso 3 de DISENO_FUTURO) | ❌ exige recoger trayectorias reales de Cali |
 
 ### 1.4 Onboarding, legal, perfil
 | Pedido | Estado |
 |---|---|
 | Onboarding 4 slides + login Google / invitado al final (07-09, 07-10) | ✅ |
-| **Onboarding de valor**: destacar reportar incidentes, protección automática, sesión para el histórico y Círculos «próximamente» (08-03 16:02, DISENO_FUTURO §4) | ❌ los 4 slides actuales hablan de mapa, rutas y alertas; ninguno de reportar, protección automática ni Círculos |
+| **Onboarding de valor**: destacar reportar incidentes, protección automática, sesión para el histórico y Círculos «próximamente» (08-03 16:02, DISENO_FUTURO §4) | ✅ **(09-10)** 5 páginas: te cuidamos · protección automática · rutas y riesgo · reporta lo que ves · Círculos (próximamente) + nota «la cuenta solo conserva tu histórico» |
 | Términos y privacidad con fecha, aceptación explícita, versión registrada (08-03) | ✅ v1.0.0 |
 | Borrado de datos con doble confirmación, local + servidor (08-04) | ✅ |
 | Feedback obligatorio antes de borrar, al servidor y al panel admin, no al correo (08-04) | ✅ `POST /feedback` (09-08) |
-| Botones «Privacidad y opinión» y «Términos y privacidad» redundantes (08-04) | ❌ siguen los dos en Ajustes |
+| Botones «Privacidad y opinión» y «Términos y privacidad» redundantes (08-04) | ✅ **(09-10)** ahora «Mis datos y opinión» y «Términos y política de privacidad», en una fila |
 | Nacionalidad con lista de países; fecha de nacimiento válida (07-10) | ✅ |
 | Google login: pantalla en blanco / «page could not be found» (07-10, 08-03) | 🟡 corregido en `a2fa92a` (deep link) · ⚠️ el 08-03 lo reportaste otra vez; sin confirmar después |
 | Consentimiento de Google dice «Clerk», no Nómada.AI (07-11, 08-03) | 👤 Google Cloud Console → OAuth consent screen (§6) |
@@ -112,7 +117,7 @@ publicar el update e instalar el APK nuevo** (§6.1). Todo lo demás son funcion
 | Radios coherentes en toda la app (07-10, 08-03) | ✅ tokens `Radii` |
 | Wordmark Sora, «.AI» azul, punto redondo, sin relleno (07-10, 07-11) | ✅ `BrandWordmark` |
 | Agrupar los 4 botones de configuración en «más opciones» desplegable (08-04 14:04) | ❌ sin commit que lo toque |
-| **Iconos de lugares (POI) en el mapa nativo** como en web (07-09, 07-11, 08-04) | ❌ siguen círculos de color; exige PNG registrados con `<Images/>` |
+| **Iconos de lugares (POI) en el mapa nativo** como en web (07-09, 07-11, 08-04) | ✅ **(09-10)** PNG generados de la misma tabla que la web (`scripts/gen_poi_icons.py`), capa `symbol` con `<Images/>` · ⚠️ verlo en teléfono |
 | Botón «centrar» no centra (07-10, 07-11, **08-04 19:36**) | ⚠️ `a2fa92a` lo arregló el 07-11; lo volviste a reportar el 08-04 y no hay commit posterior. Hay que probarlo en teléfono |
 | Tocar fuera cierra el teclado (08-03) | ⚠️ sin confirmar |
 
@@ -120,10 +125,10 @@ publicar el update e instalar el APK nuevo** (§6.1). Todo lo demás son funcion
 | Pedido | Estado |
 |---|---|
 | Splash animado con el logo real, ≤4 s, solo en frío (07-10) | ✅ |
-| **El splash debe reflejar la carga real**, no ser decorativo (08-03 15:09) | 🟡 solo espera la fuente Sora; no espera ajustes, ubicación ni capa de riesgo |
+| **El splash debe reflejar la carga real**, no ser decorativo (08-03 15:09) | ✅ **(09-10)** espera ajustes → ubicación → capa de riesgo (`lib/boot.ts`) con tope de 4 s y dice qué está cargando |
 | Sin icono nativo antes del splash (07-11, 08-03 21:33 «sigue en iOS») | ⚠️ Android resuelto; **iOS sin confirmar** |
-| OTA sin reinstalar; nunca en mitad de un viaje (07-10) | ✅ código (`lib/ota.ts`) · ❌ **nunca ha llegado a un teléfono** (§6.1) |
-| Vista «Novedades» tipo changelog al abrir tras actualizar (07-10) | ❌ `checkForUpdate` devuelve `pending` pero ninguna pantalla lo usa |
+| OTA sin reinstalar; nunca en mitad de un viaje (07-10) | ✅ **(09-10)** canal + update + manifiesto 200 verificados; tarjeta «actualización lista» que solo permite aplicar sin recorrido · ⚠️ falta instalar el APK del 09-10 |
+| Vista «Novedades» tipo changelog al abrir tras actualizar (07-10) | ✅ **(09-10)** hoja una vez por versión nueva (`constants/changelog.ts`, es/en) |
 | Sin internet / servidor caído / conexión lenta: mensajes honestos (08-03 21:09) | ✅ `lib/connectivity.ts` |
 | Caché de `/risk/zones` y POIs + cola de escrituras para operar sin red (U7 pendiente 4) | ❌ diagnostica, pero no cachea |
 | GPS robusto con reintentos y precisión progresiva (U7 pendiente 2) | 🟡 última posición conocida + fix 25 s; sin backoff |
@@ -178,7 +183,7 @@ Nada pendiente salvo lo del panel admin (§3).
 ## 5. Trabajo futuro declarado (tesis y `DISENO_FUTURO.md`) — diseñado, no construido
 1. **Círculos** — grupos de cuidado con ubicación por excepción (disparadores: riesgo alto,
    inactividad, pánico, desvío), WebSocket por círculo, buffer offline, SMS de último recurso.
-   Modelo de datos y transporte ya especificados. Ni la entrada «Próximamente» en Ajustes existe.
+   Modelo de datos y transporte ya especificados. Desde el 09-10 hay tarjeta «Círculos · próximamente» en Configuración y página en el onboarding; el código de Círculos no existe.
 2. **Cobertura por grados** — ✅ el análisis se convirtió en producto (Cali rutea). Falta la
    predicción (trayectorias reales) y el barrido canónico OE4 sobre Cali con la misma disciplina.
 3. **Publicidad sutil + donación «cafecito»** (USD 0,99 / COP 1.990 mes; 9,90 / 19.900 año) —
@@ -193,14 +198,15 @@ Nada pendiente salvo lo del panel admin (§3).
 
 ## 6. Depende de ti (no del código)
 
-### 6.1 Para que la OTA llegue por fin a un teléfono — orden exacto
-1. 👤 Crear el canal (configuración persistente de la cuenta EAS, por eso no lo hice):
-   `cd apps/mobile && npx eas-cli@latest channel:create production`
-2. 👤 Publicar: `npx eas-cli@latest update --branch production --message "OTA verificada"`
-   (con el árbol como está: huella Android `be94deb1…`, iOS `3e19b2de…`).
-3. 👤 Instalar el APK nuevo (`apps/mobile/android/app/build/outputs/apk/release/app-arm64-v8a-release.apk`)
-   y abrir la app. Los APK anteriores no enviaban el canal: no recibirán nada.
-4. Yo verifico que el manifiesto responde 200 para esa huella.
+### 6.1 OTA — estado 2026-09-10
+1. ✅ Canal `production` creado y update publicado (lo hiciste tú el 09-10).
+2. ✅ Manifiesto verificado: 200 para la huella del APK, 204 (sin update) para la huella vieja.
+3. 👤 **Instalar el APK del 2026-09-10** (`apps/mobile/android/app/build/outputs/apk/release/app-arm64-v8a-release.apk`,
+   huella `be94deb1…`) y abrir la app dos veces: la primera descarga, la segunda muestra
+   «Novedades». Los APK anteriores no enviaban el canal: no recibirán nada.
+4. Regla nueva en `COMANDOS.md` §5: `eas update` se publica justo después de compilar y solo si
+   la huella del APK y la de `runtimeversion:resolve` coinciden (los restos de gradle en
+   `node_modules` cambian la huella).
 
 ### 6.2 Resto
 | Tarea | Estado |
@@ -227,14 +233,10 @@ Nada pendiente salvo lo del panel admin (§3).
 ---
 
 ## 8. Orden sugerido para lo que sigue (valor / esfuerzo)
-1. §6.1 — canal EAS + update + APK (sin esto ninguna corrección llega a nadie).
-2. Onboarding de valor + entrada «Círculos · próximamente» + quitar el botón legal redundante (una tarde, todo JS → sale por OTA).
-3. Vista «Novedades» al actualizar (ya hay `pending`; falta la pantalla).
-4. Modal de ciudad por país con estados.
-5. Iconos POI en nativo (PNG + `<Images/>`).
-6. Splash ligado a la carga real (ajustes + ubicación + capa de riesgo, con el tope de 4 s).
-7. Fotos en reportes (bloqueado por la decisión de Storage).
-8. Refactor `map.tsx` → hooks + `BaseSheet` + `useBanner` (habilita lo demás sin romper).
-9. Caché offline + cola de escrituras.
-10. Panel admin de verdad (menú lateral, ciudades, pesos, ingesta, BI) — frente grande.
-11. Push desde servidor · publicidad/donación · Círculos.
+~~1–6~~ ✅ cerrados el 2026-09-10 (commit 57d8e53 + OTA). Pendiente tuyo: instalar el APK y mirarlo.
+7. Agrupar los 4 botones de configuración en «más opciones» (08-04) — pequeño, JS.
+8. Fotos en reportes (bloqueado por la decisión de Storage).
+9. Refactor `map.tsx` → hooks + `BaseSheet` + `useBanner` (habilita lo demás sin romper).
+10. Caché offline + cola de escrituras.
+11. Panel admin de verdad (menú lateral, ciudades, pesos, ingesta, BI) — frente grande.
+12. Push desde servidor · publicidad/donación · Círculos.
