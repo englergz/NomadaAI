@@ -4,3 +4,4 @@ export * from "./risk";
 export * from "./protection";
 export * from "./help";
 export * from "./legal";
+export * from "./basemap";

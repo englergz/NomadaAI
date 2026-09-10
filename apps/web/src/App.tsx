@@ -8,7 +8,7 @@ import type {
   TripSummary,
 } from "@nomadaai/shared";
 import { api } from "./lib/api";
-import { osmStyle, TUMACO_CENTER, TUMACO_ZOOM } from "./lib/mapStyle";
+import { labelLayers, osmStyle, TUMACO_CENTER, TUMACO_ZOOM } from "./lib/mapStyle";
 import { HEAT_PALETTES, loadRiskPrefs, paletteGradient, riskFillColor, saveRiskPrefs, type HeatPaletteKey, type RiskPrefs } from "./lib/riskStyle";
 import { LEGAL_DOCS, LEGAL_EFFECTIVE_DATE, LEGAL_VERSION } from "@nomadaai/shared";
 import AdminPanel from "./components/AdminPanel";
@@ -468,10 +468,10 @@ export default function App() {
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     // Estilo inicial con la base correcta según el tema → evita el flash de teselas claras al cargar.
-    const initStyle = JSON.parse(JSON.stringify(osmStyle));
+    const initStyle = JSON.parse(JSON.stringify({ ...osmStyle, layers: [...osmStyle.layers, ...labelLayers] }));
     for (const l of initStyle.layers) {
-      if (l.id === "light") l.layout = { visibility: theme === "light" ? "visible" : "none" };
-      if (l.id === "dark") l.layout = { visibility: theme === "dark" ? "visible" : "none" };
+      if (l.id === "light" || l.id === "light-labels") l.layout = { visibility: theme === "light" ? "visible" : "none" };
+      if (l.id === "dark" || l.id === "dark-labels") l.layout = { visibility: theme === "dark" ? "visible" : "none" };
     }
     const map = new maplibregl.Map({
       container: containerRef.current, style: initStyle, center: TUMACO_CENTER, zoom: TUMACO_ZOOM,
@@ -588,6 +588,12 @@ export default function App() {
       map.setLayoutProperty("satellite", "visibility", satOn ? "visible" : "none");
       map.setLayoutProperty("light", "visibility", !satOn && th === "light" ? "visible" : "none");
       map.setLayoutProperty("dark", "visibility", !satOn && th === "dark" ? "visible" : "none");
+      // Rótulos: siguen a la base (el satelital no los trae) y quedan arriba del todo.
+      for (const id of ["light-labels", "dark-labels"]) {
+        if (!map.getLayer(id)) continue;
+        map.moveLayer(id);
+        map.setLayoutProperty(id, "visibility", !satOn && id.startsWith(th) ? "visible" : "none");
+      }
     } catch (e) { console.error(e); }
   }
 

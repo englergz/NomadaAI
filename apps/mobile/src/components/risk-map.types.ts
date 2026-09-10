@@ -104,6 +104,10 @@ export const POI_ICON_IMAGE = [
 
 // Tamaño del icono según zoom: crece al acercarse (no se queda diminuto al hacer zoom).
 export const POI_ICON_SIZE = ['interpolate', ['linear'], ['zoom'], 12, 0.65, 15, 0.95, 18, 1.35] as const;
+// En NATIVO el PNG de 112 px se registra como imagen @1x (no como 56 pt @2x que es en
+// web con pixelRatio 2), así que el mismo tamaño visual exige la mitad de escala.
+// Verificado en el emulador: con POI_ICON_SIZE salían al doble.
+export const POI_ICON_SIZE_NATIVE = ['interpolate', ['linear'], ['zoom'], 12, 0.325, 15, 0.475, 18, 0.675] as const;
 
 // Emoji por categoría para el mapa NATIVO (text-field de un SymbolLayer): no hay
 // canvas para rasterizar iconos, así que se usa el glifo de emoji sobre un círculo.

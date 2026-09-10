@@ -6,7 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { baseStyle, CITIES, DEFAULT_CITY, riskFillColor } from '@/constants/map';
-import { POI_ICON_IMAGE, POI_ICON_SIZE, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
+import { POI_ICON_IMAGE, POI_ICON_SIZE_NATIVE, ROUTE_LEVEL_COLORS, segmentsFeatureCollection, type RiskMapProps } from './risk-map.types';
 import { VehicleSpriteView } from './vehicle-sprite';
 
 // Carga perezosa: si el módulo nativo no está (Expo Go), no reventamos el bundle.
@@ -173,7 +173,7 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
             type="symbol"
             layout={{
               'icon-image': POI_ICON_IMAGE as never,
-              'icon-size': POI_ICON_SIZE as never,
+              'icon-size': POI_ICON_SIZE_NATIVE as never,
               'icon-allow-overlap': false,
               'icon-ignore-placement': false,
             }}
