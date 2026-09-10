@@ -1,4 +1,8 @@
-# Roadmap de sesiones — backlog consolidado (fuente de verdad del trabajo pendiente)
+# Roadmap de sesiones — historial del backlog
+
+> **Desde 2026-09-10 la fuente de verdad del pendiente es [`PENDIENTES_PRODUCTO.md`](PENDIENTES_PRODUCTO.md)**
+> (lo pedido en todas las sesiones vs lo hecho, verificado contra código y git). Este archivo
+> se conserva como historial de decisiones y trampas resueltas.
 
 > Se actualiza en cada sesión. Lo hecho se marca con fecha y commit. Orden = prioridad acordada.
 
