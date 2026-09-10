@@ -1,38 +1,14 @@
-// Config de mapa compartida (web y nativo). Las teselas base viven en @nomadaai/shared
-// (misma fuente que el escritorio): desde el 2026-09-10 son los lienzos de Esri, sin
-// clave; CARTO pasó a exigir API key y servía «API KEY REQUIRED».
-import {
-  BASEMAP_ATTRIBUTION, BASEMAP_MAX_ZOOM, basemapKind, basemapLabelTiles, basemapTiles,
-} from '@nomadaai/shared';
+// Config de mapa compartida (web y nativo). La base cartográfica vive en
+// @nomadaai/shared (misma fuente que el escritorio): estilos vectoriales de
+// OpenFreeMap (Positron / Dark) y satelital de Esri, todo sin clave. Ver basemap.ts
+// para la historia (CARTO exigió clave el 2026-09-10; Esri no cubre Tumaco).
+import { basemapStyle, keepOwnLayers } from '@nomadaai/shared';
 
-export { basemapTiles as baseTiles, basemapLabelTiles as baseLabelTiles };
+export { keepOwnLayers };
 
-// Estilo MapLibre (JSON) con base clara/oscura/satelital — sin API key.
+// Estilo MapLibre: URL vectorial (claro/oscuro) o JSON raster (satelital).
 export function baseStyle(dark: boolean, satellite = false) {
-  const kind = basemapKind(dark, satellite);
-  const labels = basemapLabelTiles(dark, satellite);
-  return {
-    version: 8 as const,
-    // `glyphs` es necesario si alguna capa symbol usa texto; sin él, MapLibre nativo
-    // lanza «Unable to parse resourceUrl». Fuente pública de glifos de OpenMapTiles.
-    glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
-    sources: {
-      base: {
-        type: 'raster' as const,
-        tiles: basemapTiles(dark, satellite),
-        tileSize: 256,
-        maxzoom: BASEMAP_MAX_ZOOM,
-        attribution: BASEMAP_ATTRIBUTION[kind],
-      },
-      // Rótulos (calles, barrios) del lienzo de Esri: fuente aparte porque el
-      // satelital no los trae. Van bajo el riesgo, igual que venían en CARTO.
-      ...(labels ? { labels: { type: 'raster' as const, tiles: labels, tileSize: 256, maxzoom: BASEMAP_MAX_ZOOM } } : {}),
-    },
-    layers: [
-      { id: 'base', type: 'raster' as const, source: 'base' },
-      ...(labels ? [{ id: 'labels', type: 'raster' as const, source: 'labels' }] : []),
-    ],
-  };
+  return basemapStyle(dark, satellite);
 }
 
 // Capa de riesgo (mapa de calor): aquí SÍ se permite el rojo; la paleta

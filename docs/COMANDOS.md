@@ -171,6 +171,21 @@ cd apps/mobile && python3 scripts/gen_poi_icons.py
 
 ---
 
+## 5b. Base cartográfica (sin claves)
+
+La base vive en `packages/shared/src/basemap.ts` y la usan escritorio, app web y app nativa:
+**OpenFreeMap** (estilos vectoriales `positron` y `dark`, datos de OpenStreetMap, sin clave ni
+registro) y **Esri World Imagery** para el satelital. Cambiar de tema es `setStyle` con
+`keepOwnLayers`, que conserva las capas propias (riesgo, rutas, lugares: fuentes GeoJSON).
+
+> Por qué no CARTO ni los lienzos de Esri: el 2026-09-10 CARTO empezó a exigir API key y
+> pintaba «API KEY REQUIRED» sobre todo el mapa; los lienzos de Esri se sirven sin clave pero
+> no tienen calles de Tumaco a zoom de ciudad («Map data not yet available»). Comprobación
+> rápida de que un proveedor cubre Tumaco: pedir la tesela z16 de (-78.785, 1.806) y mirar
+> el tamaño — una tesela con calles pesa 5–9 KB; un placeholder, 2 KB.
+
+---
+
 ## 6. Backend (Hugging Face Space)
 
 - URL: `https://englergz-nomadaai.hf.space`

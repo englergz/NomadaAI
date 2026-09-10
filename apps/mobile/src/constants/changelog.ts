@@ -13,8 +13,8 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-09-10',
     items: [
-      { es: 'Nuevo fondo de mapa (lienzos de Esri): el proveedor anterior dejó de servir sin clave y tapaba el mapa.',
-        en: 'New map background (Esri canvases): the previous provider stopped serving without a key and covered the map.' },
+      { es: 'Nuevo fondo de mapa (OpenFreeMap, datos de OpenStreetMap): el proveedor anterior dejó de servir sin clave y tapaba el mapa.',
+        en: 'New map background (OpenFreeMap, OpenStreetMap data): the previous provider stopped serving without a key and covered the map.' },
       { es: 'Cali ya traza rutas seguras y compara la exposición al riesgo con la ruta directa.',
         en: 'Cali now draws safe routes and compares risk exposure against the direct route.' },
       { es: 'Nuevo recorrido de bienvenida: protección automática, reportes de la comunidad y Círculos (próximamente).',
