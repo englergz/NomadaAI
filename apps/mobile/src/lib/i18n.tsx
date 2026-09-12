@@ -38,6 +38,8 @@ const es = {
   'map.banner.noLocation': 'No se pudo obtener tu ubicación.',
   'map.banner.noCoverage': 'Aún no hay cobertura en tu zona. Te mostramos {city} como demostración.',
   'map.banner.riskLoadError': 'No se pudo cargar la capa de riesgo. Revisa tu conexión.',
+  'map.banner.riskFromCache': 'Sin conexión: mostrando el mapa de riesgo guardado ({when}).',
+  'queue.sent': 'Con señal de nuevo: se enviaron {n} envíos que estaban pendientes.',
   'map.banner.routing': 'Generando ruta segura…',
   'map.banner.rerouted': 'Te desviaste: recalculamos tu ruta segura.',
   'map.banner.routeOk': 'Ruta con protección {prio}: {km} km · −{red}% de exposición vs. la directa.',
@@ -173,6 +175,7 @@ const es = {
   'report.ok': 'Reporte recibido. Gracias: tu aporte mejora el mapa de todos.',
   'report.rejected': 'El reporte no fue aceptado.',
   'report.offline': 'Sin conexión con el servicio. Intenta de nuevo.',
+  'report.queued': 'Sin señal ahora mismo. Tu reporte quedó guardado y se enviará solo al recuperar conexión.',
   'report.send': 'Enviar reporte',
 
   // Tu protección
@@ -334,6 +337,8 @@ const en: Record<TKey, string> = {
   'map.banner.noLocation': 'Could not get your location.',
   'map.banner.noCoverage': 'No coverage in your area yet. Showing {city} as a demo.',
   'map.banner.riskLoadError': 'Could not load the risk layer. Check your connection.',
+  'map.banner.riskFromCache': 'No connection: showing the saved risk map ({when}).',
+  'queue.sent': 'Back online: {n} pending sends went out.',
   'map.banner.routing': 'Building safe route…',
   'map.banner.rerouted': 'You went off route: we recalculated your safe route.',
   'map.banner.routeOk': 'Route with {prio} protection: {km} km · −{red}% exposure vs. the direct one.',
@@ -464,6 +469,7 @@ const en: Record<TKey, string> = {
   'report.ok': 'Report received. Thanks: your input improves everyone’s map.',
   'report.rejected': 'The report was not accepted.',
   'report.offline': 'No connection to the service. Try again.',
+  'report.queued': 'No signal right now. Your report is saved and will be sent by itself when the connection is back.',
   'report.send': 'Send report',
 
   'prot.title': 'Your protection',

@@ -4,6 +4,7 @@
 import { baseUrl } from '@/lib/api';
 import { authToken, authUserId } from '@/lib/auth';
 import { getUid } from '@/lib/uid';
+import { enqueue } from '@/lib/write-queue';
 
 // Usuario efectivo (U4): id de Clerk con sesión; si no, el uid anónimo del dispositivo.
 async function effUid(): Promise<string> {
@@ -44,14 +45,21 @@ export interface TripLog {
 }
 
 export async function logTrip(rec: TripLog): Promise<void> {
+  const user_id = await effUid().catch(() => null);
+  if (!user_id) return;
+  const body = { user_id, mode: 'mobile', ...rec };
   try {
-    const user_id = await effUid();
-    await fetch(`${baseUrl}/history/trip`, {
+    const r = await fetch(`${baseUrl}/history/trip`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...(await authHeaders()) },
-      body: JSON.stringify({ user_id, mode: 'mobile', ...rec }),
+      body: JSON.stringify(body),
     });
-  } catch { /* el viaje nunca depende de la DB */ }
+    // 5xx: el servidor no está; se guarda y se reintenta al volver la señal.
+    if (r.status >= 500) throw new Error(`history ${r.status}`);
+  } catch {
+    // Sin red: el viaje nunca depende de la DB, pero tampoco se pierde el registro.
+    await enqueue({ kind: 'trip', body }).catch(() => {});
+  }
 }
 
 export async function fetchSummaries(city = 'tumaco'): Promise<{ mine: HistorySummary | null; all: HistorySummary | null }> {

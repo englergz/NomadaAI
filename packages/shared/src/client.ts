@@ -85,10 +85,13 @@ export class NomadaApi {
     return this.req<FeatureCollection>(`/corridors${qs ? `?${qs}` : ""}`);
   }
 
-  riskZones(bbox?: [number, number, number, number], city?: string) {
+  // `hour` (0-23): sin él el servidor responde la hora 19 por defecto, y la app
+  // mostraba siempre esa capa aunque fueran las 3 de la mañana.
+  riskZones(bbox?: [number, number, number, number], city?: string, hour?: number) {
     const q = new URLSearchParams();
     if (bbox) q.set("bbox", bbox.join(","));
     if (city) q.set("city", city);
+    if (hour !== undefined) q.set("hour", String(hour));
     const qs = q.toString();
     return this.req<RiskZonesResponse>(`/risk/zones${qs ? `?${qs}` : ""}`);
   }

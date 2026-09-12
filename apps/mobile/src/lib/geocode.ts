@@ -8,6 +8,7 @@ export { distToPath, bearingDeg, distM } from '@/lib/geo';
 
 import { CITIES, SERVED_CITIES, type CityKey } from '@/constants/map';
 import { api } from '@/lib/api';
+import { cachedFetch } from '@/lib/offline-cache';
 
 export interface Place {
   name: string;
@@ -27,7 +28,7 @@ let poisCache: Place[] | null = null;
 
 export async function loadPois(): Promise<Place[]> {
   if (poisCache) return poisCache;
-  const fc = await api.pois(500);
+  const { data: fc } = await cachedFetch('pois', () => api.pois(500)); // misma copia que la capa Lugares
   const out: Place[] = [];
   for (const f of (fc.features ?? []) as GeoJSONFeature[]) {
     const g = f.geometry as { type: string; coordinates: Coordinate };

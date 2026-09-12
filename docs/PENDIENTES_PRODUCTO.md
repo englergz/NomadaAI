@@ -51,7 +51,7 @@ emulador Pixel 7a (onboarding, Configuración, selector de ciudad, tarjeta OTA, 
 |---|---|
 | Detectar movimiento y empezar a analizar la trayectoria sin destino (06-23, 07-08) | ✅ recorrido libre + predicción online |
 | Alertas anticipadas con umbral configurable (06-23: «50 % es muy bajo») | ✅ umbral en Ajustes, defecto 70 % |
-| Zona de incidencia dinámica por hora (06-23) | ✅ `/risk/zones?hour=` |
+| Zona de incidencia dinámica por hora (06-23) | ✅ `/risk/zones?hour=` · **corregido 09-10:** la app no enviaba la hora y el servidor devolvía siempre la de las 19:00; ahora manda la hora real y recarga al cambiar de hora |
 | Una sola alerta por zona, no repetir (07-02, 07-03) | ✅ |
 | «Transita con precaución» cuando no hay alternativa (asesor, 07-03) | ✅ regla EVITAR/AVISAR por tramo |
 | Ruta segura vs directa coloreada por tramo; sentido vial respetado (07-07) | ✅ |
@@ -137,7 +137,7 @@ emulador Pixel 7a (onboarding, Configuración, selector de ciudad, tarjeta OTA, 
 | OTA sin reinstalar; nunca en mitad de un viaje (07-10) | ✅ **(09-10)** canal + update + manifiesto 200 verificados; tarjeta «actualización lista» que solo permite aplicar sin recorrido · ⚠️ falta instalar el APK del 09-10 |
 | Vista «Novedades» tipo changelog al abrir tras actualizar (07-10) | ✅ **(09-10)** hoja una vez por versión nueva (`constants/changelog.ts`, es/en) |
 | Sin internet / servidor caído / conexión lenta: mensajes honestos (08-03 21:09) | ✅ `lib/connectivity.ts` |
-| Caché de `/risk/zones` y POIs + cola de escrituras para operar sin red (U7 pendiente 4) | ❌ diagnostica, pero no cachea |
+| Caché de `/risk/zones` y POIs + cola de escrituras para operar sin red (U7 pendiente 4) | ✅ **(09-10)** `lib/offline-cache.ts` (red primero; sin red, la última copia con aviso de cuándo es) para riesgo, lugares, ciudades; `lib/write-queue.ts` (cifrada, 7 días, en orden, para al primer fallo) para reportes y viajes, se vacía al volver la señal. 9 pruebas. Emulador: capa servida desde la copia con su aviso y reporte encolado sin red, verificados en pantalla; el vaciado se observó por sus efectos (la cola queda vacía en el arranque siguiente), no con captura del aviso |
 | GPS robusto con reintentos y precisión progresiva (U7 pendiente 2) | 🟡 última posición conocida + fix 25 s; sin backoff |
 | Live reload sin reinstalar APK (07-11) | 🟡 funciona con `expo run:android`; `expo-dev-client` no instalado |
 
@@ -243,7 +243,7 @@ Nada pendiente salvo lo del panel admin (§3).
 ~~1–7~~ ✅ cerrados el 2026-09-10 (commits 57d8e53, 052561d y b65675f) y verificados en el
 emulador Pixel 7a; la OTA republicada corre en el emulador con la hoja de Novedades.
 ~~9. Refactor `map.tsx` → hooks + `BaseSheet`~~ ✅ (09-10). Queda solo la cola de banners por categoría (menor).
+~~10. Caché offline + cola de escrituras~~ ✅ (09-10).
 8. Fotos en reportes (bloqueado por la decisión de Storage).
-10. Caché offline + cola de escrituras.
 11. Panel admin de verdad (menú lateral, ciudades, pesos, ingesta, BI) — frente grande.
 12. Push desde servidor · publicidad/donación · Círculos.
