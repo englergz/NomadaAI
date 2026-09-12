@@ -13,6 +13,7 @@ import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { getUid } from '@/lib/uid';
+import { enqueue } from '@/lib/write-queue';
 import { authToken } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
@@ -72,14 +73,25 @@ export default function ReportSheet({
         return;
       }
       const [lon, lat] = location ?? CITIES[city].center;
-      // U4: con sesión, el reporte viaja firmado (el backend verifica el token).
-      const r = await api.reportIncident({
+      const body = {
         lon, lat, category,
         description: description.trim() || undefined,
         city,
         hour: new Date().getHours(),
         device_id: await getUid(), // rate-limit por persona aunque no haya sesión
-      }, await authToken());
+      };
+      let r: { accepted: boolean; note?: string } | null = null;
+      try {
+        // U4: con sesión, el reporte viaja firmado (el backend verifica el token).
+        r = await api.reportIncident(body, await authToken());
+      } catch {
+        // SIN RED: el reporte no se pierde. Se guarda cifrado y sale solo al volver la señal.
+        await enqueue({ kind: 'report', body });
+        await AsyncStorage.setItem(LAST_KEY, String(Date.now()));
+        setMsg({ text: t('report.queued'), ok: true });
+        setCategory(null); setDescription('');
+        return;
+      }
       if (r.accepted) {
         await AsyncStorage.setItem(LAST_KEY, String(Date.now()));
         setMsg({ text: t('report.ok'), ok: true });

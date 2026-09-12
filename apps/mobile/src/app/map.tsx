@@ -42,12 +42,13 @@ import { useCity } from '@/hooks/use-city';
 import { useHealth } from '@/hooks/use-health';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { useOta } from '@/hooks/use-ota';
+import { useWriteQueue } from '@/hooks/use-write-queue';
 import { useTrip } from '@/hooks/use-trip';
 import { markBootReady } from '@/lib/boot';
 import { applyUpdate } from '@/lib/ota';
 import { hasUnseenAlerts } from '@/lib/alert-log';
 import type { RouteLines } from '@/components/risk-map.types';
-import { useT, type TKey } from '@/lib/i18n';
+import { useLang, useT, type TKey } from '@/lib/i18n';
 import { useResolvedScheme, useSettings } from '@/lib/settings';
 import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
 import { Colors, Radii } from '@/constants/theme';
@@ -79,6 +80,7 @@ function ProfileFabIcon({ color }: { color: string }) {
 
 export default function MapScreen() {
   const t = useT();
+  const lang = useLang();
   const scheme = useResolvedScheme();
   const dark = scheme === 'dark';
   const c = Colors[scheme];
@@ -103,11 +105,15 @@ export default function MapScreen() {
   // Parar el viaje antes de cambiar de ciudad: stopTrip se crea más abajo (use-trip).
   const stopTripRef = useRef<() => void>(() => {});
   // U3 · Ciudad activa y cobertura por grados (riesgo / ruteo / predicción): hooks/use-city.ts.
+  // Estado del servicio (/health cada 60 s, con diagnóstico): punto verde/coral del
+  // chip de ciudad y aviso SOLO al cambiar de estado.
+  const { healthOk, netState } = useHealth((key, state) => setBanner({ text: t(key), tone: state === 'lento' ? 'info' : 'warn' }));
+  const online = netState === 'ok' || netState === 'lento';
   const {
     city, showCity, setShowCity, citySuggest, setCitySuggest, routeCities, riskCities, riskCitiesRef,
     canPredict, cityFull, riskData, riskRef, poisData, switchCity,
   } = useCity({
-    t, setBanner, setFocus, poisOn: settings.poisOn,
+    t, lang, setBanner, setFocus, poisOn: settings.poisOn, online,
     onBeforeSwitch: () => { stopTripRef.current(); setDest(null); setRoutes(null); setQuery(''); setResults([]); },
   });
   const { otaPending, otaDismissed, setOtaDismissed, showNews, setShowNews } = useOta();
@@ -163,9 +169,8 @@ export default function MapScreen() {
     return () => { alive = false; };
   }, []);
 
-  // Estado del servicio (/health cada 60 s, con diagnóstico): punto verde/coral del
-  // chip de ciudad y aviso SOLO al cambiar de estado.
-  const { healthOk } = useHealth((key, state) => setBanner({ text: t(key), tone: state === 'lento' ? 'info' : 'warn' }));
+  // Reportes y viajes que se guardaron sin señal salen solos cuando vuelve.
+  useWriteQueue(netState, (n) => setBanner({ text: t('queue.sent', { n }), tone: 'ok' }));
 
 
   // Ubicación por defecto al abrir: se pide con el DIÁLOGO NATIVO directamente
