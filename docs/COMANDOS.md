@@ -171,6 +171,27 @@ cd apps/mobile && python3 scripts/gen_poi_icons.py
 
 ---
 
+## 5a. ¿Por qué no aparece el panel admin?
+
+Son DOS requisitos independientes en el Space (Settings → Variables) y fallar cualquiera
+da el mismo 401, así que hay que mirar los dos:
+
+| Variable | Para qué | Si falta |
+|---|---|---|
+| `CLERK_ISSUER` | el backend verifica la firma del token | ningún token vale: `/admin/me` responde 401 siempre |
+| `ADMIN_USER_IDS` | allowlist de administradores (id de Clerk, empieza por `user_`, **no** `app_`) | token válido pero 403 |
+
+Comprobación en un comando (solo booleanos, no expone ni el emisor ni los ids):
+
+```bash
+curl -s https://englergz-nomadaai.hf.space/health | python3 -c "import json,sys; d=json.load(sys.stdin); print('CLERK_ISSUER:', d['auth_ready'], '· ADMIN_USER_IDS:', d['admin_ready'])"
+```
+
+Con los dos en `True`, entra al escritorio con tu cuenta y el ítem «Panel admin» aparece
+en el menú. El rol se decide SIEMPRE en el servidor; el cliente solo pregunta.
+
+---
+
 ## 5b. Base cartográfica (sin claves)
 
 La base vive en `packages/shared/src/basemap.ts` y la usan escritorio, app web y app nativa:

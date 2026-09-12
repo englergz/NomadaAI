@@ -21,4 +21,11 @@ def health() -> dict:
         "n_segments": getattr(state.predictor, "n_segments", 0),
         "corridors_ready": state.corridors is not None,
         "n_corridors": getattr(state.corridors, "n_features", 0),
+        # Preparación del panel admin. Son DOS requisitos independientes y fallar
+        # cualquiera da el mismo 401, así que sin esto había que adivinar cuál
+        # faltaba: `auth_ready` es CLERK_ISSUER (sin él no se verifica ningún
+        # token y el panel nunca aparece) y `admin_ready` es ADMIN_USER_IDS.
+        # Solo booleanos: ni el emisor ni los identificadores salen de aquí.
+        "auth_ready": bool(s.clerk_issuer),
+        "admin_ready": bool(s.admin_id_list),
     }
