@@ -73,13 +73,12 @@ export function heatmapPaint(palette: HeatPaletteKey, intensity: number, opacity
 // real (disponible / próximamente / no disponible) lo dicen /risk/cities y
 // /route/cities del servidor (ver lib/city-status.ts). El catálogo existe para que
 // el usuario encuentre su ciudad con su nombre oficial y sepa qué hay en ella.
-export type CountryCode = 'CO' | 'EC' | 'PE';
-export type CityKey =
-  | 'tumaco' | 'cali' | 'pasto' | 'buenaventura' | 'bogota' | 'medellin' | 'barranquilla' | 'cartagena'
-  | 'quito' | 'guayaquil' | 'esmeraldas'
-  | 'lima';
+export type CountryCode = string;   // ISO-2; el catálogo del servidor puede traer países nuevos
+export type CityKey = string;       // clave del catálogo; el servidor puede añadir ciudades sin publicar app
 export interface CityDef { label: string; country: CountryCode; center: [number, number]; zoom: number }
-export const CITIES: Record<CityKey, CityDef> = {
+
+/** Ciudades integradas en la app: lo que se ve sin red y el respaldo si el catálogo falla. */
+export const BUILTIN_CITIES: Record<CityKey, CityDef> = {
   tumaco: { label: 'Tumaco', country: 'CO', center: [-78.785, 1.806], zoom: 13 },
   cali: { label: 'Cali', country: 'CO', center: [-76.532, 3.451], zoom: 12 },
   pasto: { label: 'Pasto', country: 'CO', center: [-77.281, 1.214], zoom: 13 },
@@ -94,6 +93,40 @@ export const CITIES: Record<CityKey, CityDef> = {
   lima: { label: 'Lima', country: 'PE', center: [-77.043, -12.046], zoom: 11 },
 };
 export const DEFAULT_CITY: CityKey = 'tumaco';
+
+// CATÁLOGO VIVO. Arranca con las integradas y el servidor puede AMPLIARLO en
+// caliente (GET /cities/catalog, que edita el panel admin): dar de alta una
+// ciudad dejó de exigir publicar versión de la app. Estar en el catálogo no da
+// cobertura — eso lo siguen diciendo /risk/cities y /route/cities.
+const registry: Record<CityKey, CityDef> = { ...BUILTIN_CITIES };
+const listeners = new Set<() => void>();
+
+export const CITIES: Record<CityKey, CityDef> = registry;
+
+/** Def de una ciudad, con la ciudad por defecto como red de seguridad. */
+export function cityDef(key: CityKey): CityDef {
+  return registry[key] ?? registry[DEFAULT_CITY];
+}
+
+/** Mezcla el catálogo del servidor sobre lo integrado. Devuelve true si algo cambió. */
+export function registerCities(list: { key: string; label: string; country: string; center: [number, number]; zoom: number }[]): boolean {
+  let changed = false;
+  for (const c of list) {
+    if (!c?.key || !Array.isArray(c.center)) continue;
+    const prev = registry[c.key];
+    if (prev && prev.label === c.label && prev.country === c.country
+      && prev.center[0] === c.center[0] && prev.center[1] === c.center[1] && prev.zoom === c.zoom) continue;
+    registry[c.key] = { label: c.label, country: c.country, center: c.center, zoom: c.zoom };
+    changed = true;
+  }
+  if (changed) listeners.forEach((f) => f());
+  return changed;
+}
+
+export function subscribeCities(cb: () => void): () => void {
+  listeners.add(cb);
+  return () => { listeners.delete(cb); };
+}
 // Ciudades que el servidor publica HOY (se usa solo si /risk/cities no responde):
 // la cobertura de verdad la decide el backend en tiempo de ejecución.
 export const SERVED_CITIES: readonly CityKey[] = ['tumaco', 'cali'];

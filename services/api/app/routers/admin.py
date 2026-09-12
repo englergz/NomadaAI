@@ -13,6 +13,9 @@ Endpoints:
 - GET  /admin/summary        (admin)    BI: totales de reportes y uso (histórico global).
 - GET  /admin/feedback       (admin)    opiniones: agregados + comentarios recientes.
 - GET  /admin/cities         (admin)    qué tiene cada ciudad: riesgo, ruteo, predicción y factores.
+- GET  /cities/catalog       (público)  catálogo de ciudades que los clientes pueden listar.
+- POST /admin/cities/catalog (admin)    da de alta o edita una ciudad del catálogo.
+- DELETE /admin/cities/catalog/{key}    la quita del catálogo (no toca artefactos).
 """
 from __future__ import annotations
 
@@ -24,7 +27,7 @@ from fastapi import APIRouter, Header, HTTPException
 from app import state
 from app.core.auth import verify_bearer
 from app.core.config import get_settings
-from app.data import appconfig, feedback, history, incidents
+from app.data import appconfig, citycatalog, feedback, history, incidents
 
 router = APIRouter()
 
@@ -141,7 +144,8 @@ def admin_cities(authorization: Optional[str] = Header(default=None)) -> dict[st
     _require_admin(authorization)
     art = state.risk_artifacts_dir()
     routing = set(state.route_cities())
-    names = sorted(set(state.risk_cities) | routing | {state.DEFAULT_CITY})
+    catalog = {c["key"]: c for c in citycatalog.list_all()}
+    names = sorted(set(state.risk_cities) | routing | set(catalog) | {state.DEFAULT_CITY})
 
     out: list[dict[str, Any]] = []
     for name in names:
@@ -190,5 +194,56 @@ def admin_cities(authorization: Optional[str] = Header(default=None)) -> dict[st
         except Exception:  # noqa: BLE001 — una ciudad sin config no rompe el panel
             cfg = None
 
-        out.append({"city": name, "risk": risk, "routing": route, "prediction": pred, "config": cfg})
+        entry = catalog.get(name)
+        out.append({
+            "city": name, "risk": risk, "routing": route, "prediction": pred, "config": cfg,
+            # `catalog` = fila editable en la base; sin ella la ciudad existe solo
+            # por sus artefactos y no se puede quitar desde el panel.
+            "catalog": entry,
+        })
     return {"cities": out}
+
+
+@router.get("/cities/catalog")
+def cities_catalog() -> dict[str, Any]:
+    """Catálogo de ciudades (público: lo leen las apps para poblar el selector).
+
+    Estar aquí NO significa tener cobertura: eso lo dicen `/risk/cities` y
+    `/route/cities`. El catálogo solo define qué ciudades puede ENCONTRAR el
+    usuario y dónde encuadrar el mapa. Vacío = el cliente usa su lista integrada.
+    """
+    return {"cities": citycatalog.list_all()}
+
+
+@router.post("/admin/cities/catalog")
+def admin_city_upsert(
+    body: dict[str, Any],
+    authorization: Optional[str] = Header(default=None),
+) -> dict[str, Any]:
+    """Alta o edición de una ciudad del catálogo.
+
+    Da de alta la ciudad para que aparezca en el selector; la cobertura sigue
+    dependiendo de los artefactos (capa de riesgo, red vial, predicción), que se
+    generan con el pipeline offline. El panel lo dice en pantalla para que nadie
+    crea que con esto ya se protege allí.
+    """
+    user = _require_admin(authorization)
+    err = citycatalog.validate(body)
+    if err:
+        raise HTTPException(status_code=422, detail=err)
+    if not citycatalog.available():
+        raise HTTPException(status_code=503, detail="Sin base de datos configurada (DATABASE_URL)")
+    return citycatalog.upsert(body, updated_by=user)
+
+
+@router.delete("/admin/cities/catalog/{key}")
+def admin_city_delete(
+    key: str,
+    authorization: Optional[str] = Header(default=None),
+) -> dict[str, Any]:
+    _require_admin(authorization)
+    if not citycatalog.available():
+        raise HTTPException(status_code=503, detail="Sin base de datos configurada (DATABASE_URL)")
+    if not citycatalog.delete(key):
+        raise HTTPException(status_code=404, detail="Esa ciudad no está en el catálogo")
+    return {"deleted": key}

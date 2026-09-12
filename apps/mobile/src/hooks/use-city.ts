@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import type { RiskZonesResponse } from '@nomadaai/shared';
 
-import { CITIES, DEFAULT_CITY, SERVED_CITIES, type CityKey } from '@/constants/map';
+import { cityDef, DEFAULT_CITY, registerCities, SERVED_CITIES, subscribeCities, type CityKey } from '@/constants/map';
 import { api } from '@/lib/api';
 import { markBootReady } from '@/lib/boot';
 import { ageLabel, cachedFetch } from '@/lib/offline-cache';
@@ -41,6 +41,17 @@ export function useCity({ t, lang, setBanner, setFocus, poisOn, onBeforeSwitch, 
   // Ciudades con capa de riesgo publicada: alimenta el selector por país y la
   // sugerencia «¿Estás en X?» (solo se sugiere lo que el servidor sirve).
   const [riskCities, setRiskCities] = useState<string[]>([...SERVED_CITIES]);
+  // CATÁLOGO del servidor: amplía las ciudades integradas sin publicar versión de
+  // la app (lo edita el panel admin). Con copia local para que sobreviva sin red.
+  const [, bumpCatalog] = useState(0);
+  useEffect(() => subscribeCities(() => bumpCatalog((n) => n + 1)), []);
+  useEffect(() => {
+    if (!online) return;
+    cachedFetch('cities-catalog', () => api.citiesCatalog())
+      .then(({ data }) => { if (data?.cities?.length) registerCities(data.cities); })
+      .catch(() => { /* sin catálogo quedan las integradas */ });
+  }, [online]);
+
   useEffect(() => {
     // Si la consulta falla (ni red ni copia) se conserva el valor por defecto:
     // sin red no se promete de más. Con copia guardada, se usa la copia. Y cuando
@@ -127,7 +138,7 @@ export function useCity({ t, lang, setBanner, setFocus, poisOn, onBeforeSwitch, 
     onBeforeSwitch();
     setCity(k);
     setCitySuggest(null);
-    setFocus({ center: CITIES[k].center, zoom: CITIES[k].zoom });
+    setFocus({ center: cityDef(k).center, zoom: cityDef(k).zoom });
     // La nota fija de la barra inferior ya explica lo disponible; sin banner duplicado.
     setBanner(null);
   }

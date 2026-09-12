@@ -96,6 +96,16 @@ export class NomadaApi {
     return this.req<RiskZonesResponse>(`/risk/zones${qs ? `?${qs}` : ""}`);
   }
 
+  /**
+   * Catálogo de ciudades que el usuario puede ENCONTRAR (lo edita el panel admin).
+   * Estar aquí no da cobertura: eso lo dicen `riskCities()` y `routeCities()`.
+   */
+  citiesCatalog() {
+    return this.req<{ cities: { key: string; label: string; country: string; center: [number, number]; zoom: number }[] }>(
+      "/cities/catalog",
+    );
+  }
+
   // Ciudades con superficie de riesgo disponible (U3).
   riskCities() {
     return this.req<{ cities: string[] }>("/risk/cities");
