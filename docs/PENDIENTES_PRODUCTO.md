@@ -166,8 +166,8 @@ Nada pendiente salvo lo del panel admin (§3).
 | Rate-limit por IP en servidor | ✅ (09-08) |
 | `POST /feedback` + pestaña Opiniones | ✅ (09-08) |
 | Cali rutea (grafo OSM, `risk_at` con KDTree) | ✅ (09-07) |
-| **Panel admin robusto**: menú izquierdo, todo configurable, ciudades/regiones reales, pesos por ciudad con vista previa, ingesta de trayectorias, entrenamientos, BI (07-03, 07-10, **08-04: «es una basura»**) | ❌ hoy 4 pestañas en 168 líneas. Tú mismo pediste cerrar primero la app móvil (08-04 14:17) |
-| U6.2: editar `risk_config` por ciudad desde el admin (re-corre el pipeline) | ❌ |
+| **Panel admin robusto**: menú izquierdo, todo configurable, ciudades/regiones reales, pesos por ciudad con vista previa, ingesta de trayectorias, entrenamientos, BI (07-03, 07-10, **08-04: «es una basura»**) | 🟡 **(09-12)** reconstruido: superficie propia con **menú lateral** y 5 secciones (Resumen con KPIs y reportes por categoría · **Ciudades** con los tres ingredientes y los factores de riesgo con su peso y su motivo · Configuración · Reportes con filtro por ciudad · Opiniones). Verificado en claro y oscuro. **Falta:** ingesta de trayectorias, lanzar entrenamientos y alta de ciudad desde la UI |
+| U6.2: editar `risk_config` por ciudad desde el admin (re-corre el pipeline) | 🟡 **(09-12)** se VEN los factores, pesos, cuáles están apagados y el motivo (`GET /admin/cities`). Editarlos sigue sin hacerse a propósito: exige re-correr el pipeline offline y regenerar la malla con su golden test |
 | Push desde servidor (token + envío) | ❌ |
 | Portal app web de usuario (mismo dominio, vista móvil) + smart banner — PLAN B.8 | ❌ hosting «pendiente por decidir» desde 07-07 |
 | Fotos: endpoint + Storage | ❌ (§1.5) |

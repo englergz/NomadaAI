@@ -12,13 +12,16 @@ Endpoints:
 - DELETE /admin/reports/{id} (admin)    elimina un reporte.
 - GET  /admin/summary        (admin)    BI: totales de reportes y uso (histórico global).
 - GET  /admin/feedback       (admin)    opiniones: agregados + comentarios recientes.
+- GET  /admin/cities         (admin)    qué tiene cada ciudad: riesgo, ruteo, predicción y factores.
 """
 from __future__ import annotations
 
+import json
 from typing import Any, Optional
 
 from fastapi import APIRouter, Header, HTTPException
 
+from app import state
 from app.core.auth import verify_bearer
 from app.core.config import get_settings
 from app.data import appconfig, feedback, history, incidents
@@ -116,3 +119,76 @@ def admin_feedback(
     """
     _require_admin(authorization)
     return {"summary": feedback.summary(), "recent": feedback.list_recent(limit)}
+
+
+@router.get("/admin/cities")
+def admin_cities(authorization: Optional[str] = Header(default=None)) -> dict[str, Any]:
+    """Estado REAL de cada ciudad: los tres ingredientes y la configuración de factores.
+
+    Existía la pregunta «¿qué le falta a esta ciudad?» y había que responderla leyendo
+    artefactos a mano. Aquí se responde con lo que el servidor tiene cargado:
+
+      · riesgo     → malla publicada (celdas, horas, máximo)
+      · ruteo      → red vial: del corpus de trayectorias o descargada de OSM
+      · predicción → solo donde hay trayectorias para entrenar
+
+    No se fuerza la carga del grafo (Cali son 127.699 nodos): si aún no está en
+    memoria se informa del artefacto en disco, que es barato y no miente.
+    Los factores salen de `risk_config.<city>.json`: pesos, cuáles están apagados y
+    el MOTIVO. Es de solo lectura a propósito — cambiar un peso exige re-correr el
+    pipeline offline y regenerar la malla, no se puede hacer en caliente.
+    """
+    _require_admin(authorization)
+    art = state.risk_artifacts_dir()
+    routing = set(state.route_cities())
+    names = sorted(set(state.risk_cities) | routing | {state.DEFAULT_CITY})
+
+    out: list[dict[str, Any]] = []
+    for name in names:
+        store = state.get_risk_for(name)
+        risk: dict[str, Any] = {"available": store is not None}
+        if store is not None:
+            risk |= {
+                "cells": store.n_zones,
+                "hours": len(getattr(store, "_by_hour", {}) or {}),
+                "max_risk": round(float(store.max_risk), 2),
+            }
+
+        red = art / f"{name}_red_vial.json.gz"
+        graph = state.route_graphs.get(name)
+        route: dict[str, Any] = {"available": name in routing}
+        if route["available"]:
+            route["source"] = "osm" if red.exists() else "trayectorias"
+            route["loaded"] = graph is not None
+            if graph is not None:
+                route |= {"nodes": graph.n_nodes, "edges": graph.n_edges}
+            elif red.exists():
+                route["artifact_mb"] = round(red.stat().st_size / 1_048_576, 2)
+
+        pred: dict[str, Any] = {"available": False}
+        if name == state.DEFAULT_CITY and state.predictor is not None:
+            pred = {
+                "available": True,
+                "train": len(state.predictor.train_ids),
+                "test": len(state.predictor.test_ids),
+            }
+
+        cfg: dict[str, Any] | None = None
+        try:
+            raw = json.loads((art / f"risk_config.{name}.json").read_text(encoding="utf-8"))
+            factors = [
+                {"name": k, **{kk: vv for kk, vv in v.items() if kk != "comment"}}
+                for k, v in (raw.get("factors") or {}).items()
+            ]
+            active = [f for f in factors if f.get("enabled")]
+            cfg = {
+                "night_floor": raw.get("night_floor"),
+                "factors": factors,
+                "active": len(active),
+                "weight_sum": round(sum(float(f.get("weight") or 0) for f in active), 3),
+            }
+        except Exception:  # noqa: BLE001 — una ciudad sin config no rompe el panel
+            cfg = None
+
+        out.append({"city": name, "risk": risk, "routing": route, "prediction": pred, "config": cfg})
+    return {"cities": out}

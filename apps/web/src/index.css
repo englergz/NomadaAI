@@ -354,22 +354,99 @@ body.light .phone-brand-float .wm-txt { text-shadow: 0 1px 4px rgba(255,255,255,
 .prot-thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 26px; height: 26px; border-radius: 50%; border: 2px solid; background: var(--panel); display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: left 160ms ease; }
 .prot-thumb span { width: 10px; height: 10px; border-radius: 50%; }
 
-/* Panel admin (U6) */
-.admin-modal { width: min(640px, 94vw); }
-.admin-tabs { display: flex; gap: 6px; margin: 10px 0 14px; }
-.admin-tabs button { width: auto; padding: 6px 14px; border-radius: var(--r-lg); font-size: 12.5px; background: transparent; border: 1px solid var(--border); color: var(--muted); box-shadow: none; }
-.admin-tabs button.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.admin-msg { font-size: 12.5px; color: var(--accent); margin: 4px 0 8px; }
-.admin-sec { display: flex; flex-direction: column; gap: 8px; }
-.admin-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
-.admin-check input { width: auto; }
-.admin-table { display: flex; flex-direction: column; gap: 8px; max-height: 46vh; overflow-y: auto; }
-.admin-row { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--border); border-radius: var(--r-md); padding: 10px 12px; }
-.admin-row-main { flex: 1; font-size: 12.5px; color: var(--text); }
-.admin-desc { color: var(--muted); margin-top: 3px; }
-.admin-meta { color: var(--muted); font-size: 11px; margin-top: 3px; }
-.admin-del { width: auto; padding: 6px 12px; font-size: 12px; flex-shrink: 0; }
-.admin-pre { font-size: 11px; background: var(--bg-elev, rgba(0,0,0,0.15)); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 10px; overflow-x: auto; max-height: 34vh; }
+/* Panel admin (U6) — superficie propia con menú lateral, no un modal con pestañas.
+   Antes el panel vivía dentro del modal de ayuda (640 px) y no cabía una tabla. */
+.adm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: grid; place-items: center; z-index: 60; padding: 3vh 2vw; }
+.adm-shell {
+  display: grid; grid-template-columns: 248px 1fr;
+  width: min(1180px, 96vw); height: min(88vh, 900px);
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg);
+  overflow: hidden; box-shadow: var(--shadow-2);
+}
+.adm-side { display: flex; flex-direction: column; gap: 4px; padding: 18px 12px; border-right: 1px solid var(--border); background: var(--panel-2); }
+.adm-brand { font-size: 12px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); padding: 0 10px 10px; }
+.adm-side nav { display: flex; flex-direction: column; gap: 2px; }
+.adm-side nav button {
+  width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px;
+  background: transparent; border: 1px solid transparent; box-shadow: none;
+  border-radius: var(--r-md); padding: 9px 10px; cursor: pointer;
+}
+.adm-side nav button b { color: var(--text); font-size: 13.5px; font-weight: 700; }
+.adm-side nav button span { color: var(--muted); font-size: 11px; line-height: 1.35; }
+.adm-side nav button:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.adm-side nav button.on { background: var(--accent-tint); border-color: var(--accent); }
+.adm-side nav button.on b { color: var(--accent); }
+.adm-side-foot { margin-top: auto; color: var(--muted); font-size: 10.5px; line-height: 1.4; padding: 10px; }
+
+.adm-main { display: flex; flex-direction: column; overflow: hidden; }
+.adm-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 10px; border-bottom: 1px solid var(--border); }
+.adm-head h2 { margin: 0; font-size: 18px; }
+.adm-x { width: auto; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 999px; padding: 4px 10px; cursor: pointer; box-shadow: none; }
+.adm-msg { margin: 10px 22px 0; font-size: 12.5px; color: var(--accent); }
+.adm-sec { padding: 16px 22px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.adm-sec h3 { margin: 8px 0 2px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+.adm-note { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 0; }
+.adm-note.adm-ro { border-left: 2px solid var(--amber); padding-left: 10px; }
+.adm-empty { font-size: 12.5px; color: var(--muted); margin: 4px 0; }
+.adm-meta { font-size: 11.5px; color: var(--muted); }
+
+.adm-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.adm-kpi { border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.adm-kpi b { font-size: 22px; color: var(--text); }
+.adm-kpi span { font-size: 11.5px; color: var(--muted); }
+.adm-kpi.t-accent b { color: var(--accent); }
+.adm-kpi.t-ok b { color: var(--ok); }
+.adm-kpi.t-amber b { color: var(--amber); }
+
+.adm-bars { display: flex; flex-direction: column; gap: 6px; }
+.adm-bar { display: grid; grid-template-columns: 170px 1fr 40px; align-items: center; gap: 10px; font-size: 12.5px; color: var(--text); }
+.adm-bar-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-bar-track { height: 8px; background: color-mix(in srgb, var(--border) 60%, transparent); border-radius: 999px; overflow: hidden; }
+.adm-bar-track i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.adm-bar b { text-align: right; font-size: 12px; }
+
+.adm-city { border: 1px solid var(--border); border-radius: var(--r-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.adm-city-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.adm-city-head h3 { margin: 0; font-size: 15px; text-transform: capitalize; letter-spacing: 0; color: var(--text); }
+.adm-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.adm-chip { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.adm-chip.on { border-color: var(--ok); color: var(--ok); background: var(--ok-tint); }
+.adm-factors-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; font-size: 12px; color: var(--text); border-top: 1px solid var(--border); padding-top: 10px; }
+.adm-factors { display: flex; flex-direction: column; gap: 4px; }
+.adm-factor { display: grid; grid-template-columns: 130px 46px 1fr; gap: 10px; align-items: baseline; font-size: 12px; color: var(--text); }
+.adm-factor.off { opacity: 0.62; }
+.adm-f-name { font-weight: 600; text-transform: capitalize; }
+.adm-f-weight { color: var(--accent); font-variant-numeric: tabular-nums; }
+.adm-factor.off .adm-f-weight { color: var(--muted); }
+.adm-f-src { color: var(--muted); font-size: 11.5px; }
+.adm-f-why { grid-column: 2 / -1; color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+.adm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.adm-filter { width: auto; min-width: 180px; }
+.adm-input { width: 100%; }
+.adm-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+.adm-check input { width: auto; }
+.adm-save { width: auto; padding: 9px 18px; }
+
+.adm-list { display: flex; flex-direction: column; gap: 8px; }
+.adm-item { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--border); border-radius: var(--r-md); padding: 11px 14px; }
+.adm-item-main { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.adm-item-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.adm-item-top b { font-size: 13px; color: var(--text); }
+/* «atraco a mano armada» → «Atraco a mano armada»: capitalize por palabra dejaba
+   «Atraco A Mano Armada», que no es español. */
+.adm-item-top b::first-letter { text-transform: uppercase; }
+.adm-item-body { font-size: 12.5px; color: var(--text); line-height: 1.45; }
+.adm-del { width: auto; padding: 6px 12px; font-size: 12px; flex-shrink: 0; }
+
+@media (max-width: 820px) {
+  .adm-shell { grid-template-columns: 1fr; height: 94vh; }
+  .adm-side { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); padding: 10px; }
+  .adm-side nav { flex-direction: row; }
+  .adm-side nav button span, .adm-brand, .adm-side-foot { display: none; }
+  .adm-factor { grid-template-columns: 1fr 46px; }
+  .adm-f-src { display: none; }
+}
 
 /* Panel reorganizado: propósito + secciones numeradas */
 .panel-lead { font-size: 12px; line-height: 1.5; color: var(--text); margin: 0 0 12px; }

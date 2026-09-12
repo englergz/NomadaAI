@@ -65,6 +65,16 @@ def _red_vial_dir() -> Path:
     return local if local.is_dir() else base
 
 
+def risk_artifacts_dir() -> Path:
+    """Carpeta de artefactos de riesgo (red vial, `risk_config.<city>.json`, mallas).
+
+    Mismo criterio que la red vial: en el contenedor viven bajo `research_path`
+    (RESEARCH_DIR), no junto al código. El panel admin la usa para leer la
+    configuración de factores de cada ciudad.
+    """
+    return _red_vial_dir()
+
+
 def get_route_graph() -> RouteGraph:
     """Grafo de la ciudad por defecto. Se mantiene para los llamadores antiguos."""
     return get_route_graph_for(DEFAULT_CITY)
