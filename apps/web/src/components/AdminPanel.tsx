@@ -25,13 +25,18 @@ interface Factor {
   name: string; enabled: boolean; weight: number;
   temporal_profile?: string; fuente?: string; motivo?: string;
 }
+interface CatalogCity { key: string; label: string; country: string; center: [number, number]; zoom: number }
 interface CityInfo {
   city: string;
   risk: { available: boolean; cells?: number; hours?: number; max_risk?: number };
   routing: { available: boolean; source?: string; loaded?: boolean; nodes?: number; edges?: number; artifact_mb?: number };
   prediction: { available: boolean; train?: number; test?: number };
   config: { night_floor?: number; factors: Factor[]; active: number; weight_sum: number } | null;
+  catalog: CatalogCity | null;
 }
+
+/** Alta de ciudad: campos mínimos para que el selector sepa listarla y encuadrarla. */
+const NEW_CITY = { key: "", label: "", country: "CO", lon: "", lat: "", zoom: "12" };
 
 const SECTIONS: { key: Section; label: string; hint: string }[] = [
   { key: "resumen", label: "Resumen", hint: "Uso y aportes de la comunidad" },
@@ -72,6 +77,7 @@ export default function AdminPanel({ getToken, onClose, onConfigSaved }: {
   const [fb, setFb] = useState<any>(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [nueva, setNueva] = useState({ ...NEW_CITY });
 
   const call = useCallback(async (path: string, init?: RequestInit) => {
     const token = await getToken();
@@ -110,6 +116,33 @@ export default function AdminPanel({ getToken, onClose, onConfigSaved }: {
       setMsg("✓ Guardado: aplica a la app móvil y al escritorio al recargar.");
     } catch (e) { setMsg(`Error: ${(e as Error).message}`); }
     finally { setBusy(false); }
+  }
+
+  async function addCity() {
+    setBusy(true); setMsg("");
+    try {
+      await call("/admin/cities/catalog", {
+        method: "POST",
+        body: JSON.stringify({
+          key: nueva.key.trim().toLowerCase(), label: nueva.label.trim(), country: nueva.country.trim().toUpperCase(),
+          lon: Number(nueva.lon), lat: Number(nueva.lat), zoom: Number(nueva.zoom),
+        }),
+      });
+      const r = await call("/admin/cities");
+      setCities(r.cities);
+      setNueva({ ...NEW_CITY });
+      setMsg("✓ Ciudad añadida al catálogo. Aún sin cobertura: falta generar sus artefactos.");
+    } catch (e) { setMsg(`Error: ${(e as Error).message}`); }
+    finally { setBusy(false); }
+  }
+
+  async function removeCity(key: string) {
+    if (!window.confirm(`¿Quitar «${key}» del catálogo? Dejará de listarse; sus artefactos no se tocan.`)) return;
+    try {
+      await call(`/admin/cities/catalog/${encodeURIComponent(key)}`, { method: "DELETE" });
+      const r = await call("/admin/cities");
+      setCities(r.cities);
+    } catch (e) { setMsg(`Error: ${(e as Error).message}`); }
   }
 
   async function removeReport(id: number) {
@@ -201,6 +234,39 @@ export default function AdminPanel({ getToken, onClose, onConfigSaved }: {
                 trazar rutas y modelo de predicción. Con solo riesgo ya protege durante el recorrido;
                 la red vial se descarga de OpenStreetMap; la predicción exige recoger trayectorias.
               </p>
+              <details className="adm-new">
+                <summary>Añadir una ciudad al catálogo</summary>
+                <p className="adm-note">
+                  El catálogo define qué ciudades puede <b>encontrar</b> el usuario y dónde encuadrar
+                  el mapa. No da cobertura: hasta que existan sus artefactos aparecerá como «no
+                  disponible». Antes exigía publicar versión de la app; ahora es este formulario.
+                </p>
+                <div className="adm-form">
+                  <label>Clave<input className="select" value={nueva.key} placeholder="pasto"
+                    onChange={(e) => setNueva({ ...nueva, key: e.target.value })} /></label>
+                  <label>Nombre<input className="select" value={nueva.label} placeholder="Pasto"
+                    onChange={(e) => setNueva({ ...nueva, label: e.target.value })} /></label>
+                  <label>País<input className="select" value={nueva.country} placeholder="CO" maxLength={2}
+                    onChange={(e) => setNueva({ ...nueva, country: e.target.value })} /></label>
+                  <label>Longitud<input className="select" value={nueva.lon} placeholder="-77.281"
+                    onChange={(e) => setNueva({ ...nueva, lon: e.target.value })} /></label>
+                  <label>Latitud<input className="select" value={nueva.lat} placeholder="1.214"
+                    onChange={(e) => setNueva({ ...nueva, lat: e.target.value })} /></label>
+                  <label>Zoom<input className="select" value={nueva.zoom}
+                    onChange={(e) => setNueva({ ...nueva, zoom: e.target.value })} /></label>
+                </div>
+                <button className="adm-save" onClick={addCity} disabled={busy || !nueva.key || !nueva.label}>
+                  {busy ? "Guardando…" : "Añadir al catálogo"}
+                </button>
+                <p className="adm-note adm-ro">
+                  Para que además PROTEJA hay que generar sus artefactos y desplegarlos. Eso no corre
+                  aquí: el pipeline descarga DANE y OpenStreetMap, tarda minutos y sus resultados se
+                  versionan en el repositorio, no en el disco temporal del servidor.
+                </p>
+                <pre className="adm-cmd">{`python services/api/scripts/rebuild_risk_city.py --city ${nueva.key || "<clave>"} --mpio "${nueva.label || "<Nombre>"}"
+python services/api/scripts/fetch_road_graph.py --city ${nueva.key || "<clave>"}
+git add services/api/artifacts/risk && git commit && git push space main:main`}</pre>
+              </details>
               {cities === null ? <p className="adm-empty">Cargando…</p> : cities.length === 0 ? (
                 <p className="adm-empty">No se pudo consultar el estado de las ciudades.</p>
               ) : cities.map((c) => (
@@ -208,6 +274,11 @@ export default function AdminPanel({ getToken, onClose, onConfigSaved }: {
                   <div className="adm-city-head">
                     <h3>{c.city}</h3>
                     <div className="adm-chips">
+                      {c.catalog && (
+                        <button className="adm-unlist" onClick={() => removeCity(c.city)} title="Quitar del catálogo">
+                          quitar
+                        </button>
+                      )}
                       <Chip on={c.risk.available}>
                         Riesgo{c.risk.available ? ` · ${nf(c.risk.cells)} celdas` : " · no"}
                       </Chip>

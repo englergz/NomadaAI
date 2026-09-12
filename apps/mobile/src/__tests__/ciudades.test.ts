@@ -58,3 +58,27 @@ describe('sugerencia «¿Estás en X?»', () => {
     expect(coverageCity(CITIES.tumaco.center)).toBe('tumaco');
   });
 });
+
+describe('catálogo ampliable desde el servidor', () => {
+  it('una ciudad nueva del servidor aparece en su país y en la búsqueda, sin publicar app', () => {
+    const { registerCities, CITIES, cityDef } = jest.requireActual('@/constants/map');
+    expect(CITIES.manizales).toBeUndefined();
+    const changed = registerCities([
+      { key: 'manizales', label: 'Manizales', country: 'CO', center: [-75.514, 5.07], zoom: 12 },
+    ]);
+    expect(changed).toBe(true);
+    expect(citiesOfCountry('CO')).toContain('manizales');
+    expect(searchCities('maniza')).toEqual(['manizales']);
+    expect(cityDef('manizales').center).toEqual([-75.514, 5.07]);
+    // Estar en el catálogo NO da cobertura: sigue mandando lo que publica el servidor.
+    expect(cityStatus('manizales', RISK, ROUTE)).toBe('unavailable');
+  });
+
+  it('registrar lo mismo dos veces no cambia nada, y una clave desconocida cae en la ciudad por defecto', () => {
+    const { registerCities, cityDef } = jest.requireActual('@/constants/map');
+    const city = { key: 'ipiales', label: 'Ipiales', country: 'CO', center: [-77.64, 0.83], zoom: 13 };
+    expect(registerCities([city])).toBe(true);
+    expect(registerCities([city])).toBe(false);
+    expect(cityDef('no-existe').label).toBe('Tumaco');
+  });
+});
