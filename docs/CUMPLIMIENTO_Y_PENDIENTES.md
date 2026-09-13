@@ -2,9 +2,6 @@
 
 Estado a 2026-08-03 (filas actualizadas hasta 2026-09-12). Lo que dice **✅** está verificado ejecutando, no solo escrito.
 
-> La lista completa de pendientes del producto (pedido vs hecho en todas las sesiones) vive en
-> [`PENDIENTES_PRODUCTO.md`](PENDIENTES_PRODUCTO.md); aquí queda la matriz de cumplimiento.
-
 ---
 
 ## A. Cumplimiento
@@ -78,7 +75,7 @@ Estado a 2026-08-03 (filas actualizadas hasta 2026-09-12). Lo que dice **✅** e
 | Protección automática con la app cerrada | ✅ | ⚠️ sin probar |
 | Cambio de ciudad | ✅ | ⚠️ sin probar |
 | Canal de alertas con vibración | ✅ | ⚠️ sin probar |
-| Inicio de sesión con Google | ✅ (confirmado por el usuario) | ⚠️ sin probar |
+| Inicio de sesión con Google | ✅ (probado manualmente) | ⚠️ sin probar |
 | Rendimiento: 60 fps, arranque <400 ms | ✅ medido | ⚠️ sin medir |
 
 ---
@@ -129,7 +126,7 @@ Estado a 2026-08-03 (filas actualizadas hasta 2026-09-12). Lo que dice **✅** e
 11. **Círculos** — cuidarnos juntos. Diseño completo en `DISENO_FUTURO.md`.
 12. **Cobertura por grados**: navegar solo con modelo de riesgo para abrir ciudades
     nuevas sin esperar a tener datos de predicción. Análisis en `DISENO_FUTURO.md`.
-13. **Publicidad sutil y donaciones** (U7-BIZ).
+13. **Publicidad sutil y donaciones**.
 
 ---
 

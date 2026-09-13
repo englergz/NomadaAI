@@ -80,7 +80,7 @@ gratuito basta hoy; réplica, restauración larga o IP allowlist exigen plan de 
 Sin sesión la app funciona en modo invitado con identidad anónima por dispositivo. Al iniciar sesión,
 el histórico pasa a la cuenta. En POST y DELETE la identidad la impone el **token verificado**, no el
 cliente. Pendiente conocido: `DELETE /history?user_id=` no exige todavía que `user_id` coincida con el
-token (riesgo bajo, `PENDIENTES_PRODUCTO.md` §3).
+token (riesgo bajo).
 
 La pantalla de consentimiento de Google aún dice «Clerk». Se cambia en Google Cloud Console, no en el
 código.

@@ -72,7 +72,7 @@
     vez de global — p. ej., subir el peso de **periferia/aislamiento de noche** (menos vigilancia) y de
     los **POIs de vida nocturna** en su franja. Así el *ranking* espacial cambia con la hora sin
     necesitar el microdato. Queda especificado en el framework (`MODELO_RIESGO.md` §7); su
-    implementación va a la sesión de código.
+    implementación queda pendiente.
 
 ## 2. Críticas como producto comercial
 

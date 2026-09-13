@@ -3,8 +3,7 @@
 > **Estado a 2026-09-12.** Describe lo que está desplegado hoy, verificado contra el código.
 > Tesis MGTIC · Universidad de Nariño · Engler González.
 > Fundamentación de métodos en [METODOLOGIA.md](METODOLOGIA.md) y [MODELO_RIESGO.md](MODELO_RIESGO.md);
-> cifras en [RECOMPUTO_2026-08.md](RECOMPUTO_2026-08.md); pendientes en
-> [PENDIENTES_PRODUCTO.md](PENDIENTES_PRODUCTO.md).
+> cifras en [RECOMPUTO_2026-08.md](RECOMPUTO_2026-08.md).
 
 ## 1. Objetivos y dónde viven
 
@@ -144,7 +143,7 @@ Tres ingredientes independientes (detalle en [DISENO_FUTURO.md](DISENO_FUTURO.md
 3. **Predicción**: exige trayectorias reales de la ciudad.
 
 Se commitean los artefactos y se hace `git push space main`. El panel admin solo añade la ciudad al
-catálogo; ingesta y entrenamiento no caben en el Space (`PENDIENTES_PRODUCTO.md` §6.3).
+catálogo; ingesta y entrenamiento no caben en el Space.
 
 ## 7. Despliegue
 

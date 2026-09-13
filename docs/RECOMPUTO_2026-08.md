@@ -1,6 +1,6 @@
 # Recómputo de cifras de la tesis · agosto 2026
 
-Respuesta a la auditoría conjunta (sesión de Research + evaluación crítica), tareas
+Respuesta a la auditoría conjunta (Research + evaluación crítica), tareas
 **T1–T13**. Rama de trabajo: `recomputo-2026-08`. No se ha tocado `Documentos/*.docx`.
 
 **Regla que gobierna este documento:** ninguna cifra aparece sin el comando que la
@@ -136,7 +136,7 @@ referencia, así que **no es circular**.
 
 > ⚠️ **RETRACTACIÓN COMPLETA (2026-08-09).** Una versión previa reportaba
 > **ρ = 0,4335 en Tumaco vs 0,8612 en Cali** y lo presentaba como «el aporte original, y
-> sale a favor». **Las dos cosas estaban mal** y la sesión de escritura **no debe usar
+> sale a favor». **Las dos cosas estaban mal** y la redacción **no debe usar
 > esos números.**
 >
 > **Error 1 — el test estaba roto.** Reconstruí el factor socioeconómico desde
@@ -1073,7 +1073,7 @@ print(len(rows),'filas ·',sum(int(float(r.get('cantidad',1))) for r in rows),'h
 
 **Decisión tomada (Opción A — congelar hoy):**
 
-- Snapshot congelado por la sesión de escritura: `m8fd-ahd9_tumaco_snapshot_2026-08-09.json`
+- Snapshot congelado para la redacción: `m8fd-ahd9_tumaco_snapshot_2026-08-09.json`
   · **4.034 filas · 4.050 homicidios** · `sha256 0f64efd4…2d75`.
 - **El texto pasa de 4.045 a 4.050**, con fecha de consulta. Los porcentajes **no se mueven**
   (85,8 / 56,6 / 55,2-44,8 idénticos).
@@ -1138,7 +1138,7 @@ Además, recomputando directamente sobre el crudo:
 
 ## 4. Qué cambia en el documento de la tesis
 
-Para la sesión de escritura, lo que ya se puede actualizar de una pasada:
+Para la redacción, lo que ya se puede actualizar de una pasada:
 
 1. **OE1: 90,5 % → 87,5 % [85,2–89,8]**, añadiendo el desglose por tipo (§1.1) y la nota
    de por qué bajó. Añadir acc@100 = 92,7 % y las mejoras +13,4 pp / +47,5 pp.

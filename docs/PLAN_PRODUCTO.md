@@ -3,9 +3,8 @@
 > Hoja de ruta para: (1) un **modelo de riesgo defendible y citable**, y (2) el **producto/app**
 > (Android/iOS) escalable y replicable a otras ciudades. Cada factor de riesgo va con su respaldo.
 >
-> **Estado a 2026-09-12.** Es el documento de **visión** escrito en julio de 2026. Lo construido y lo
-> pendiente se sigue en `PENDIENTES_PRODUCTO.md`; las notas ✅/🟡/❌ de abajo marcan dónde la realidad
-> ya difiere del plan.
+> **Estado a 2026-09-12.** Es el documento de **visión** escrito en julio de 2026. Las notas ✅/🟡/❌
+> de abajo marcan dónde la realidad ya difiere del plan.
 
 ---
 
@@ -128,8 +127,7 @@ Un **panel web de admin** para administrar TODO sin tocar código (tiene sentido
 > riesgo, red vial y predicción, y sus factores con peso y motivo (solo lectura); configuración de la
 > app; moderación de reportes; opiniones; alta y baja en el catálogo de ciudades. La columna `source`
 > del histórico existe. **No construido:** edición de pesos con vista previa, selectores
-> país → municipio, ingesta de trayectorias y entrenamientos (no caben en el Space, ver
-> `PENDIENTES_PRODUCTO.md` §6.3).
+> país → municipio, ingesta de trayectorias y entrenamientos (no caben en el Space).
 
 ## Presentación para la sustentación (objetivo: completa, contundente, fenomenal)
 Guion propuesto (con las cifras y figuras ya listas):

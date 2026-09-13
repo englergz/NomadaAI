@@ -125,8 +125,6 @@ lleva el comando que la regenera.
 - **Ciudades**: Tumaco completa (riesgo, rutas y predicción). Cali con riesgo y rutas, sin predicción.
 - **Pruebas**: 48 en el cliente móvil y 16 invariantes de `/route/build`.
 
-Lo pedido frente a lo hecho, punto por punto, está en [docs/PENDIENTES_PRODUCTO.md](docs/PENDIENTES_PRODUCTO.md).
-
 ## Documentación
 
 | Documento | Contenido |
@@ -140,7 +138,6 @@ Lo pedido frente a lo hecho, punto por punto, está en [docs/PENDIENTES_PRODUCTO
 | [docs/CRITICA_Y_MEJORAS.md](docs/CRITICA_Y_MEJORAS.md) | Autocrítica sin sesgo (grietas científicas y de producto) |
 | [docs/HALLAZGOS_Y_DESAFIOS.md](docs/HALLAZGOS_Y_DESAFIOS.md) | Hallazgos, desafíos y alcance de la portabilidad (ejecución sobre Cali) |
 | [docs/REFERENCIAS.md](docs/REFERENCIAS.md) | Bibliografía IEEE consolidada |
-| [docs/PENDIENTES_PRODUCTO.md](docs/PENDIENTES_PRODUCTO.md) | **Fuente de verdad del backlog**: lo pedido vs lo hecho, verificado contra código |
 | [docs/PLAN_PRODUCTO.md](docs/PLAN_PRODUCTO.md) | Visión de producto y del panel admin (julio 2026), con notas de lo ya construido |
 | [docs/DISENO_FUTURO.md](docs/DISENO_FUTURO.md) | Qué necesita una ciudad, Círculos, legal y onboarding |
 | [docs/T6B_CRITERIO.md](docs/T6B_CRITERIO.md) | Criterio fijado antes de medir el efecto del factor socioeconómico |
