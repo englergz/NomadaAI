@@ -1,9 +1,33 @@
-# Nómada.AI · Auditoría de dependencias (2026-09-08)
+# Nómada.AI · Auditoría de dependencias (2026-09-08, revisada 2026-09-12)
 
 Qué se arregló, qué queda y **por qué** se acepta lo que queda. Cada afirmación es
 reproducible con el comando que la acompaña.
 
-## Resumen
+## Revisión 2026-09-12
+
+| | 2026-09-08 | 2026-09-12 |
+|---|---|---|
+| Backend (`pip-audit -r services/api/requirements.txt`) | 0 | **0** |
+| Cliente (`npm audit --json`) | 28 (11 high · 17 moderate · 0 critical) | **30** (12 high · 17 moderate · **1 critical**) |
+
+Los dos avisos nuevos caen sobre versiones que ya estaban instaladas el 09-08; no los trajo ningún
+cambio del lock.
+
+| Aviso | Paquete | ¿Nos afecta? | Decisión |
+|---|---|---|---|
+| **Crítico** GHSA-jrc7-96c5-q579: se puede saltar el saneador `DOM.sanitize()` | `maplibre-gl` 4.7.1, directa en web y app | **No por esa vía.** El rango del aviso (≤ 6.4.0) es amplio, pero en 4.7.1 el saneador no existe: `sanitize(` aparece 0 veces en los tres bundles de `dist/`. Esa versión no sanea `setHTML`, inserta el HTML tal cual. El riesgo real era **nuestro**: la versión web de la app metía el nombre del lugar, que viene de OpenStreetMap, sin escapar. **Corregido hoy** con `escapeHtml` en `packages/shared`, que ya usan escritorio y app | aceptado. Subir a 6.x es cambio mayor en web y app y se hará con verificación visual, no como parche |
+| High GHSA-28wg-ghj8-5hjv y GHSA-2v37-7h3g-55p8: bucle infinito con tamaño negativo o cero | `nanoid` 3.3.15, transitiva de `expo-router` y de `postcss` (vite) | No: las librerías lo llaman con tamaño fijo, nunca con entrada del usuario | aceptado; sale con la próxima subida de `expo-router` o `vite` |
+
+El resto de la tabla de abajo sigue igual: tooling de build y servidor de desarrollo, y
+`decode-uri-component` en runtime con seguimiento. `npm audit` propone ahora `vite@8.3.0` como arreglo:
+sigue siendo cambio mayor y sigue sin aplicarse a ciegas.
+
+```bash
+grep -c 'sanitize(' node_modules/maplibre-gl/dist/maplibre-gl.js node_modules/maplibre-gl/dist/maplibre-gl-dev.js node_modules/maplibre-gl/dist/maplibre-gl-csp.js
+npm ls nanoid --all
+```
+
+## Resumen (2026-09-08)
 
 | | Antes | Después |
 |---|---|---|

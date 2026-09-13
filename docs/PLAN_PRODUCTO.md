@@ -2,6 +2,10 @@
 
 > Hoja de ruta para: (1) un **modelo de riesgo defendible y citable**, y (2) el **producto/app**
 > (Android/iOS) escalable y replicable a otras ciudades. Cada factor de riesgo va con su respaldo.
+>
+> **Estado a 2026-09-12.** Es el documento de **visión** escrito en julio de 2026. Lo construido y lo
+> pendiente se sigue en `PENDIENTES_PRODUCTO.md`; las notas ✅/🟡/❌ de abajo marcan dónde la realidad
+> ya difiere del plan.
 
 ---
 
@@ -31,7 +35,8 @@ celda. Marco: **Caplan & Kennedy (2011)**. Esto es lo correcto ante escasez de m
 - **Normalización por percentil espacial** (evita que todo se vea rojo) + modulación temporal.
 - **Análisis de sensibilidad** (ya) para robustez del ranking (ρ≈0,99).
 - **Framework configurable:** cada factor `{enabled, weight}` por ciudad (renormaliza a Σ=1 sobre los
-  activos); el panel de admin lo edita sin tocar código. Tumaco y Cali = dos configuraciones.
+  activos). Tumaco y Cali = dos configuraciones. 🟡 **(2026-09-12)** el panel admin **muestra** factores,
+  pesos y motivos por ciudad; editarlos exige re-correr el pipeline offline y no se hace desde la UI.
 
 ### A.4 Curva temporal (pendiente clave)
 Hoy es **supuesto**. Acciones: (a) obtener el patrón horario/diario de **Forensis (INMLCF)** o un
@@ -99,9 +104,11 @@ es opcional y cambiable. Tipos con datos en el demo: moto, carro, bus, camión (
   no el panel de análisis. Detección por viewport/`user-agent`; **mismo dominio**, distinta vista.
 - **App nativa Android/iOS y web = MISMO código** (Expo / React Native + React Native Web): una sola
   base para móvil y web de usuario; el panel de escritorio queda como vista aparte (web).
-- **Capas nativas por SO:** el mapa puede usar el nativo de cada plataforma — **Apple Maps (MapKit) en
-  iOS**, Google Maps en Android, MapLibre en web — detrás de una interfaz común. Notificaciones push,
-  ubicación en segundo plano y permisos = APIs nativas de Expo.
+- ~~Capas nativas por SO (Apple Maps en iOS, Google Maps en Android)~~ **Decisión tomada distinta:**
+  MapLibre en las tres plataformas (MapLibre React Native en Android/iOS, MapLibre GL JS en web) con
+  base vectorial de OpenFreeMap. Ubicación en segundo plano y permisos = APIs nativas de Expo.
+- ❌ **(2026-09-12)** la vista de usuario en el navegador del móvil no existe todavía: el dominio sirve
+  el escritorio. Hosting pendiente de decidir.
 
 ## B.9 Panel de administración (config total) — visión de producto
 Un **panel web de admin** para administrar TODO sin tocar código (tiene sentido y es la evolución natural):
@@ -116,25 +123,33 @@ Un **panel web de admin** para administrar TODO sin tocar código (tiene sentido
   → añadir columna `source` (`sim` | `mobile`) a `sim_effectiveness` (hoy ya guarda `mode`, `session`).
 - **Moderación** de reportes ciudadanos.
 > Es un frente grande (roadmap), pero encaja: convierte el prototipo en una **plataforma administrable**.
+>
+> **Construido (2026-09-12):** menú lateral; resumen con KPIs y reportes por categoría; ciudades con
+> riesgo, red vial y predicción, y sus factores con peso y motivo (solo lectura); configuración de la
+> app; moderación de reportes; opiniones; alta y baja en el catálogo de ciudades. La columna `source`
+> del histórico existe. **No construido:** edición de pesos con vista previa, selectores
+> país → municipio, ingesta de trayectorias y entrenamientos (no caben en el Space, ver
+> `PENDIENTES_PRODUCTO.md` §6.3).
 
 ## Presentación para la sustentación (objetivo: completa, contundente, fenomenal)
 Guion propuesto (con las cifras y figuras ya listas):
 1. **Problema** (Tumaco, violencia/inseguridad = problema #1, CEDRE) → figura de contexto.
 2. **Objetivos** (textual del anteproyecto).
 3. **Método** (predicción por recuperación; riesgo RTM multi-factor citado; ruteo consciente del riesgo).
-4. **Resultados con IC**: OE1 90% [85–94]; OE3 rutas+POIs; OE4 −7,0% [6,4–7,6]; alerta 88,7%.
+4. **Resultados con IC** (recomputados, `RECOMPUTO_2026-08.md`): OE1 87,5 % [85,2–89,8]; OE3 alerta en el punto de operación (99,1 % con aviso, 58,7 % anticipados, mediana 756 m); OE4 −4,84 % [3,62–6,22].
 5. **El giro honesto**: el mapa era de tráfico → reconstrucción con DANE; `img/riesgo_antes_despues.png`.
-6. **Replicabilidad demostrada**: Tumaco (escasez) → Cali (abundancia); `img/replica_cali_vs_tumaco.png`.
+6. **Portabilidad**: el marco corre en Cali (4.268 celdas, rutea sobre OSM); el efecto del factor socioeconómico es no concluyente (T6b), y se dice así; `img/replica_cali_vs_tumaco.png`.
 7. **Autocrítica** (las 10 grietas) → madurez investigativa.
 8. **Producto y roadmap** (app, reporte ciudadano, multi-ciudad).
 9. **Cierre**: "marco replicable que funciona en el extremo de la escasez y escala hacia la abundancia".
 
 ## Roadmap por fases
-1. **Modelo v2 (corto):** añadir **iluminación** (OSM) + POIs de riesgo + distancia a policía; recalibrar.
-   Conseguir la curva temporal de Forensis o declararla escenario.
-2. **Cierre tesis:** validación (sensibilidad + caracterización), documentar, defender.
-3. **App MVP:** Expo + API + Clerk; vista principal, navegación, alertas de proximidad, reporte de incidentes.
-4. **Producto:** push server, moderación de reportes, multi-ciudad, panel BI, validaciones completas.
+1. **Modelo v2 (corto):** 🟡 distancia a policía ✅; iluminación y POIs de riesgo **apagados con motivo**
+   (sin dato apto en Tumaco). La curva temporal quedó declarada como supuesto de diseño.
+2. **Cierre tesis:** ✅ entregada el 2026-08-11.
+3. **App MVP:** ✅ Expo + API + Clerk; mapa, ruta segura, alertas, reporte, segundo plano, OTA, sin conexión.
+4. **Producto:** 🟡 moderación ✅, multi-ciudad ✅ (Tumaco y Cali), panel BI ✅ · push ❌, fotos ❌,
+   tiendas ❌.
 
 ## Referencias nuevas a citar
 - Welsh, B. C., & Farrington, D. P. (2008). *Effects of improved street lighting on crime.* Campbell/Cochrane.

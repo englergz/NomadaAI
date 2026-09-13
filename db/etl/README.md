@@ -1,22 +1,18 @@
-# ETL — cargar capas de servicio a PostGIS
+# ETL — capas PostGIS (diseño inicial, sin uso en producción)
 
-Espeja a la base de datos (Supabase o PostGIS local) las capas derivadas que el
-backend sirve. En esta fase solo se incluye la carga de corredores; el resto se
-agrega al avanzar OE2/OE3.
+> **Estado a 2026-09-12.** El backend desplegado **no lee** estas tablas. Corredores, grafo vial y
+> riesgo se sirven desde los artefactos embebidos en la imagen (`services/api/artifacts/`). Las tablas
+> que sí existen en producción las crea el propio backend en Neon (`docs/ARCHITECTURE.md` §5).
+> Esta carpeta se conserva por si hace falta consultar las capas con SQL espacial.
 
-## Orden
+## Cargar corredores en un PostGIS propio
 
-1. Aplicar el esquema:
-   ```bash
-   psql "$DATABASE_URL" -f db/migrations/001_init_postgis.sql
-   ```
-2. Cargar corredores TRACLUS:
-   ```bash
-   pip install "psycopg[binary]"
-   DATABASE_URL="postgresql://user:pass@host:5432/db" python db/etl/load_corridors.py
-   ```
+```bash
+psql "$DATABASE_URL" -f db/migrations/001_init_postgis.sql
+pip install "psycopg[binary]"
+DATABASE_URL="postgresql://user:pass@host:5432/db" python db/etl/load_corridors.py
+```
 
-## Pendiente (OE2/OE3)
-- `load_trajectories_sample.py` — muestra de `trajectories_wgs84.csv`.
-- `build_road_graph.py` — grafo vial desde `tumaco.osm` → `road_nodes`/`road_edges`.
-- `ingest_incidents.py` — incidentes desde datos.gov.co → `incidents` → agregación H3 → `risk_zones`.
+Los scripts de muestra de trayectorias, grafo e ingesta de incidentes que planeaba el diseño inicial no
+se escribieron: el grafo se construye en memoria (`RouteGraph`) y la malla de riesgo con
+`services/api/scripts/rebuild_risk_*.py`.

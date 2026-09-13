@@ -2,6 +2,11 @@
 
 > Resultados reproducibles con `services/api/scripts/oe2_valida_riesgo.py` (validación) y
 > `services/api/scripts/rebuild_risk.py` (reconstrucción con datos DANE).
+>
+> **Aviso (2026-09-12).** Las secciones «5. Verificación de OE4» y «6. Verificación exhaustiva» son el
+> **historial de verificación** del 2026-08-04 y conservan cifras que después se retiraron o
+> recomputaron (OE4 −7,0 % y 5,24 %, alerta 88,7 %, «95 % de rutas que mejoran»). Las cifras vigentes,
+> con comando y hash, están en `RECOMPUTO_2026-08.md` y en el `README.md`.
 
 ## 1. Alcance honesto
 

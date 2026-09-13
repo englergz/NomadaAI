@@ -1,6 +1,6 @@
 # Nómada.AI · Pendientes del producto — lo pedido vs lo hecho
 
-**Estado a 2026-09-10 (actualizado tras la tanda de la tarde).** Fuente de verdad del backlog a partir de hoy; `ROADMAP_SESIONES.md`
+**Estado a 2026-09-12.** Fuente de verdad del backlog a partir de hoy; `ROADMAP_SESIONES.md`
 queda como historial y `CUMPLIMIENTO_Y_PENDIENTES.md` como matriz de cumplimiento legal/técnico.
 
 Cómo se construyó: se leyeron los **555 mensajes** del usuario en las 5 sesiones de NomadaAI
@@ -16,15 +16,16 @@ Leyenda: ✅ hecho y verificado · 🟡 parcial · ❌ no hecho · ⚠️ sin co
 
 ## 0. Resumen
 
-| Bloque | Pedido | Hecho | Parcial | Pendiente |
-|---|---|---|---|---|
-| Investigación y tesis | — | entregada 2026-08-11; recómputo T1–T13 cerrado | — | 5 líneas de trabajo futuro declaradas (§5) |
-| Backend / API | 14 | 13 | 1 | push desde servidor |
-| App móvil (producto) | 47 | 33 | 5 | 9 |
-| Escritorio (tesis) | 12 | 12 | — | — |
-| Seguridad y cumplimiento | 12 | 11 | — | 1 (RLS/authz fina en DELETE /history) |
-| Calidad / arquitectura | 6 | 2 | 1 | 3 |
-| Depende de ti | 10 | 2 | — | 8 |
+| Bloque | Estado a 2026-09-12 |
+|---|---|
+| Investigación y tesis | ✅ entregada 2026-08-11; recómputo T1–T13 cerrado; 5 líneas de trabajo futuro declaradas (§5) |
+| Backend / API | ✅ salvo push desde servidor, fotos y autorización fina en `DELETE /history` (§3) |
+| App móvil | ✅ núcleo, onboarding, ciudades, OTA y modo sin conexión · ❌ fotos, push, 3D real · ⚠️ iOS y varios puntos por probar en teléfono (§1) |
+| Escritorio (tesis) | ✅ cerrado (§2) |
+| Panel admin | 🟡 reconstruido el 09-12 con alta de ciudades · ingesta y entrenamiento fuera del Space por diseño (§6.3) |
+| Seguridad y cumplimiento | ✅ salvo `DELETE /history` · XSS en popups de la app web corregido el 09-12 · `maplibre-gl` crítico evaluado como no explotable (`DEPENDENCIAS.md`) |
+| Calidad / arquitectura | ✅ 48 pruebas móvil + 16 invariantes, refactor y `BaseSheet` · 🟡 cola de banners, GPS con reintentos |
+| Depende de ti | ✅ OTA, `ADMIN_USER_IDS` · ❌ instalar APK, Google consent, tiendas, decisión de Storage, pruebas en teléfono (§6) |
 
 **OTA (2026-09-10):** canal `production` creado, update publicado y manifiesto verificado (200
 para la huella del APK, 204 para la vieja). Lo único que falta es que **instales el APK del
@@ -36,6 +37,12 @@ Esri no tienen calles de Tumaco a zoom de ciudad. Se pasó a teselas vectoriales
 OpenFreeMap (Positron / Dark, datos de OpenStreetMap, sin clave) desde una fuente única en
 `packages/shared/src/basemap.ts`; satelital sigue en Esri. Verificado en el emulador
 (Tumaco y Cali con calles, riesgo y lugares) y en el escritorio local.
+
+**Tanda del 2026-09-12:** modo sin conexión (commit 1c0e0d7); panel admin reconstruido con menú
+lateral y sección de ciudades (1a4f12a); `/health` dice si el panel está listo (bdd9bbc); catálogo de
+ciudades en Postgres editable desde el panel y leído por la app (a748428), publicado por OTA
+«Catálogo de ciudades desde el servidor». Revisión de documentación y de dependencias; corregido el
+nombre de lugar sin escapar en los popups de la versión web de la app.
 
 **Tanda del 2026-09-10 (commit 57d8e53):** cerrados los puntos 2 a 6 del orden sugerido —
 onboarding de valor + Círculos «próximamente» + botones legales, Novedades tras OTA, ciudad por
@@ -137,7 +144,7 @@ emulador Pixel 7a (onboarding, Configuración, selector de ciudad, tarjeta OTA, 
 | OTA sin reinstalar; nunca en mitad de un viaje (07-10) | ✅ **(09-10)** canal + update + manifiesto 200 verificados; tarjeta «actualización lista» que solo permite aplicar sin recorrido · ⚠️ falta instalar el APK del 09-10 |
 | Vista «Novedades» tipo changelog al abrir tras actualizar (07-10) | ✅ **(09-10)** hoja una vez por versión nueva (`constants/changelog.ts`, es/en) |
 | Sin internet / servidor caído / conexión lenta: mensajes honestos (08-03 21:09) | ✅ `lib/connectivity.ts` |
-| Caché de `/risk/zones` y POIs + cola de escrituras para operar sin red (U7 pendiente 4) | ✅ **(09-10)** `lib/offline-cache.ts` (red primero; sin red, la última copia con aviso de cuándo es) para riesgo, lugares, ciudades; `lib/write-queue.ts` (cifrada, 7 días, en orden, para al primer fallo) para reportes y viajes, se vacía al volver la señal. 9 pruebas. Emulador: capa servida desde la copia con su aviso y reporte encolado sin red, verificados en pantalla; el vaciado se observó por sus efectos (la cola queda vacía en el arranque siguiente), no con captura del aviso |
+| Caché de `/risk/zones` y POIs + cola de escrituras para operar sin red (U7 pendiente 4) | ✅ **(09-12, commit 1c0e0d7)** `lib/offline-cache.ts` (red primero; sin red, la última copia con aviso de cuándo es) para riesgo, lugares, ciudades; `lib/write-queue.ts` (cifrada, 7 días, en orden, para al primer fallo) para reportes y viajes, se vacía al volver la señal. 9 pruebas. Emulador: capa servida desde la copia con su aviso y reporte encolado sin red, verificados en pantalla; el vaciado se observó por sus efectos (la cola queda vacía en el arranque siguiente), no con captura del aviso |
 | GPS robusto con reintentos y precisión progresiva (U7 pendiente 2) | 🟡 última posición conocida + fix 25 s; sin backoff |
 | Live reload sin reinstalar APK (07-11) | 🟡 funciona con `expo run:android`; `expo-dev-client` no instalado |
 
@@ -178,8 +185,9 @@ Nada pendiente salvo lo del panel admin (§3).
 ## 4. Calidad y arquitectura
 | Pedido | Estado |
 |---|---|
-| Pruebas automatizadas de lo crítico (08-04) | ✅ 27 móvil + 16 invariantes `/route/build` (Tumaco y Cali) |
-| Cifrado en reposo, `npm audit`, `pip-audit` | ✅ (09-08) |
+| Pruebas automatizadas de lo crítico (08-04) | ✅ 48 móvil en 7 suites + 16 invariantes `/route/build` (Tumaco y Cali), 09-12 |
+| Cifrado en reposo, `npm audit`, `pip-audit` | ✅ (09-08) · revisión 09-12: `pip-audit` 0; `npm audit` 30 con 1 crítica en `maplibre-gl` que no aplica a 4.7.1 (`DEPENDENCIAS.md`) |
+| Escapar datos externos en popups de la versión web de la app | ✅ **(09-12)** el nombre del lugar (OSM) entraba sin escapar en `setHTML`; `escapeHtml` compartido con el escritorio |
 | Refactor `map.tsx` en hooks `useTrip/useCity/useBanner/useHealth` (07-10, U7-ARCH) | ✅ **(09-10)** `map.tsx` 1.294 → 744 líneas; `hooks/use-trip` (recorrido, alertas, recálculo, inactividad, segundo plano), `use-city`, `use-banner`, `use-health`, `use-ota`. Sin cambio de comportamiento: código movido tal cual, verificado en el emulador |
 | `BaseSheet` común para las 6 hojas (duplican backdrop/estilos) | ✅ **(09-10)** `components/base-sheet.tsx`; las 9 hojas (ajustes, ciudad, reporte, protección, notificaciones, ayuda, legal, privacidad, novedades) solo ponen su contenido. Valores por hoja conservados (opacidad, tope de altura, relleno) |
 | Sistema formal de banners/estados (`useBanner`) | 🟡 `useBanner` existe (un aviso, auto-descarte por tono); falta la cola por categorías |
@@ -211,7 +219,9 @@ Nada pendiente salvo lo del panel admin (§3).
 3. 👤 **Instalar el APK del 2026-09-10** (`apps/mobile/android/app/build/outputs/apk/release/app-arm64-v8a-release.apk`,
    huella `be94deb1…`) y abrir la app dos veces: la primera descarga, la segunda muestra
    «Novedades». Los APK anteriores no enviaban el canal: no recibirán nada.
-4. Regla nueva en `COMANDOS.md` §5: `eas update` se publica justo después de compilar y solo si
+4. ✅ Updates posteriores publicados por ti: «Sin conexión: copia local y cola de envíos» y
+   «Catálogo de ciudades desde el servidor» (09-12).
+5. Regla nueva en `COMANDOS.md` §5: `eas update` se publica justo después de compilar y solo si
    la huella del APK y la de `runtimeversion:resolve` coinciden (los restos de gradle en
    `node_modules` cambian la huella).
 
@@ -236,7 +246,7 @@ aparezca en el selector, que es lo que antes obligaba a publicar versión de la 
 ### 6.2 Resto
 | Tarea | Estado |
 |---|---|
-| `ADMIN_USER_IDS` en el Space con tu **User ID** de Clerk (`user_…`, no `app_…`) | ⚠️ dijiste «ya puse el id» el 08-03; sin confirmar que sea el `user_` |
+| `ADMIN_USER_IDS` en el Space con tu **User ID** de Clerk (`user_…`, no `app_…`) | ✅ **(09-12)** `/health` responde `admin_ready: true` y ves el panel con datos de producción |
 | Google Cloud Console: proyecto + marca en la pantalla de consentimiento (quita «Clerk») | ❌ |
 | «Secured by Clerk» en el login: solo se quita en plan pago de Clerk | decisión |
 | Storage para fotos: Supabase Storage (proyecto en pausa, se cancela a los 7 días inactivo) o Cloudflare R2 | decisión |
@@ -263,5 +273,5 @@ emulador Pixel 7a; la OTA republicada corre en el emulador con la hoja de Noveda
 ~~9. Refactor `map.tsx` → hooks + `BaseSheet`~~ ✅ (09-10). Queda solo la cola de banners por categoría (menor).
 ~~10. Caché offline + cola de escrituras~~ ✅ (09-10).
 8. Fotos en reportes (bloqueado por la decisión de Storage).
-11. Panel admin de verdad (menú lateral, ciudades, pesos, ingesta, BI) — frente grande.
+~~11. Panel admin de verdad~~ 🟡 (09-12) reconstruido con menú lateral, ciudades y alta en el catálogo. Queda editar pesos con re-cálculo offline; ingesta y entrenamiento no caben en el Space (§6.3).
 12. Push desde servidor · publicidad/donación · Círculos.

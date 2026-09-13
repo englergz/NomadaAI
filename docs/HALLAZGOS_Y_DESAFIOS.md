@@ -52,27 +52,38 @@ elegancia** y por tanto **también sirven donde hay datos ricos**. Eso es cierto
   tiene sicariato; allí pesarían más iluminación, hurto, nodos de transporte). Por eso los pesos son
   **editables** y hay una **columna `city`**.
 - Donde SÍ hay microdato, el sistema se **valida directamente** (precisión/recall), algo que en
-  Tumaco no se puede. O sea: el marco no solo "sobrevive" a la escasez — **aprovecha** la abundancia
-  cuando existe.
+  Tumaco no se puede. O sea: el marco no solo "sobrevive" a la escasez — está diseñado para **aprovechar** la
+  abundancia cuando exista (hipótesis: ver Cali abajo).
 
 **Conclusión defendible:** el aporte no es "un modelo universal", sino un **marco replicable que
 funciona en el extremo de escasez y escala hacia contextos con más datos**. Afirmar "funciona en
 cualquier parte" sin re-calibrar sería sobre-vender; afirmar "el marco es transferible y se adapta"
 es exacto.
 
-### Evidencia de replicabilidad: Cali (2ª ciudad)
-Se replicó el pipeline de riesgo a **Cali** (`rebuild_risk_city.py`, sin trayectorias — la malla se
+### Portabilidad técnica: Cali (2ª ciudad)
+Se corrió el pipeline de riesgo sobre **Cali** (`rebuild_risk_city.py`, sin trayectorias — la malla se
 construye desde las manzanas DANE): **15 030 manzanas → 4 268 celdas, 1,77 M hab, 18 estaciones de
-policía**. Figura `img/replica_cali_vs_tumaco.png`. Hallazgo clave que **valida la adaptabilidad**:
+policía**. Figura `img/replica_cali_vs_tumaco.png`. Desde 2026-09-07 Cali también rutea sobre la red
+vial de OpenStreetMap.
 
-- **Tumaco es homogéneo** (99% estrato 1) → el factor socioeconómico **no discrimina**.
-- **Cali es heterogéneo** (estratos 1-6 repartidos: 22%/24%/26%/7%/6%/2% de manzanas) → el factor
-  socioeconómico **sí discrimina** (corr índice-vulnerabilidad = **0,59**), contribuyendo tanto como
-  la densidad (0,59). El mismo marco, **sin cambiar código**, activa un factor que en Tumaco quedaba
-  inerte, solo re-calibrando pesos.
+> **Corrección (2026-08-09, reafirmada 2026-09-12).** Una versión anterior decía que Cali «valida la
+> adaptabilidad» y lo «demuestra». No es así, y se deja escrito para que no vuelva.
 
-Esto **demuestra** (no solo afirma) las dos mitades del argumento: el marco **sobrevive a la escasez**
-(Tumaco) y **aprovecha la abundancia** (Cali). Es el "peso de resultados" para la defensa.
+Qué **sí** está medido:
+- **Tumaco es homogéneo**: la variable socioeconómica es cuasi-degenerada (96,3 % de las zonas
+  comparten valor, σ = 0,046). Por eso el factor está apagado allí, con su motivo en
+  `risk_config.tumaco.json`.
+- **Cali es heterogéneo**: estratos 1-6 repartidos (22 %/24 %/26 %/7 %/6 %/2 % de manzanas),
+  93 valores distintos, σ = 0,282.
+
+Qué **no** quedó demostrado: que activar el factor **reordene** el mapa. Con el criterio fijado antes
+de medir (`T6B_CRITERIO.md`), ρ con/sin factor es **0,9841 en Tumaco** (dentro del piso de ruido) y
+**0,8491 en Cali** (efecto débil): **no concluyente**. La correlación de 0,59 que se citaba mide
+asociación con la vulnerabilidad, no si el orden de riesgo cambia.
+
+**Lectura correcta:** el marco es **portable**: corre en otra ciudad sin cambiar código y registra por
+qué activa o apaga cada factor. Que **aproveche** la abundancia de datos es una hipótesis razonable,
+no un resultado.
 
 ## 5. ¿Estamos documentando todo? (índice)
 

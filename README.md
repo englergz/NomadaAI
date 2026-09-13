@@ -63,7 +63,7 @@ Todas las cifras se miden sobre el **sistema desplegado** y se reproducen con el
 | **OE2 · Riesgo por zona×hora×día** | Índice RTM **multivariable, configurable y auditable** sobre **475 celdas** de 150 m; ordenamiento espacial robusto a perturbaciones de los pesos (**ρ = 0,9898**, mínimo 0,9481). | `GET /risk/zones?hour=20` |
 | **OE3 · Ruta segura + alerta** | Ruteo ponderado por riesgo + alerta evaluada **en el punto de operación real** (umbral = percentil 0,70): a la hora pico, **99,1 %** de los recorridos recibe aviso de precaución y **65,8 %** cruza zona de nivel alto; de los avisos, el **58,7 %** precede a la entrada, con mediana de **756 m (91 s)**. | `services/api/scripts/oe3_alerta_punto_operacion.py` |
 | **OE4 · Efectividad** | En la **configuración de fábrica** (λ = 2,5): **−4,84 % de exposición** (IC 95 % [3,62–6,22], bootstrap por conglomerados sobre 40 pares O-D) con **1,7 %** de sobrecosto de distancia; mejora el **100 %** de los recorridos. En el ajuste máximo (λ = 5): −5,88 % con 3,7 % de sobrecosto. | `services/api/scripts/oe4_lambda_canonico.py` |
-| **Portabilidad** | El marco se ejecuta también sobre **Cali** (4.268 celdas) con configuración propia de factores. Ver la nota de alcance más abajo. | `GET /risk/zones?city=cali` |
+| **Portabilidad** | El marco se ejecuta también sobre **Cali** (4.268 celdas) con configuración propia de factores, y rutea sobre la red vial de OpenStreetMap. Sobre Cali no se ha corrido el barrido canónico de OE4. Ver la nota de alcance más abajo. | `GET /risk/zones?city=cali` |
 
 > **Nota de alcance y limitaciones.** Se declaran aquí con el mismo detalle que en el documento.
 >
@@ -114,6 +114,19 @@ Los artefactos de evaluación están versionados con su `sha256` en
 [`services/api/scripts/GOLDEN.md`](services/api/scripts/GOLDEN.md), y cada cifra publicada arriba
 lleva el comando que la regenera.
 
+## Estado del producto (2026-09-12)
+
+- **Escritorio** (`apps/web`): la herramienta de la tesis, con simulador, BI y panel admin. Es la demo en vivo.
+- **App móvil** (`apps/mobile`, Expo SDK 57): viaje protegido con alertas, ruta segura, reporte
+  ciudadano, segundo plano, modo sin conexión y actualizaciones por aire. APK Android de prueba; sin
+  publicar en tiendas; iOS verificado solo en parte.
+- **Panel admin**: KPIs, qué le falta a cada ciudad, configuración de la app, moderación de reportes,
+  opiniones y alta de ciudades en el catálogo.
+- **Ciudades**: Tumaco completa (riesgo, rutas y predicción). Cali con riesgo y rutas, sin predicción.
+- **Pruebas**: 48 en el cliente móvil y 16 invariantes de `/route/build`.
+
+Lo pedido frente a lo hecho, punto por punto, está en [docs/PENDIENTES_PRODUCTO.md](docs/PENDIENTES_PRODUCTO.md).
+
 ## Documentación
 
 | Documento | Contenido |
@@ -127,29 +140,37 @@ lleva el comando que la regenera.
 | [docs/CRITICA_Y_MEJORAS.md](docs/CRITICA_Y_MEJORAS.md) | Autocrítica sin sesgo (grietas científicas y de producto) |
 | [docs/HALLAZGOS_Y_DESAFIOS.md](docs/HALLAZGOS_Y_DESAFIOS.md) | Hallazgos, desafíos y alcance de la portabilidad (ejecución sobre Cali) |
 | [docs/REFERENCIAS.md](docs/REFERENCIAS.md) | Bibliografía IEEE consolidada |
-| [docs/PLAN_PRODUCTO.md](docs/PLAN_PRODUCTO.md) | Producto/app (Android·iOS), panel de admin, guion de sustentación |
+| [docs/PENDIENTES_PRODUCTO.md](docs/PENDIENTES_PRODUCTO.md) | **Fuente de verdad del backlog**: lo pedido vs lo hecho, verificado contra código |
+| [docs/PLAN_PRODUCTO.md](docs/PLAN_PRODUCTO.md) | Visión de producto y del panel admin (julio 2026), con notas de lo ya construido |
+| [docs/DISENO_FUTURO.md](docs/DISENO_FUTURO.md) | Qué necesita una ciudad, Círculos, legal y onboarding |
+| [docs/T6B_CRITERIO.md](docs/T6B_CRITERIO.md) | Criterio fijado antes de medir el efecto del factor socioeconómico |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arquitectura, stack, contrato de API, modelo de datos |
-| [docs/DEPLOY.md](docs/DEPLOY.md) | Despliegue (Hugging Face Space + Supabase) |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Despliegue (Hugging Face Space + Neon + Clerk + EAS Update) |
+| [docs/COMANDOS.md](docs/COMANDOS.md) | Comandos del día a día: web, APK, iOS, OTA, backend |
+| [docs/DEPENDENCIAS.md](docs/DEPENDENCIAS.md) | Auditoría de dependencias y por qué se acepta lo que queda |
 
 ## Estructura
 
 ```
 app/
-  packages/shared/   tipos + cliente API (web y app móvil)
-  apps/web/          React + Vite + MapLibre GL (cliente de escritorio / demo)
-  apps/android,ios/  app nativa Android/iOS (Expo/RN) — en construcción
-  services/api/      FastAPI — OE1 (predicción), OE2 (riesgo), OE3 (ruteo/alerta), OE4 (/evaluate)
-  db/                migraciones PostGIS + ETL
-  docs/              metodología, modelo de riesgo, arquitectura, despliegue
+  packages/shared/   tipos, cliente API, base cartográfica y textos comunes (web y app)
+  apps/web/          React + Vite + MapLibre GL: escritorio de la tesis, simulador, panel admin
+  apps/mobile/       app Android/iOS/web (Expo SDK 57, React Native, MapLibre)
+  services/api/      FastAPI (OE1–OE4, histórico, reportes, admin) + artifacts/ + scripts/
+  db/                esquema PostGIS del diseño inicial y ETL (sin uso en producción)
+  scripts/           utilidades del monorepo
+  docs/              metodología, modelos, cumplimiento, arquitectura, despliegue, pendientes
+  Dockerfile         imagen del Hugging Face Space (API + web)
 ```
 
 ## Arranque rápido (dev)
 
-**1. Backend** (reutiliza artefactos de `../Research`):
+**1. Backend** (usa los artefactos embebidos en `services/api/artifacts`):
 ```bash
 cd services/api
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt        # Python 3.11+ recomendado
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+export RESEARCH_DIR=$PWD/artifacts PYTHONHASHSEED=0
 export MAX_TRAJECTORIES=800             # opcional: menos RAM
 uvicorn app.main:app --reload --port 8000
 ```
@@ -160,6 +181,8 @@ npm install                            # desde app/ (workspaces)
 cp apps/web/.env.example apps/web/.env # VITE_API_URL=http://localhost:8000
 npm run dev:web                        # http://localhost:5173
 ```
+
+**3. App móvil:** compilación del APK, simulador iOS y OTA en [docs/COMANDOS.md](docs/COMANDOS.md) §2–§5.
 
 ## Uso de la API (ejemplo)
 

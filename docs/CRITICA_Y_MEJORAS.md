@@ -4,6 +4,9 @@
 > es **encontrar las grietas**, no defenderlas. Declararlas con honestidad fortalece la tesis y ordena
 > el producto. Política: cada afirmación que sostenemos con literatura debe apoyarse en **2-4
 > referencias (IEEE)**, no una sola (ver §4).
+>
+> **Estado a 2026-09-12.** Cifras alineadas con `RECOMPUTO_2026-08.md` y el `README.md`; las
+> marcas ✅/🟡 reflejan lo que ya existe en código.
 
 ---
 
@@ -19,22 +22,23 @@
 2. **Los pesos de los factores son fijados a mano** (densidad 0,35 / periferia 0,30 / actividad 0,20 /
    policía 0,15 sobre los factores **activos** de Tumaco). Son **suposiciones parametrizadas**, sin
    ajuste guiado por datos. 🟡 **REENCUADRADO (no es solo debilidad):** el IRU es un **framework
-   configurable** — cada factor se habilita/pesa **por contexto** (ciudad/zona), y esa adaptabilidad
-   *es* el aporte de replicabilidad (Tumaco y Cali = dos configuraciones). Los pesos actuales son
+   configurable** — cada factor se habilita/pesa **por contexto** (ciudad/zona), y esa configurabilidad
+   *es* el aporte de portabilidad (Tumaco y Cali = dos configuraciones). Los pesos actuales son
    **cold-start informado por teoría**; su **ranking es robusto** (ρ≈0,99); la **calibración por datos**
    y los **pesos locales por celda (GWR)** son la evolución, y **no dependen solo de la DIJIN**: el
    **reporte ciudadano** genera el dato de resultado que los habilita (ver `MODELO_RIESGO.md` §3–§4,
-   §6). Falta: externalizar los pesos a config editable + panel de admin (sesión de código).
+   §6). ✅ **Externalizados** a `risk_config.<ciudad>.json`; el panel admin los muestra por ciudad con
+   su motivo (2026-09-12). Editarlos desde la interfaz sigue pendiente: exige re-correr el pipeline.
 3. **La hipótesis "periferia = más riesgo".** Se temía que estuviera invertida. ✅ **ARBITRADA (dato
    independiente):** con los homicidios de la Policía, **el 55,2 % ocurre en zona RURAL/periférica** vs.
    44,8 % urbana, aun cuando la población se concentra en el núcleo → la **dirección del factor es la
    correcta** (periferia/aislamiento → más violencia dirigida, coherente con corredores de economías
    ilegales y baja presencia estatal), **no invertida**. Pendiente: la magnitud intra-urbana exacta
    (microdato). Ver `VALIDACION_RIESGO.md` §5(b).
-4. **El 90% de OE1 está probablemente inflado** (sobre SUMO limpio). ✅ **MEDIDO:** prueba de robustez
-   con ruido GPS gaussiano (`/trajectories/evaluate?noise_m=σ`): 90,0% (0 m) → **81,9% (5 m)** →
-   **71,2% (10 m)** → 60,6% (20 m). Es decir, el rendimiento esperado en calle es **~72–82%**, no 90%
-   — honesto y aún sólido. Deja de ser una debilidad especulativa: es un **resultado cuantificado**.
+4. **El acierto de OE1 está inflado por el dato limpio** (SUMO). ✅ **MEDIDO** con ruido GPS gaussiano
+   (`/trajectories/evaluate?noise_m=σ`, n = 805): 87,5 % (0 m) → **77,4 % (5 m)** → **63,7 % (10 m)** →
+   47,7 % (20 m). Con el ruido típico de un teléfono el rendimiento esperado es **~64–77 %**, por
+   debajo de la meta del 85 %. Es un **resultado cuantificado** y se declara así.
 5. **Casi todo deriva de un solo dataset sintético (SUMO).** La predicción, el grafo de rutas y el
    factor "actividad" del riesgo salen de las mismas trayectorias. Hay **circularidad**. 🟡 **ACOTADA:**
    (i) los datos simulados son el **alcance aprobado** del anteproyecto, no un atajo; (ii) SUMO corre
@@ -48,14 +52,16 @@
    fuego, 56,6 % sicariato): el sicariato es violencia armada nocturna, no de riña diurna. Deja de ser
    "transferido a ciegas": es un **prior informado y consistente** con el mecanismo local. Pendiente:
    curva horaria propia de Tumaco (microdato). Ver `VALIDACION_RIESGO.md` §5(a).
-7. **OE4 (−7,0%) es un proxy de un proxy.** Mide reducción de exposición sobre la superficie de riesgo,
+7. **OE4 (−4,84 %) es un proxy de un proxy.** Mide reducción de exposición sobre la superficie de riesgo,
    no una baja observada del delito. 🟡 Su validez externa **crece con la validación #1** (c/d:
    convergente CEDRE + patrón de puntos ACLED): a mayor validación de la superficie, mayor grado el
    proxy. Internamente es consistente y preciso (IC estrecho); externamente, supeditado a #1.
-8. ~~Sin estadística inferencial.~~ ✅ **RESUELTO:** intervalos de confianza 95% por bootstrap en OE1
-   (90% [85–94]) y OE4 (7,0% [6,4–7,6]).
-9. ~~Una sola ciudad.~~ ✅ **MITIGADO:** replicado a **Cali** (mapa de riesgo); allí el factor
-   socioeconómico discrimina (heterogéneo) y en Tumaco no (homogéneo) → demuestra la adaptabilidad.
+8. ~~Sin estadística inferencial.~~ ✅ **RESUELTO:** intervalos de confianza 95 % por bootstrap en OE1
+   (87,5 % [85,2–89,8]) y OE4 (4,84 % [3,62–6,22], bootstrap por conglomerados sobre 40 pares).
+9. **Una sola ciudad validada.** 🟡 **PORTABILIDAD TÉCNICA, NO VALIDACIÓN:** el pipeline corre en
+   **Cali** (4.268 celdas) y rutea sobre OSM, pero el efecto del factor socioeconómico resultó **no
+   concluyente** (ρ con/sin factor: Tumaco 0,9841, Cali 0,8491; `T6B_CRITERIO.md`) y sobre Cali no se
+   ha corrido el barrido canónico de OE4. No demuestra la validez del marco.
 10. **Datos desactualizados/limitados.** Censo DANE 2018 (7 años); homicidios sin hora ni coordenadas;
     OSM sin iluminación. La base empírica intra-urbana es débil.
 11. **El tiempo solo cambia la INTENSIDAD, no los lugares.** `riesgo = percentil_espacial × hora × día`:
@@ -72,7 +78,7 @@
 
 1. **Cero usuarios reales / cero validación de mercado.** La "efectividad" y el BI corren sobre datos
    simulados o auto-generados. No hay un solo viaje real de un usuario.
-2. **La propuesta de valor entrega ~7% de reducción de exposición.** ¿Alcanza para que alguien cambie
+2. **La propuesta de valor entrega ~5 % de reducción de exposición** (−4,84 % en λ = 2,5). ¿Alcanza para que alguien cambie
    de ruta o pague? Dudoso *product-market fit* con ese margen.
 3. **Riesgo ético/legal serio.** Pintar una zona de "verde/seguro" cuando no lo es puede crear **falsa
    seguridad** (daño real, responsabilidad legal). Etiquetar el riesgo por barrio puede **estigmatizar**
@@ -81,24 +87,27 @@
    **"menor exposición relativa"**, nunca de "seguro"; (c) sección de **ética** en la tesis. — descargo
    añadido en la app (Ayuda).
 4. **El dato es estático** (censo 2018, homicidios históricos). Un producto necesita **actualización
-   viva** → depende del bucle de **reporte ciudadano**, que aún no existe.
+   viva** → depende del bucle de **reporte ciudadano**, que ya existe en la app pero todavía
+   no alimenta el índice (factor R3 pendiente).
 5. **No hay foso competitivo (moat).** RTM y k-vecinos son estándar. ¿Qué es defendible frente a un
    competidor con más datos?
 6. **Costo de onboarding por ciudad.** Cada ciudad requiere ensamblar a mano trayectorias + DANE +
    OSM + policía. No está automatizado → no escala barato.
 7. **Privacidad/regulación.** Rastrear movimiento + perfilar riesgo toca Ley 1581/2012; el manejo de
-   datos de criminalidad es sensible. Falta el marco de cumplimiento.
-8. **La app no existe.** Es una demo web; el producto real (Android/iOS, navegación, reporte) está sin
-   construir.
+   datos de criminalidad es sensible. 🟡 **MITIGADO:** términos y política v1.0.0 con Ley 1581,
+   aceptación registrada, borrado de datos y cifrado en reposo (2026-08/09).
+8. ~~La app no existe.~~ ✅ **Existe** (Android/iOS con Expo): ruta segura, alertas, reporte,
+   segundo plano, modo sin conexión y actualizaciones por aire. Sin publicar en tiendas y sin usuarios
+   reales, que es la grieta que queda (#1 de esta sección).
 9. **Adopción/confianza sin evidencia.** No hay investigación con usuarios ni con autoridades: no
    sabemos si lo usarían o confiarían.
 
 ## 3. ¿Estamos "bien"? Veredicto honesto
 - **Como tesis de maestría:** sí, **con la honestidad por delante**. OE1 cumple (con la salvedad del
-  dato simulado), OE3 cumple, OE4 tiene proxy medido, y el **aporte real** es el *marco replicable en
+  dato simulado), OE3 cumple en lo operativo (sin el 69 %), OE4 tiene proxy medido (−4,84 %, sin el 30 %), y el **aporte real** es el *marco replicable en
   contexto de escasez* + la discusión metodológica. **Declarar las 10 grietas de §1 la fortalece.**
-- **Como producto comercial:** **todavía no.** Falta usuarios reales, validación del valor, bucle de
-  datos vivo, marco ético/legal y la app. Hoy es un **prototipo de investigación**, no un producto.
+- **Como producto comercial:** **todavía no.** Faltan usuarios reales, validación del valor y bucle de
+  datos vivo. La app y el marco legal básico ya existen (2026-09). Hoy es un **prototipo de investigación**, no un producto.
 
 ## 4. Política de citación (2-4 fuentes por afirmación, IEEE)
 Varias afirmaciones hoy penden de **una sola** cita. Hay que **reforzarlas**. Estado:
@@ -118,11 +127,12 @@ Varias afirmaciones hoy penden de **una sola** cita. Hay que **reforzarlas**. Es
 
 ## 5. Mejoras priorizadas (qué atacar y en qué orden)
 1. **Reforzar citación** (2-4 por afirmación) en todos los docs — barato, sube el rigor de inmediato.
-2. **Intervalos de confianza / significancia** en OE1 y OE4 (bootstrap sobre el held-out y el barrido).
+2. ✅ **Intervalos de confianza / significancia** en OE1 y OE4 (bootstrap sobre el held-out y el barrido).
 3. **Declarar explícitamente** en la tesis la no-validación del riesgo y el sesgo del dato simulado
    (ya iniciado en `VALIDACION_RIESGO.md` — reforzar).
-4. **Prueba de replicabilidad mínima**: correr el pipeline en una 2ª ciudad (aunque sea con datos
-   parciales) para pasar de "afirmar" a "demostrar".
+4. 🟡 **Prueba de replicabilidad mínima**: el pipeline ya corre en Cali, pero solo prueba portabilidad
+   técnica; T6b resultó no concluyente. Pasar a «demostrar» exige el barrido canónico sobre Cali y dato
+   de resultado.
 5. **Marco ético** (falsa seguridad, estigmatización, privacidad) como sección de la tesis.
 6. **Bucle de datos vivo** (reporte ciudadano) + **validación con usuarios** → convierte prototipo en
    producto y habilita GWR/calibración real.

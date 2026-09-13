@@ -1,123 +1,166 @@
-# NómadaAI — Arquitectura del software
+# Nómada.AI — Arquitectura del software
 
-> Aplicación inteligente para la gestión segura de rutas urbanas mediante análisis de
-> datos en tiempo real en el Distrito de San Andrés de Tumaco, Nariño.
+> **Estado a 2026-09-12.** Describe lo que está desplegado hoy, verificado contra el código.
 > Tesis MGTIC · Universidad de Nariño · Engler González.
+> Fundamentación de métodos en [METODOLOGIA.md](METODOLOGIA.md) y [MODELO_RIESGO.md](MODELO_RIESGO.md);
+> cifras en [RECOMPUTO_2026-08.md](RECOMPUTO_2026-08.md); pendientes en
+> [PENDIENTES_PRODUCTO.md](PENDIENTES_PRODUCTO.md).
 
-Este documento describe los cimientos técnicos de la aplicación que materializa la
-investigación de `Research/`. Define el stack, la arquitectura, el contrato de API y el
-modelo de datos. La fundamentación de métodos y del riesgo está en
-[METODOLOGIA.md](METODOLOGIA.md) y [MODELO_RIESGO.md](MODELO_RIESGO.md).
+## 1. Objetivos y dónde viven
 
-## 1. Objetivos y estado (4 objetivos específicos)
+| Obj. | Qué hace | Código |
+|------|----------|--------|
+| OE1 | Predice el destino de un recorrido parcial | `services/api/app/ml/destination.py` · `/predict/*` · `/trajectories/*` |
+| OE2 | Índice de riesgo por zona, hora y día, configurable por ciudad | `services/api/scripts/rebuild_risk_*.py` (offline) · `RiskStore` · `/risk/*` |
+| OE3 | Ruta segura vs directa y alerta anticipada | `RouteGraph` (networkx) · `/route/*` · hooks de viaje en la app |
+| OE4 | Evaluación de efectividad | `/trajectories/evaluate` · `/evaluate/*` · `services/api/scripts/oe*.py` |
 
-| Obj. | Descripción | Estado | Dónde vive |
-|------|-------------|--------|-----------|
-| OE1 | Caracterizar la movilidad y **predecir el destino** | ✅ Operativo y medido | `Research/` (datos+modelo) · `services/api` |
-| OE2 | Modelo de **riesgo delictivo por zonas** (espacio-temporal) | ✅ Operativo | `services/api` (`/risk/zones`) · `Research/analysis_v2` |
-| OE3 | **Rutas seguras** + **alerta anticipada** | ✅ Operativo | `services/api` (`/predict/online`, `/route/build`) · `apps/web` |
-| OE4 | **Evaluar la efectividad** (train/test, escenarios) | ✅ Operativo | `services/api` (`/trajectories/evaluate`) |
+## 2. Decisiones de arquitectura
 
-## 2. Decisiones de arquitectura (ADR resumido)
+1. **Un solo servicio para API y escritorio.** Un contenedor Docker en Hugging Face Spaces sirve la
+   API FastAPI y el `dist/` estático de la web. Sin servidores aparte.
+2. **Artefactos embebidos en la imagen.** Trayectorias, corredores, mallas de riesgo, configuraciones
+   por ciudad, red vial de Cali y POIs viven en `services/api/artifacts/` y se copian a `/research`. Los
+   pesados se generan offline y se versionan con `sha256` (`scripts/GOLDEN.md`). El disco del Space es
+   efímero: nada que importe se escribe en caliente.
+3. **Predicción sin GPU.** Recuperación por vecinos (numpy + scikit-learn, KDTree + rumbo). Cabe en la
+   CPU gratuita del Space.
+4. **Ruteo en el backend, sin pgRouting.** Dijkstra de `networkx` con `peso = distancia · (1 + λ·riesgo)`.
+   Tumaco usa el grafo derivado de su corpus de trayectorias; Cali, la red vial de OpenStreetMap
+   (`fetch_road_graph.py` → `cali_red_vial.json.gz`). Los grafos se construyen al arrancar.
+5. **Postgres solo para lo que escriben los usuarios.** Neon (Postgres gratuito, se reactiva solo al
+   conectarse). Las tablas se crean en el primer uso. Sin `DATABASE_URL` la API funciona y esas
+   funciones degradan: el histórico queda en el dispositivo y el catálogo de ciudades vacío.
+6. **Identidad con Clerk, autorización en el servidor.** El backend verifica el JWT contra el JWKS de
+   `CLERK_ISSUER` con PyJWT. El rol admin sale de `ADMIN_USER_IDS`; el cliente nunca decide.
+7. **Monorepo con código compartido.** `packages/shared` tiene tipos, cliente de API, paletas de
+   riesgo, protección, textos de ayuda y legales, base cartográfica y escape de HTML. Web y app lo
+   consumen; lo común no se duplica.
+8. **MapLibre en todas partes.** MapLibre GL JS 4.7.1 en escritorio y en la versión web de la app;
+   MapLibre React Native 11.3.6 en Android e iOS. Base vectorial de OpenFreeMap (Positron y Dark, datos
+   de OpenStreetMap, sin clave) y satélite de Esri, definidas en `packages/shared/src/basemap.ts`.
+9. **«Tiempo real» honesto.** No existen feeds abiertos de delito en vivo para Tumaco. Se modela con
+   riesgo por franja horaria, reportes ciudadanos y la posición del usuario.
+10. **La app funciona con mala señal.** Lecturas con copia local (red primero, 3 MB, aviso de
+    antigüedad) y escrituras en una cola cifrada que se vacía al volver la conexión.
 
-1. **No reescribir OE1.** El backend reutiliza directamente los artefactos de `Research/`
-   (`trajectories_xy.parquet`, `traclus_segments_wgs84.geojson`, embeddings). La predicción
-   de destino es un **puerto fiel** de `Research/scripts/traj_nn.py` (KDTree + rumbo),
-   verificado contra los resultados originales.
-2. **Predicción ligera, sin GPU.** El método es por recuperación/analogía (numpy + sklearn),
-   no requiere PyTorch en runtime → cabe en planes gratuitos (512 MB).
-3. **Nube gratis.** Supabase (Postgres + PostGIS) + backend en Render/Fly free + frontend en
-   Vercel/Netlify. Sin costos para una investigación académica.
-4. **Sin pgRouting.** Supabase no permite esa extensión. El ruteo seguro (OE3) se calcula en
-   el backend con `networkx` sobre el grafo vial de Tumaco (`tumaco.osm`/`tumaco.net.xml`).
-5. **Monorepo web-first, móvil-ready.** El paquete `packages/shared` (tipos + cliente API)
-   permite añadir una app móvil (Expo) reutilizando el contrato sin reescribir.
-6. **Honestidad sobre "tiempo real".** No existen feeds abiertos de criminalidad en vivo para
-   Tumaco. "Tiempo real" se modela con (a) riesgo por franja horaria, (b) reportes ciudadanos
-   (`/incidents/report`), y (c) refresco periódico de datos abiertos.
-
-## 3. Vista de componentes (C4 nivel 2)
+## 3. Componentes
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  Usuario (web / futuro móvil)                                      │
-│   apps/web  — React + Vite + MapLibre GL (OSM tiles, sin API key)  │
-└───────────────┬───────────────────────────────────────────────────┘
-                │  HTTPS (JSON / GeoJSON)   ── @nomadaai/shared (tipos+cliente)
-                ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  services/api — FastAPI (Python 3.11)                              │
-│   • ml/destination.py  predicción de destino (OE1)  [REAL]         │
-│   • data/corridors.py  corredores TRACLUS           [REAL]         │
-│   • ml/routing.py      ruta segura (OE3)            [STUB→networkx] │
-│   • routers/risk.py    zonas de riesgo (OE2)        [STUB]         │
-└───────┬───────────────────────────────────┬───────────────────────┘
-        │ lee artefactos                     │ (futuro) SQL
-        ▼                                     ▼
-┌─────────────────────────┐      ┌──────────────────────────────────┐
-│ Research/ (fuente verdad)│      │ Supabase Postgres + PostGIS       │
-│  parquet, geojson, npy   │      │  corridors, risk_zones, incidents,│
-│  (no se modifica)        │      │  road_edges/nodes (capas servicio)│
-└─────────────────────────┘      └──────────────────────────────────┘
+┌────────────────────────────┐   ┌──────────────────────────────────────┐
+│ apps/web (escritorio/tesis) │   │ apps/mobile (Expo SDK 57, RN)         │
+│ React + Vite + MapLibre GL  │   │ Android · iOS · web                   │
+│ simulador, BI, panel admin  │   │ viaje, alertas, reporte, sin conexión │
+└──────────────┬─────────────┘   └───────────────┬──────────────────────┘
+               │     @nomadaai/shared (tipos, cliente, basemap)     │
+               └────────────────────┬──────────────────────────────┘
+                                    │ HTTPS · JSON / GeoJSON
+                                    ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ services/api — FastAPI (Python 3.11) en Hugging Face Space (Docker)    │
+│  lifespan: predictor · corredores · RiskStore por ciudad · grafos      │
+│  routers: health predict trajectories corridors risk route pois        │
+│           evaluation history feedback admin                            │
+│  core: config · auth (Clerk JWT) · ratelimit (ventana por IP)          │
+└───────────┬───────────────────────────────────┬──────────────────────┘
+            │ lee al arrancar                    │ psycopg
+            ▼                                    ▼
+┌────────────────────────────┐   ┌──────────────────────────────────────┐
+│ /research (artefactos)      │   │ Neon Postgres                          │
+│ parquet, geojson, CSV de    │   │ sim_effectiveness · incidents ·        │
+│ riesgo, risk_config.*.json, │   │ feedback · app_config · city_catalog   │
+│ red vial, POIs              │   │                                        │
+└────────────────────────────┘   └──────────────────────────────────────┘
+
+Servicios externos: Clerk (identidad) · OpenFreeMap / Esri (teselas) ·
+Nominatim (búsqueda de direcciones) · EAS Update (OTA de la app, canal production)
 ```
 
 ## 4. Contrato de API
 
-Base: `http://localhost:8000` (dev). Docs OpenAPI en `/docs`.
-
-| Método | Ruta | Estado | Entrada → Salida |
-|--------|------|--------|------------------|
-| GET | `/health` | real | → estado + conteos |
-| POST | `/predict/destination` | **real** | `{points[],type?,topk?}` → `{candidates[]}` |
-| GET | `/corridors?bbox=&limit=` | **real** | → FeatureCollection (LineString) |
-| GET | `/trajectories/similar?id=` | real | → vecinos Fréchet |
-| GET | `/risk/zones?bbox=` | stub | → FeatureCollection (vacío) |
-| POST | `/route/safe` | stub | `{origin,dest,risk_weight}` → ruta |
-| POST | `/incidents/report` | stub | `{lon,lat,category,description?}` → ack |
-
-El contrato es la única fuente de verdad y está duplicado en dos lugares que deben
-mantenerse en sincronía: `services/api/app/models/schemas.py` (Pydantic) y
+Base de producción: `https://englergz-nomadaai.hf.space`. OpenAPI en `/docs`.
+El contrato se mantiene en dos sitios sincronizados: `services/api/app/models/schemas.py` (Pydantic) y
 `packages/shared/src/types.ts` (TypeScript).
 
-## 5. Modelo de datos (PostGIS)
+| Método | Ruta | Uso | Auth |
+|--------|------|-----|------|
+| GET | `/health` | estado, conteos y preparación de auth/admin (`auth_ready`, `admin_ready`) | — |
+| POST | `/predict/destination` | candidatos de destino (OE1) | — |
+| POST | `/predict/online` | predicción en marcha con alerta anticipada | — |
+| GET | `/trajectories/sample` · `/{tid}/track` · `/{tid}/demo` · `/similar` | trayectorias para el simulador | — |
+| GET | `/trajectories/evaluate` | evaluación OE1/OE4 (`n`, `noise_m`) | — |
+| GET | `/corridors` | corredores TRACLUS | — |
+| GET | `/risk/cities` · `/risk/zones` | ciudades con capa de riesgo; malla por `city`, `hour`, `day`, `bbox` | — |
+| POST | `/incidents/report` | reporte ciudadano (rate-limit) | opcional |
+| GET | `/incidents/aggregate` | reportes agregados | — |
+| GET | `/route/cities` | ciudades que rutean | — |
+| POST | `/route/build` | ruta segura vs directa con exposición comparada | — |
+| POST | `/route/safe` | variante simple de ruta segura | — |
+| GET | `/pois` | lugares de interés | — |
+| GET | `/evaluate/alerts` · `/evaluate/scenarios` | barridos de alerta | — |
+| POST · GET · GET · DELETE | `/history/trip` · `/history/summary` · `/history/stats` · `/history` | histórico por usuario y BI | token en escritura |
+| POST | `/feedback` | opinión antes de borrar datos | opcional |
+| GET | `/config/app` | niveles de protección, `ads_enabled` | — |
+| GET | `/cities/catalog` | ciudades que la app puede encontrar | — |
+| GET | `/admin/me` | ¿el token es admin? | admin |
+| PUT | `/admin/config/app` | editar configuración de la app | admin |
+| GET · DELETE | `/admin/reports` · `/admin/reports/{id}` | moderar reportes | admin |
+| GET | `/admin/summary` · `/admin/feedback` | KPIs y opiniones | admin |
+| GET | `/admin/cities` | por ciudad: riesgo, red vial, predicción y factores con motivo | admin |
+| POST · DELETE | `/admin/cities/catalog` · `/admin/cities/catalog/{key}` | alta y baja en el catálogo | admin |
 
-Ver `db/migrations/001_init_postgis.sql`. Solo **capas derivadas** (no los 1.5 M de puntos
-crudos, que no caben en el tier free de 500 MB):
+Las escrituras y el cómputo pesado tienen rate-limit por IP (429 con `Retry-After`).
 
-- `corridors` — segmentos TRACLUS (OE1).
-- `trajectories_sample` — muestra de trayectorias para visualización (OE1).
-- `road_nodes` / `road_edges` — grafo vial con columna `risk` (OE3).
-- `risk_zones` — hexágonos H3 con `risk_score` (OE2).
-- `incidents` — incidentes de datos abiertos + reportes ciudadanos (OE2 / tiempo real).
+## 5. Modelo de datos
 
-## 6. Roadmap
+**Artefactos (solo lectura, en la imagen):**
+`data/trajectories_xy.parquet` · `traclus_segments_wgs84.geojson.gz` · `neighbors_frechet_mot.csv` ·
+`risk/<ciudad>_riesgo_horario.csv` (Tumaco 475 celdas, Cali 4.268) · `risk/risk_config.<ciudad>.json` ·
+`risk/cali_red_vial.json.gz` · `pois/tumaco_pois.geojson` · `eval/*.csv` (evidencia de cada cifra).
 
-### OE2 — Riesgo delictivo por zonas
-1. **Ingesta** desde [datos.gov.co](https://www.datos.gov.co) (Policía Nacional / SIEDCO),
-   filtrando municipio **Tumaco (DANE 52835)**; complementar con marco geoestadístico DANE.
-2. **Geo-referenciación y agregación** a hexágonos **H3** (res ~9) o barrios →
-   `risk_score = f(incidentes/área, decaimiento temporal, franja horaria)`.
-3. Poblar `incidents` y `risk_zones`; activar `/risk/zones`.
-   - **Limitación declarada:** buena parte de los datos abiertos están a nivel municipio, no
-     a nivel punto. Se documentará la resolución real obtenida.
+**Postgres (Neon), creadas por el backend en el primer uso:**
 
-### OE3 — Rutas seguras + alertas
-1. `build_road_graph.py`: grafo `networkx` desde `tumaco.osm` (cacheado en pickle/Storage).
-2. Activar peso de riesgo: `weight = length · (1 + λ·risk(edge))`, con `λ = risk_weight`.
-3. Alertas in-app/push al entrar en zonas de riesgo.
-4. App móvil **Expo** desde `packages/shared`.
+| Tabla | Módulo | Contenido |
+|---|---|---|
+| `sim_effectiveness` | `data/history.py` | un registro por viaje: predicción y protección comparadas, `mode`, `source`, `city` |
+| `incidents` | `data/incidents.py` | reportes ciudadanos |
+| `feedback` | `data/feedback.py` | cuatro respuestas y comentario |
+| `app_config` | `data/appconfig.py` | configuración editable desde el panel |
+| `city_catalog` | `data/citycatalog.py` | ciudades visibles en el selector (no dan cobertura) |
 
-## 7. Despliegue (gratis)
+`db/migrations/001_init_postgis.sql` es el esquema PostGIS del primer diseño (corredores, grafo y
+riesgo en base de datos). **El backend actual no lo usa**: esas capas se sirven desde artefactos.
+`002_sim_effectiveness.sql` documenta la tabla del histórico.
+
+**En el dispositivo:** histórico, recorrido en curso y cola de escrituras cifrados con AES-256-GCM y la
+clave en Keystore/Keychain; copia local de lecturas en AsyncStorage.
+
+## 6. Abrir una ciudad
+
+Tres ingredientes independientes (detalle en [DISENO_FUTURO.md](DISENO_FUTURO.md) §1):
+
+1. **Capa de riesgo**: `rebuild_risk_city.py` (DANE + OSM) → CSV horario + `risk_config`.
+2. **Red vial**: `fetch_road_graph.py` (OSM).
+3. **Predicción**: exige trayectorias reales de la ciudad.
+
+Se commitean los artefactos y se hace `git push space main`. El panel admin solo añade la ciudad al
+catálogo; ingesta y entrenamiento no caben en el Space (`PENDIENTES_PRODUCTO.md` §6.3).
+
+## 7. Despliegue
 
 | Componente | Servicio | Notas |
-|-----------|----------|-------|
-| DB | Supabase (free) | PostGIS incluido; 500 MB DB + 1 GB Storage |
-| API | Render / Fly.io (free) | `uvicorn app.main:app`; subir artefactos OE1 o leerlos de Storage |
-| Web | Vercel / Netlify (free) | `npm run build:web`; `VITE_API_URL` apuntando a la API |
+|---|---|---|
+| API + escritorio | Hugging Face Space `englergz/nomadaai` (Docker, CPU gratuita) | `git push space main:main` |
+| Base de datos | Neon Postgres (gratuito) | secret `DATABASE_URL` |
+| Identidad | Clerk | `VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_ISSUER`, `ADMIN_USER_IDS` |
+| App móvil | APK local (gradle) · EAS Update canal `production` | `runtimeVersion` por huella; ver `COMANDOS.md` §3–§5 |
+| Código | GitHub `englergz/nomadaai` | `git push origin main` |
+
+Pasos y variables en [DEPLOY.md](DEPLOY.md).
 
 ## 8. Potencial de producto
 
-La navegación consciente del riesgo ("safe routing") tiene mercado: seguros, logística de
-última milla, turismo y seguridad ciudadana en ciudades con alta percepción de inseguridad.
-El diferencial frente a Google/Waze es la **capa de riesgo georreferenciada local** combinada
-con la **predicción de destino**. Tumaco es un caso de validación fuerte.
+La navegación consciente del riesgo tiene mercado en seguros, logística de última milla, turismo y
+seguridad ciudadana. El diferencial frente a Google o Waze es la capa de riesgo local combinada con la
+predicción de destino. El margen de reducción medido en Tumaco (−4,84 %) es modesto y lo limita la red
+vial; el valor de producto hoy está más en la alerta y el reporte que en el desvío.

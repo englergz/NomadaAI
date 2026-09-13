@@ -107,7 +107,7 @@ Requisitos, en orden — cada uno se verifica, no se supone:
 ```bash
 cd apps/mobile
 npx eas-cli@latest login                                   # una vez
-npx eas-cli@latest channel:create production               # una vez: channel → branch del mismo nombre
+npx eas-cli@latest channel:create production               # una vez (hecho el 2026-09-10): channel → branch del mismo nombre
 npx eas-cli@latest channel:list                            # debe listar production → production
 ```
 

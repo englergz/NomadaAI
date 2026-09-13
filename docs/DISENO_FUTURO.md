@@ -66,10 +66,12 @@ del producto) reduce la exposición un **19,1 %** por un 2,9 % más de distancia
 
 ### Cómo lo refleja la app (ya implementado)
 
-`map.tsx` evalúa `canRoute` y `canPredict` por separado en vez de un booleano
+`hooks/use-city.ts` evalúa `canRoute` y `canPredict` por separado en vez de un booleano
 «ciudad completa». **`canRoute` lo dice el servidor** (`GET /route/cities`), no una
 lista en el cliente: abrir una ciudad nueva ya no exige publicar versión de la app,
-basta con dejar su red vial en el backend. En una ciudad con solo riesgo se ofrece
+basta con dejar su red vial en el backend. Desde el 2026-09-12 tampoco hace falta publicar versión
+para que una ciudad **aparezca** en el selector: el catálogo vive en Postgres (`/cities/catalog`) y se
+da de alta desde el panel admin. Estar en el catálogo no da cobertura; la dan los tres ingredientes. En una ciudad con solo riesgo se ofrece
 **recorrido libre** con avisos en zona, y el copy dice la verdad.
 
 **Pendiente para que Cali quede completa:** la predicción (paso 3), que exige
@@ -142,7 +144,7 @@ Aquí hay que ser honestos sobre qué es posible desde una app:
 > se documenta como limitación, no como función.
 
 ### UI a dejar diseñada (marcada «Próximamente»)
-- Entrada en Ajustes → «Círculos» con estado *Próximamente* y explicación real.
+- ✅ **(2026-09-10)** Entrada en Configuración → «Círculos» con estado *Próximamente* y explicación real, y página en el onboarding.
 - Pantalla de círculo: miembros, estado (en casa / en camino / sin señal), y el
   panel de configuración de disparadores **individual**.
 - Botón de pánico accesible en el mapa durante el recorrido.
@@ -150,6 +152,8 @@ Aquí hay que ser honestos sobre qué es posible desde una app:
 ---
 
 ## 3. Legal y confianza (obligatorio antes de publicar)
+
+> ✅ **Hecho** (v1.0.0, 2026-08-03): términos, privacidad, aceptación registrada y borrado de datos.
 
 - **Términos de uso** y **Política de privacidad** con fecha oficial de vigencia,
   aceptación explícita en el primer arranque (no preseleccionada) y registro de
@@ -165,6 +169,8 @@ Aquí hay que ser honestos sobre qué es posible desde una app:
 ---
 
 ## 4. Onboarding de valor (no solo permisos)
+
+> ✅ **Hecho** (2026-09-10): cinco páginas en `app/welcome.tsx`, con la nota de que la cuenta solo conserva el histórico.
 
 Destacar, sin obligar, en el primer arranque y luego de forma puntual:
 - **Reportar incidentes**: lo que aporta la comunidad mejora el mapa de todos.

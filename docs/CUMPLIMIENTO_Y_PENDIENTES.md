@@ -1,6 +1,6 @@
 # Nómada.AI · Cumplimiento y pendientes
 
-Estado a 2026-08-03 (filas actualizadas hasta 2026-09-08). Lo que dice **✅** está verificado ejecutando, no solo escrito.
+Estado a 2026-08-03 (filas actualizadas hasta 2026-09-12). Lo que dice **✅** está verificado ejecutando, no solo escrito.
 
 > La lista completa de pendientes del producto (pedido vs hecho en todas las sesiones) vive en
 > [`PENDIENTES_PRODUCTO.md`](PENDIENTES_PRODUCTO.md); aquí queda la matriz de cumplimiento.
@@ -48,10 +48,10 @@ Estado a 2026-08-03 (filas actualizadas hasta 2026-09-08). Lo que dice **✅** e
 | Sin secretos embebidos en el cliente | ✅ verificado |
 | Todo el tráfico por HTTPS (sin cleartext) | ✅ verificado |
 | Rol de admin verificado **en servidor** (nunca en cliente) | ✅ `/admin/me` → 401 sin token |
-| Escapado de datos externos en el mapa (XSS) | ✅ |
+| Escapado de datos externos en el mapa (XSS) | ✅ escritorio desde julio · **(2026-09-12)** también la versión web de la app, que insertaba el nombre del lugar (OSM) sin escapar; ahora las dos usan `escapeHtml` de `packages/shared` |
 | Rate-limit en escrituras del backend | ✅ **en servidor** (2026-09-08): ventana deslizante por IP en `core/ratelimit.py` sobre escrituras y cómputo, 429 con `Retry-After`; límites por identidad en BD como control primario; el cubo `anon` compartido de reportes corregido con `device_id` |
-| Auditoría de dependencias (`npm audit`) | ✅ **revisado (2026-09-08)**: 29 → 28; el único HIGH directo (Clerk, bypass de autorización) parcheado quirúrgicamente; los 28 residuales son tooling de build/dev-server o transitivos sin parche seguro, clasificados y aceptados con motivo en `docs/DEPENDENCIAS.md`. **Nunca `npm audit fix --force`** (degrada expo 57→46) |
-| Auditoría de dependencias backend (`pip-audit`) | ✅ **22 → 0** (2026-09-08): `pyjwt` 2.13.0 (12 avisos, incl. cabecera `crit`), `starlette` 1.6.0 vía `fastapi` 0.141.1 (9 avisos: validación de Host y ruta), `pyarrow` 23.0.1 (use-after-free). Verificado con la suite completa con lifespan sobre la malla real |
+| Auditoría de dependencias (`npm audit`) | ✅ **revisado (2026-09-08)**: 29 → 28; el único HIGH directo (Clerk, bypass de autorización) parcheado quirúrgicamente; los 28 residuales son tooling de build/dev-server o transitivos sin parche seguro, clasificados y aceptados con motivo en `docs/DEPENDENCIAS.md`. **Nunca `npm audit fix --force`** (degrada expo 57→46). **Revisión 2026-09-12:** 30 (1 crítica en `maplibre-gl`, no explotable en 4.7.1; 1 high nueva en `nanoid`), ver `DEPENDENCIAS.md` |
+| Auditoría de dependencias backend (`pip-audit`) | ✅ **22 → 0** (2026-09-08): `pyjwt` 2.13.0 (12 avisos, incl. cabecera `crit`), `starlette` 1.6.0 vía `fastapi` 0.141.1 (9 avisos: validación de Host y ruta), `pyarrow` 23.0.1 (use-after-free). Verificado con la suite completa con lifespan sobre la malla real. **Sigue en 0 el 2026-09-12** |
 
 ### A.4 Calidad y buenas prácticas
 
@@ -62,8 +62,8 @@ Estado a 2026-08-03 (filas actualizadas hasta 2026-09-08). Lo que dice **✅** e
 | Contrato de diseño en tokens (radios, colores) | ✅ un solo sitio por plataforma |
 | Reglas de R8 para lo que se carga por reflexión | ✅ (su ausencia rompía el segundo plano) |
 | Errores que no se tragan en silencio | ✅ corregido en fondo y notificaciones |
-| `map.tsx` con más de 2.000 líneas | ❌ refactor pendiente |
-| Pruebas automatizadas | ✅ **29/29** (21 móvil + 8 invariantes de `/route/build`) |
+| `map.tsx` partido en hooks | ✅ **(2026-09-10)** 1.294 → 744 líneas con `use-trip`, `use-city`, `use-banner`, `use-health`, `use-ota`; `BaseSheet` común a las nueve hojas |
+| Pruebas automatizadas | ✅ **48/48** en el cliente móvil (7 suites) + **16/16** invariantes de `/route/build` en Tumaco y Cali (2026-09-12) |
 
 ### A.5 Funcionalidad verificada ejecutando
 
@@ -101,9 +101,9 @@ Estado a 2026-08-03 (filas actualizadas hasta 2026-09-08). Lo que dice **✅** e
 3. **Fotos en los reportes** (selector + almacenamiento de objetos + endpoint).
    Postgres no es sitio para archivos: aquí sí aplica un almacenamiento tipo
    Supabase Storage o R2.
-4. **Onboarding de valor**: destacar reportar incidentes, protección automática,
-   sesión para el histórico, y Círculos como «próximamente».
-5. **Modal de ciudad por país** con estados disponible / próximamente / no disponible.
+~~4. Onboarding de valor~~ — **RESUELTO (2026-09-10)**: cinco páginas, con Círculos «próximamente».
+~~5. Modal de ciudad por país~~ — **RESUELTO (2026-09-10)**: estados dichos por el servidor y buscador.
+   Desde 2026-09-12 las ciudades que se pueden buscar vienen del catálogo del servidor.
 
 ### B.3 Bugs abiertos
 6. ~~Android: el servicio de fondo no se reengancha~~ — **RESUELTO**.
@@ -113,11 +113,11 @@ Estado a 2026-08-03 (filas actualizadas hasta 2026-09-08). Lo que dice **✅** e
    aviso). En iOS no se veía porque allí el seguimiento sí sobrevive. Ahora al
    reanudar se fuerza un ciclo limpio de parada y arranque. Verificado matando la
    app y reabriendo: servicio en primer plano con tipo 0x8 (ubicación).
-7. **Animación de arranque decorativa**: tiene tope de 4 s pero no refleja la
-   carga real (fuente, ajustes, ubicación, capa de riesgo).
+~~7. Animación de arranque decorativa~~ — **RESUELTO (2026-09-10)**: espera ajustes, ubicación y
+   capa de riesgo, con tope de 4 s, y dice qué está cargando.
 
 ### B.4 Calidad
-8. **Refactor de `map.tsx`** (>2.000 líneas) en hooks: useTrip, useCity, useBanner.
+~~8. Refactor de `map.tsx`~~ — **RESUELTO (2026-09-10)**, ver A.4.
 ~~9. Pruebas automatizadas de lo crítico~~ — **RESUELTO (2026-08-10): 29/29.**
    21 en el cliente móvil (alertas por zona, recálculo por desvío, reanudación en
    segundo plano) + 8 invariantes sobre `/route/build` en el backend, que es donde
@@ -137,7 +137,9 @@ Estado a 2026-08-03 (filas actualizadas hasta 2026-09-08). Lo que dice **✅** e
 
 | Tarea | Estado |
 |---|---|
-| `ADMIN_USER_IDS` en el Space con tu **User ID** (`user_…`, no `app_…`) | ⚠️ pendiente de confirmar |
+| `ADMIN_USER_IDS` en el Space con tu **User ID** (`user_…`, no `app_…`) | ✅ `/health` responde `admin_ready: true` y el panel carga con datos de producción (2026-09-12) |
 | Google Cloud Console: crear proyecto y marca en la pantalla de consentimiento | ❌ pendiente |
 | Neon: **no hay que cambiar nada**, el nivel gratuito sirve | ✅ sin acción |
-| Publicar la primera OTA (`eas update --branch production`) | ⚠️ tras commitear el lock |
+| Publicar la primera OTA (`eas update --branch production`) | ✅ canal `production` creado el 2026-09-10; último update «Catálogo de ciudades desde el servidor» (2026-09-12) |
+| Instalar el APK del 2026-09-10 en el teléfono (los anteriores no reciben OTA) | ❌ pendiente |
+| Decidir almacenamiento para fotos de reportes (Supabase Storage o Cloudflare R2) | ❌ pendiente |

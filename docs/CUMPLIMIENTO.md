@@ -1,89 +1,68 @@
 # Cumplimiento de resultados vs. lo propuesto en el anteproyecto
 
-> Autoevaluación **crítica** del estado del proyecto frente a los objetivos, resultados esperados e
-> indicadores aprobados. Honesta a propósito: declarar los vacíos **aumenta** la validez de la tesis.
-> Leyenda: ✅ cumplido · 🟡 parcial · ⚠️ vacío/riesgo.
+> **Estado a 2026-09-12.** Autoevaluación frente a los objetivos, resultados esperados e indicadores
+> del anteproyecto aprobado. Todas las cifras son las **recomputadas** sobre el sistema desplegado
+> (`RECOMPUTO_2026-08.md`, cada una con su comando y el hash de su artefacto) y coinciden con el
+> `README.md`. La tesis se entregó el **2026-08-11**.
+>
+> Leyenda: ✅ cumplido · 🟡 parcial · ❌ no alcanzado (declarado).
 
-## Tablero: prometido → hecho → cumplido
+> **Cifras retiradas.** Versiones anteriores de este documento publicaban 90,0 % [85,0–94,4] y 7,8 m
+> en OE1, robustez «72–82 %», alerta «88,7 %» con «~280 m / 25 s», OE4 «−7,0 % [6,4–7,6]» con
+> «95 % de rutas que mejoran», «95 % de funcionalidad» y «replicado en Cali como prueba de
+> adaptabilidad». **Ninguna debe citarse.** El motivo de cada retirada está en `RECOMPUTO_2026-08.md`.
 
-> Columna **Prometido** = texto literal de la tabla "Resultados esperados / Indicadores" del
-> anteproyecto aprobado (págs. 21-24). **Cumplido:** ✅ sí · 🟡 parcial · ⚠️ pendiente.
+## Tablero: prometido → obtenido → estado
 
 | OE | Resultado esperado / indicador (anteproyecto) | Resultado obtenido | Estado |
 |----|-----------------------------------------------|--------------------|--------|
-| **OE1** | "Modelo de IA desarrollado e integrado en el sistema, con pruebas de funcionalidad y rendimiento, y **precisión de predicción superior al 85%**." | Modelo (k-vecinos + rumbo) sobre conjunto **no visto** (train/test 80/20): **90,0% ≤50 m (IC 95% [85,0–94,4])**, error mediano 7,8 m [6,3–9,4] (bootstrap, n=160). El límite inferior del IC coincide con el umbral (85%) → **estadísticamente en/por encima de la meta**. Comparación de **3 vías** (vs línea recta y Markov). `/trajectories/evaluate`. | ✅ **Superado** |
-| OE1 | "Informe de caracterización entregado con especificaciones de calidad y patrones identificados." | Caracterización hecha (TrajCL, TRACLUS, Fréchet); falta **redactarla como informe** en el documento. | 🟡 |
-| **OE2** | "Modelo de IA (algoritmo desarrollado e integrado…, con pruebas de funcionalidad y rendimiento, y **precisión de predicción superior al 85%**)." | Índice **operativo** (`/risk/zones?hour=`), **reconstruido con población censal DANE 2018 real por manzana**: se corrigió un índice inicial degenerado (96% tráfico → 68%; ahora corr 0,80 con población; niveles 213/149/**63** vs. 342/82/**1**). Caracterización real del fenómeno (86% arma de fuego, 57% sicariato). Es un **índice de exposición/vulnerabilidad fundamentado**, NO un predictor de crimen validado: Tumaco es homogéneo (99% estrato 1) y su violencia es de conflicto armado → la precisión ≥85% requiere microdato **DIJIN** (en trámite). Ver `VALIDACION_RIESGO.md`. | 🟡 *(índice real y calibrado; precisión ≥85% = límite de datos)* |
-| OE2 | "Informe de recopilación, preprocesamiento y categorización de datos… con especificaciones de calidad y patrones." | Datos integrados y categorizados (tipo/hora/zona); falta **redactar el informe**. | 🟡 |
-| **OE3** | "Sistema de recomendaciones operativo…, con un **69% de precisión** en identificación de áreas de riesgo y rutas optimizadas **en tiempo real**." | Ruteo **direccional, por tipo y ponderado por riesgo** (`/route/build`) + **alerta anticipada 88.7%**. El sistema está operativo; el "69% de identificación de áreas" es la **misma validación del riesgo** de OE2 (pendiente de cálculo). | 🟡→✅ *(sistema ✅; falta el % de ID)* |
-| OE3 | "Panel visual… mostrando **al menos tres capas** (zonas de riesgo, puntos de interés y rutas recomendadas)." | Riesgo + rutas (segura/directa) + recorrido + corredores + **capa de POIs** (`/pois`, toggle "Lugares"). | ✅ **Cumplido** |
-| **OE4** | "Informe… sobre **≥5 escenarios** urbanos representativos… análisis cuali y cuantitativo que muestre una **mejora… de al menos un 30%**." | **45 escenarios** (hora×umbral×look-ahead) + **barrido O-D**: la ruta segura mejora en **95%** de los casos; reducción media de exposición **7,0% (IC 95% [6,4–7,6])** — intervalo estrecho = efecto preciso, no ruido. Proxy **objetivo**; el "≥30% de **percepción**" requiere **encuesta con usuarios** (no aplica con datos simulados → trabajo futuro). | 🟡 *(escenarios ✅; percepción = futuro)* |
-| OE4 | "Sistema revisado y optimizado…, con **95% de funcionalidad operativa sin errores críticos**." | App **desplegada y operativa** (HF Space, API + web); falta un **informe de QA** (cobertura/errores). | 🟡 |
+| **OE1** | Modelo de IA integrado, con pruebas de funcionalidad y rendimiento, y **precisión de predicción superior al 85 %**. | k-vecinos + rumbo sobre el conjunto de prueba no visto (**n = 805**): **87,5 % de acierto a ≤50 m (IC 95 % [85,2–89,8])**; ≤100 m 92,7 %; error mediano 7,70 m; dirección correcta (<30°) 92,4 % [90,7–94,3]. `GET /trajectories/evaluate?n=806`. | ✅ en entorno simulado |
+| OE1 | Robustez (implícita en «rendimiento»). | Con ruido GPS gaussiano el acierto a ≤50 m cae a **77,4 % (σ = 5 m)**, **63,7 % (10 m)** y **47,7 % (20 m)**. Con el ruido típico de un teléfono la meta del 85 % **no se sostiene**. | 🟡 declarado |
+| OE1 | Informe de caracterización con especificaciones de calidad y patrones. | Análisis hecho (TrajCL, TRACLUS, Fréchet). Su redacción corresponde al documento de tesis, que no vive en este repositorio. | ✅ análisis · redacción fuera del repo |
+| **OE2** | Modelo de IA con pruebas y **precisión superior al 85 %**. | Índice RTM multivariable y configurable sobre **475 celdas** de 150 m, con datos DANE 2018, OSM y Policía. Orden espacial robusto a perturbaciones de los pesos: **ρ = 0,9898** (mínimo 0,9481). Curva horaria de amplitud ×1,17 con pico a las 19:00, **supuesto de diseño no calibrado con dato local**. Sin verdad-terreno georreferenciada no hay precisión que medir. | ❌ precisión ≥85 % no alcanzada · índice ✅ |
+| OE2 | Informe de recopilación, preprocesamiento y categorización de datos. | Hecho: caracterización de 4.045 homicidios (85,8 % arma de fuego, 56,6 % sicariato, 55,2 % rural) y reconstrucción del índice. `VALIDACION_RIESGO.md`. | ✅ |
+| **OE3** | Sistema de recomendaciones operativo con **69 % de precisión** en identificación de áreas de riesgo y rutas optimizadas en tiempo real. | Ruteo ponderado por riesgo (`/route/build`) y alerta evaluada en el punto de operación real (percentil 0,70): a la hora pico **99,1 %** de los recorridos recibe aviso, **65,8 %** cruza zona de nivel alto; el **58,7 %** de los avisos precede a la entrada, con mediana de **756 m (91 s)**. El 69 % de identificación depende de la misma verdad-terreno que falta en OE2. | 🟡 sistema ✅ · 69 % ❌ |
+| OE3 | Panel visual con **al menos tres capas** (riesgo, puntos de interés, rutas). | Riesgo, lugares (`/pois`), ruta segura y directa, recorrido y corredores, en escritorio y en la app. | ✅ |
+| **OE4** | Informe sobre **≥5 escenarios** urbanos, con **mejora de al menos 30 %**. | 45 escenarios de alerta y barrido origen-destino de 1.200 rutas (40 pares × 5 horas × 6 valores de λ). En la configuración de fábrica (λ = 2,5): **−4,84 % de exposición (IC 95 % [3,62–6,22])**, bootstrap por conglomerados sobre 40 pares, con 1,7 % de sobrecosto; mejora el **100 %** de los recorridos. En λ = 5: −5,88 %. **Ninguna ruta llega al 30 %.** | 🟡 escenarios ✅ · 30 % ❌ |
+| OE4 | Sistema revisado y optimizado, con **95 % de funcionalidad operativa sin errores críticos**. | El «95 %» no tenía denominador y se retiró. La cifra medida hoy: **48/48 pruebas automáticas del cliente móvil** y **16/16 invariantes de `/route/build`** (Tumaco y Cali). Sistema desplegado en `https://englergz-nomadaai.hf.space`. | ✅ con denominador |
 
-## Lo que está sólido (fortalezas)
+## Lo que está sólido
 
-- **OE1 supera la meta** (90% > 85%, IC 95% [85–94]) y de forma **sin sesgo** (train/test, conjunto no visto);
-  **robusto** bajo ruido GPS realista (72–82%).
-- **Marco de riesgo replicable y auditable** (RTM multivariable, trazable por factor) con base
-  criminológica citada y datos oficiales colombianos; **replicado en Cali** (prueba de adaptabilidad).
-- **Alerta anticipada caracterizada** (88.7% avisos antes de la zona, ~280 m / 25 s de anticipación).
-- **Producto real desplegado** (web + API en la nube), con simulación en vivo y evaluación
-  comparativa (no visto vs. rutas nuevas).
-- **Documentación** coherente con el anteproyecto y atribución a la base del director.
+- **OE1 supera la meta en el entorno simulado**, con el límite inferior del IC por encima del 85 % y
+  sobre datos no vistos. La caída bajo ruido GPS está medida, no supuesta.
+- **Marco de riesgo auditable**: cada factor, su peso y el motivo de apagarlo quedan en
+  `risk_config.<ciudad>.json`, y el panel admin los muestra por ciudad.
+- **Ruteo que nunca empeora la exposición**: está garantizado por construcción (Dijkstra sobre un coste
+  que incluye el riesgo). Lo que se contrasta empíricamente es la magnitud.
+- **Producto real**: API y escritorio desplegados; app Android/iOS con actualizaciones por aire; panel
+  admin con datos de producción.
+- **Reproducibilidad**: semillas fijas, hash estable del ruido y artefactos con `sha256` en
+  `services/api/scripts/GOLDEN.md`.
 
-## Vacíos críticos (lo que falta, por prioridad)
+## Límites declarados
 
-1. **Validación del modelo de riesgo (OE2).** Los homicidios abiertos **no traen coordenadas ni hora**
-   → no hay precisión/recall espacial punto a punto sin microdato **DIJIN** (petición radicada). Con lo
-   disponible ya está validado como **índice fundamentado + robusto** (caracterización real + análisis
-   de sensibilidad ρ≈0,99) y con **temporal citado** (CEJ/INMLCF). Ver `VALIDACION_RIESGO.md`.
-2. ~~Ruteo ponderado por riesgo (OE3).~~ ✅ **HECHO:** `/route/build` calcula la ruta segura con
-   `peso = distancia·(1+λ·riesgo)` sobre el grafo dirigido y la compara con la directa
-   (reducción de exposición). Pendiente menor: correr el proxy de OE4 sobre un set de O-D y reportarlo.
-3. **Indicador de percepción ≥30% (OE4).** Reformular a un **proxy cuantitativo** (reducción de
-   exposición ruta segura vs. directa) y/o declarar el estudio de percepción como trabajo futuro.
-4. **Granularidad de datos:** censo DANE por **manzana** (F3), **POIs** OSM (F4/capa del panel),
-   **iluminación** (F5). Elevan la robustez intra-urbana.
-5. **Validación con datos reales:** todo es simulación SUMO; validar con GPS/delito real = trabajo futuro.
+1. **Datos simulados.** Las trayectorias salen de SUMO sobre la red vial real de Tumaco. Falta validar
+   con GPS real.
+2. **Sin verdad-terreno de delito.** Los homicidios abiertos no traen coordenada ni hora. Por eso OE2
+   (≥85 %) y OE3 (69 %) quedan sin alcanzar.
+3. **El margen de OE4 lo pone el territorio.** La red vial de Tumaco ofrece pocas alternativas; el
+   ≥30 % no se alcanza con ningún λ evaluado.
+4. **Cali es portabilidad técnica, no validación del marco.** El pipeline corre allí (4.268 celdas) y
+   rutea sobre la red de OpenStreetMap, pero la prueba de si el factor socioeconómico reordena el mapa
+   resultó **no concluyente** (ρ con/sin factor: Tumaco 0,9841, Cali 0,8491). Ver `T6B_CRITERIO.md`.
+   Sobre Cali no se ha corrido el barrido canónico de OE4.
+5. **Percepción ciudadana** no medida: requiere encuesta con usuarios reales.
 
-## Qué pulir (calidad)
+## Sobre «¿el modelo aprende con el uso?»
 
-- Conectar `/route/safe` al riesgo (desvío real) → cierra OE3 y habilita el proxy de OE4.
-- Añadir capa de **POIs** al mapa (cumple el indicador de "≥3 capas con puntos de interés").
-- Informe de **QA/errores** para el indicador de 95% de funcionalidad.
-- Extender la **malla de riesgo** a todo el casco (reproyección de la red).
+El modelo de destino es de **recuperación**: no reentrena, pero su base crece con cada trayectoria
+observada. En la demo los datos son simulados, así que esa mejora con el uso es una **capacidad del
+producto**, no un indicador medido de la tesis.
 
-## Ruta a 100% (checklist para cerrar la tesis)
+## Veredicto (2026-09-12)
 
-> Lo que falta para poder marcar cada indicador como ✅ y pasar a **documentar**. Ordenado por impacto.
-
-**Hecho:**
-- [x] **OE3 — capa de POIs** (`/pois`, toggle) → "≥3 capas" literal.
-- [x] **OE2 — validación posible** (índice fundamentado + sensibilidad ρ≈0,99 + temporal citado CEJ/INMLCF; `VALIDACION_RIESGO.md`).
-- [x] **OE4 — barrido O-D** con **IC 95%** (7,0% [6,4–7,6]; 95% de rutas mejoran).
-- [x] **Rigor estadístico** — intervalos de confianza (bootstrap) en OE1 (90% [85–94]) y OE4.
-- [x] **Citación reforzada** — 2-4 fuentes IEEE por afirmación (`REFERENCIAS.md`).
-- [x] **Autocrítica** documentada (`CRITICA_Y_MEJORAS.md`).
-- [x] **Robustez de OE1** medida con ruido GPS gaussiano: 90% (0 m) → 82% (5 m) → 72% (10 m) → desempeño realista de calle **72–82%** (deja de ser crítica especulativa).
-- [x] **Replicabilidad** demostrada: pipeline de riesgo corrido en **Cali** (el factor socioeconómico discrimina en territorio heterogéneo; en Tumaco homogéneo es inerte → prueba de adaptabilidad). Ver `HALLAZGOS_Y_DESAFIOS.md`.
-
-**Falta (mayormente redacción):**
-- [ ] **OE1 — informe de caracterización** redactado en la tesis (análisis ya hecho: TrajCL/TRACLUS/Fréchet).
-- [ ] **OE2/OE4 — informes** de datos y de QA (cobertura de pruebas + tasa de errores) formalizados.
-- [ ] **Precisión ≥85% del riesgo (OE2):** requiere microdato **DIJIN** (petición radicada) — declarado.
-- [ ] **Percepción ≥30% (OE4):** encuesta con usuarios = trabajo futuro (no aplica con datos simulados).
-
-### Sobre "¿el modelo aprende con el uso?" (aclaración honesta)
-
-El indicador de OE1 es **precisión >85%**, y está **cumplido (90%)**. El modelo es de **recuperación
-incremental**: no reentrena, pero su base de conocimiento **crece con cada trayectoria observada**
-(añadir un viaje = más cobertura). En el **producto** (app real) cada viaje de la comunidad lo mejora;
-en la **demo** los datos son simulados (SUMO), así que ese "aprendizaje con el uso" es una capacidad
-del producto, no un indicador de la tesis. Declararlo así es correcto y no infla resultados.
-
-## Veredicto
-
-**¿Ya cumplimos?** Parcialmente y bien encaminados: **OE1 cumplido y superado**, **OE4 cuantitativo
-cumplido**, **OE2/OE3 con base construida pero con vacíos declarables**. El núcleo pendiente para
-"cerrar" la promesa central es **(a) el ruteo seguro ponderado por riesgo** y **(b) la validación del
-riesgo con microdato**. Ambos están al alcance y, declarados con honestidad, **fortalecen** la defensa.
+**OE1 cumplido** en entorno simulado, con robustez declarada. **OE3 y OE4 cumplidos en su parte
+operativa** (sistema, capas, escenarios, funcionalidad con denominador) y **no alcanzados en sus
+umbrales numéricos** (69 % y 30 %). **OE2 entrega un índice fundamentado y robusto, sin la precisión
+≥85 %**, que exige microdato georreferenciado. Los incumplimientos están medidos y explicados; ninguno
+se presenta como logrado.

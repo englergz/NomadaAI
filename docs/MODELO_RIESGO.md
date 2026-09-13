@@ -92,7 +92,7 @@ que produce los resultados de la tesis) de lo **definido pero DESHABILITADO** aq
 
 | Factor | Estado (Tumaco) | Motivo — **hallazgo documentado** | Fuente cuando se active |
 |---|---|---|---|
-| **Vulnerabilidad socioeconómica** | **OFF** | **Homogeneidad socioeconómica:** ~**96 % de las zonas (290/301) quedan en vulnerabilidad máxima**; Tumaco es de **predominio de estrato 1** (IPM 53,7 %; alcantarillado urbano 6,7 %, TerriData). Un factor casi constante **no discrimina intra-urbano** → sumarlo sería un multiplicador plano. En **Cali** (heterogéneo en estratos) este factor se **habilita y sí discrimina** → evidencia de replicabilidad. | DANE manzana / TerriData / CEDRE 2024 |
+| **Vulnerabilidad socioeconómica** | **OFF** | **Homogeneidad socioeconómica:** ~**96 % de las zonas (290/301) quedan en vulnerabilidad máxima**; Tumaco es de **predominio de estrato 1** (IPM 53,7 %; alcantarillado urbano 6,7 %, TerriData). Un factor casi constante **no discrimina intra-urbano** → sumarlo sería un multiplicador plano. En **Cali** (heterogéneo en estratos) el factor se **habilita**; si reordena el mapa resultó **no concluyente** (T6b: ρ con/sin factor 0,8491, efecto débil; ver `T6B_CRITERIO.md`). | DANE manzana / TerriData / CEDRE 2024 |
 | **Generadores / atractores (POIs de riesgo)** | **OFF** | **Dato escaso (verificado Overpass, jul-2026):** OSM en Tumaco solo reporta **2 POIs** del tipo correcto (1 bar, 1 discoteca) para 475 celdas — insuficiente para una superficie; no reporta licoreras ni más vida nocturna (los generadores de la teoría [R6]); los POIs disponibles (colegios, bancos) **no** son atractores de delito. Activarlo con esos POIs inyectaría señal equivocada. | OSM/Overpass (`amenity=bar/pub/nightclub`, `shop=alcohol`, `marketplace`) |
 | **Diseño ambiental / iluminación (CPTED)** | **OFF** | **Sin dato (verificado Overpass, jul-2026: 0 elementos):** OSM en Tumaco no tiene alumbrado (`highway=street_lamp`, `lit=*`). La evidencia (mejor alumbrado ↓ delito ~21 %) [R9] la respalda para cuando exista el dato. | OSM / relevamiento de campo |
 | **Delito reportado (capa espacial)** | **OFF (espacial)** | Los homicidios abiertos **carecen de coordenadas y de hora** → no son espacializables por celda. Sí se usan para el **patrón temporal** (día de la semana) y para caracterizar el fenómeno. | Microdato DIJIN o **reporte ciudadano** (§6) |
@@ -105,7 +105,7 @@ que produce los resultados de la tesis) de lo **definido pero DESHABILITADO** aq
 | **Reporte ciudadano (capa viva)** | **OPERATIVO (ingesta)** | La app persiste reportes (`/incidents/report`, rate-limit) y los agrega anónimos con decaimiento (`/incidents/aggregate` → `F_report(z,t)`); el pipeline activa el factor `delito_reportado` al alcanzar volumen mínimo (≥10 celdas). Habilita calibración **sin depender solo de la DIJIN** (§6). |
 
 ![Zonificación de Tumaco](img/tumaco_zonas.png)
-*Figura 3. Zonificación en malla (~150 m, 425 zonas) sobre el área urbana simulada.*
+*Figura 3. Zonificación en malla (~150 m) sobre el área urbana simulada. La malla entregada tiene 475 zonas; la prototipo tenía 425.*
 
 ---
 
@@ -211,7 +211,8 @@ figuras/tablas.
   georreferenciado** (DIJIN **o** reporte ciudadano) para calibrar pesos con RTM/GWR y romper la
   circularidad delito≈actividad.
 - Declararlo **aumenta** la validez: es un marco RTM **correctamente especificado y configurable**,
-  cuya precisión crece con la granularidad del dato y cuya adaptabilidad ya se demostró en Cali.
+  cuya precisión crece con la granularidad del dato y que ya se ejecuta también en Cali (portabilidad
+  técnica; el efecto del factor socioeconómico resultó no concluyente).
 
 ---
 
@@ -236,7 +237,7 @@ fundamentado en criminología ambiental (RTM, actividades rutinarias, espacio de
 delictivo, CPTED). Su valor no está en un pesaje fijo, sino en el **framework replicable**: un registro
 de factores que se **habilita, pondera y calibra por contexto**, con cada decisión **trazable y
 documentada** (incluido *por qué* un factor se desactiva en Tumaco). Tumaco y Cali son dos
-configuraciones del mismo modelo — esa **adaptabilidad** es la contribución.
+configuraciones del mismo modelo — esa **configurabilidad trazable** es la contribución.
 
 ---
 

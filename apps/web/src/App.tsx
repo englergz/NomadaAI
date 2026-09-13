@@ -10,7 +10,7 @@ import type {
 import { api } from "./lib/api";
 import { basemapStyle, keepOwnLayers, TUMACO_CENTER, TUMACO_ZOOM } from "./lib/mapStyle";
 import { HEAT_PALETTES, loadRiskPrefs, paletteGradient, riskFillColor, saveRiskPrefs, type HeatPaletteKey, type RiskPrefs } from "./lib/riskStyle";
-import { LEGAL_DOCS, LEGAL_EFFECTIVE_DATE, LEGAL_VERSION } from "@nomadaai/shared";
+import { escapeHtml, LEGAL_DOCS, LEGAL_EFFECTIVE_DATE, LEGAL_VERSION } from "@nomadaai/shared";
 import AdminPanel from "./components/AdminPanel";
 import ProtectionBar from "./components/ProtectionBar";
 
@@ -27,10 +27,8 @@ function Brand({ size = 18 }: { size?: number }) {
 
 // Escapa HTML de datos externos (nombres de POIs de OSM) antes de inyectarlos en
 // popups con setHTML — sin esto un nombre malicioso podría ejecutar script (XSS).
-function esc(v: unknown): string {
-  return String(v ?? "").replace(/[&<>"']/g, (ch) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch] as string));
-}
+// La implementación es la compartida con la versión web de la app.
+const esc = escapeHtml;
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
@@ -544,7 +542,7 @@ export default function App() {
         new maplibregl.Popup({ closeButton: true, maxWidth: "260px" }).setLngLat(e.lngLat)
           .setHTML(
             `<div style="font-size:12px;line-height:1.5">`
-            + `<b>Zona ${p.cell_id}</b> · <span style="color:${color};font-weight:700">riesgo ${nivel}</span><br/>`
+            + `<b>Zona ${esc(p.cell_id)}</b> · <span style="color:${color};font-weight:700">riesgo ${esc(nivel)}</span><br/>`
             + `Índice de exposición: <b>${Math.round(Number(p.risk_norm) * 100)}%</b> (hora ${String(hourRef.current).padStart(2, "0")}:00)<br/>`
             + `👥 Población (DANE 2018): <b>${pob}</b><br/>`
             + `🚗 Actividad (tráfico): <b>${act}</b><br/>`

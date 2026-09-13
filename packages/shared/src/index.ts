@@ -5,3 +5,4 @@ export * from "./protection";
 export * from "./help";
 export * from "./legal";
 export * from "./basemap";
+export * from "./html";

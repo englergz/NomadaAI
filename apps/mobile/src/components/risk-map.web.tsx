@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { escapeHtml } from '@nomadaai/shared';
 
 import { baseStyle, CITIES, DEFAULT_CITY, keepOwnLayers, RISK_FILL_COLOR, riskFillColor } from '@/constants/map';
 // Glyphmap oficial de MaterialCommunityIcons (nombre → codepoint): iconos literales
@@ -106,8 +107,9 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
         new maplibregl.Popup({ closeButton: false, offset: 14, maxWidth: '240px' })
           .setLngLat(e.lngLat)
           .setHTML(
-            `<div style="font: 600 13px system-ui; color:#17212c">${String(p.name ?? label)}</div>` +
-            `<div style="font: 12px system-ui; color:#5b6773">${label}</div>`,
+            // El nombre viene de OpenStreetMap (editable por cualquiera): se escapa.
+            `<div style="font: 600 13px system-ui; color:#17212c">${escapeHtml(p.name ?? label)}</div>` +
+            `<div style="font: 12px system-ui; color:#5b6773">${escapeHtml(label)}</div>`,
           )
           .addTo(map);
       });

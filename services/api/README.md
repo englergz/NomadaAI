@@ -1,34 +1,36 @@
-# NómadaAI — API (FastAPI)
+# Nómada.AI — API (FastAPI)
 
-Backend que expone OE1 (predicción de destino + corredores) y deja stubs tipados
-para OE2 (riesgo) y OE3 (rutas seguras).
+Backend de los cuatro objetivos: predicción de destino (OE1), riesgo por zona y hora (OE2), ruta
+segura y alerta (OE3) y evaluación (OE4), además del histórico, reportes, opiniones y panel admin.
+Contrato completo en [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §4.
 
 ## Correr en local
 
 ```bash
-cd app/services/api
-python -m venv .venv && source .venv/bin/activate
+cd services/api
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-# Por defecto usa ../../../Research como RESEARCH_DIR. Para tier gratuito (poca RAM)
-# puedes limitar trayectorias:  export MAX_TRAJECTORIES=800
+export RESEARCH_DIR=$PWD/artifacts     # mismo layout que el contenedor
+export PYTHONHASHSEED=0                # evaluación reproducible
+export MAX_TRAJECTORIES=800            # opcional: menos RAM
 uvicorn app.main:app --reload --port 8000
 ```
 
+> Sin `RESEARCH_DIR` apuntando a `artifacts/` el arranque no encuentra la malla entregada ni la red
+> de Cali, y las cifras de exposición salen distintas. No es una regresión: es el layout.
+
+Variables opcionales: `DATABASE_URL` (Neon), `CLERK_ISSUER`, `ADMIN_USER_IDS`. Sin ellas la API
+arranca y las funciones que dependen de cada una degradan (ver `docs/DEPLOY.md` §3).
+
 Docs interactivas: http://localhost:8000/docs
 
-## Endpoints
+## Scripts
 
-| Método | Ruta | Estado | Descripción |
-|--------|------|--------|-------------|
-| GET | `/health` | real | Estado y conteos de artefactos cargados |
-| POST | `/predict/destination` | **real** | Predicción de continuación (OE1) |
-| GET | `/corridors?bbox=` | **real** | Corredores TRACLUS (GeoJSON) |
-| GET | `/trajectories/similar?id=` | real | Vecinos Fréchet (cobertura parcial) |
-| GET | `/risk/zones?bbox=` | stub | Zonas de riesgo (OE2) |
-| POST | `/route/safe` | stub | Ruta segura (OE3) |
-| POST | `/incidents/report` | stub | Reporte ciudadano |
+`scripts/` regenera cada cifra publicada y cada artefacto: `rebuild_risk_*.py` (mallas),
+`fetch_road_graph.py` (red vial OSM), `oe*.py` y `t*.py` (evaluaciones),
+`c5_humo_route_build.py` (16 invariantes de `/route/build`). Hashes en `scripts/GOLDEN.md`.
 
-## Ejemplo de predicción
+## Ejemplo
 
 ```bash
 curl -s -X POST http://localhost:8000/predict/destination \
