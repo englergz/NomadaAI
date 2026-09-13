@@ -6,7 +6,7 @@ import { authToken, authUserId } from '@/lib/auth';
 import { getUid } from '@/lib/uid';
 import { enqueue } from '@/lib/write-queue';
 
-// Usuario efectivo (U4): id de Clerk con sesión; si no, el uid anónimo del dispositivo.
+// Usuario efectivo: id de Clerk con sesión; si no, el uid anónimo del dispositivo.
 async function effUid(): Promise<string> {
   return authUserId() ?? (await getUid());
 }

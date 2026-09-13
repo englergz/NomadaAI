@@ -114,7 +114,7 @@ def aggregate(city: str = "tumaco", half_life_days: float = 30.0) -> dict[str, A
     return {"available": True, "half_life_days": half_life_days, "cells": cells}
 
 
-# --- Moderación (panel admin, U6): SOLO tras verificación de rol en servidor. ---
+# --- Moderación (panel admin): SOLO tras verificación de rol en servidor. ---
 def list_recent(city: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
     """Reportes recientes para moderación (incluye user_id: uso interno admin)."""
     if not available():

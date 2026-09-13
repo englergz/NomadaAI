@@ -24,7 +24,7 @@ const THEMES: { key: ThemePref; tKey: TKey }[] = [
   { key: 'dark', tKey: 'settings.theme.dark' },
 ];
 
-// Idiomas (U2): el rótulo del idioma va en SU idioma, no se traduce.
+// Idiomas: el rótulo del idioma va en SU idioma, no se traduce.
 const LANGS: { key: LangPref; label?: string; tKey?: TKey }[] = [
   { key: 'system', tKey: 'settings.lang.system' },
   { key: 'es', label: 'Español' },

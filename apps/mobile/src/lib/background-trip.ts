@@ -1,10 +1,10 @@
-// U7 · SEGUNDO PLANO DEL RECORRIDO
+// SEGUNDO PLANO DEL RECORRIDO
 // La protección no puede depender de que la app esté en pantalla: si el usuario
 // bloquea el teléfono o se pasa a otra app durante un viaje, el seguimiento sigue
 // (servicio en primer plano en Android, background location en iOS) y al volver el
 // recorrido se REANUDA con las posiciones capturadas mientras tanto.
 //
-// CIBERSEGURIDAD (U7-SEC), reglas de este módulo:
+// CIBERSEGURIDAD, reglas de este módulo:
 // - Las coordenadas NUNCA se imprimen en consola ni se mandan a terceros; solo
 //   viven en el almacenamiento local del dispositivo y se borran al finalizar.
 // - Se guarda el mínimo: un prefijo corto del recorrido, no el historial completo.

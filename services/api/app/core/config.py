@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     # solo en modo invitado (anónimo). Con él, se verifican los tokens de sesión. ---
     clerk_issuer: str | None = None
 
-    # --- Panel admin (U6): ids de usuario Clerk con rol admin, separados por coma.
+    # --- Panel admin: ids de usuario Clerk con rol admin, separados por coma.
     # El rol se verifica SIEMPRE en servidor (token firmado + esta allowlist), nunca
     # en el cliente. Sin ids configurados el panel queda deshabilitado.
     admin_user_ids: str = ""

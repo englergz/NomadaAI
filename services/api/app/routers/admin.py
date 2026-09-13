@@ -1,4 +1,4 @@
-"""Panel admin (U6) — TODO verificado en servidor, nada de confiar en el cliente.
+"""Panel admin — TODO verificado en servidor, nada de confiar en el cliente.
 
 Autorización: token de sesión Clerk (firma RS256 contra el JWKS del emisor) +
 allowlist ADMIN_USER_IDS. Sin CLERK_ISSUER o sin ids configurados, el panel queda

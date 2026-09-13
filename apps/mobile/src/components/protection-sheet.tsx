@@ -60,7 +60,7 @@ export default function ProtectionSheet({ visible, onClose }: { visible: boolean
         {/* Contenido scrollable: en pantallas cortas el perfil no cabía y no había
             forma de llegar a «Listo». */}
         <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: 12, paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
-        {/* U4: sesión y perfil (solo si hay clave de Clerk; si no, invitado puro) */}
+        {/* Sesión y perfil (solo si hay clave de Clerk; si no, invitado puro) */}
         {CLERK_ENABLED && <ProfileSection />}
 
         {loading ? (

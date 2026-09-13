@@ -354,7 +354,7 @@ body.light .phone-brand-float .wm-txt { text-shadow: 0 1px 4px rgba(255,255,255,
 .prot-thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 26px; height: 26px; border-radius: 50%; border: 2px solid; background: var(--panel); display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: left 160ms ease; }
 .prot-thumb span { width: 10px; height: 10px; border-radius: 50%; }
 
-/* Panel admin (U6) — superficie propia con menú lateral, no un modal con pestañas.
+/* Panel admin — superficie propia con menú lateral, no un modal con pestañas.
    Antes el panel vivía dentro del modal de ayuda (640 px) y no cabía una tabla. */
 .adm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: grid; place-items: center; z-index: 60; padding: 3vh 2vw; }
 .adm-shell {

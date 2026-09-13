@@ -1,8 +1,8 @@
-// RECORRIDO (Fase 3 + U7): seguimiento en tiempo real, alertas una-vez-por-zona,
+// RECORRIDO (Fase 3): seguimiento en tiempo real, alertas una-vez-por-zona,
 // alerta anticipada por el modelo, recálculo al desviarse, inactividad, segundo
 // plano (instantánea + reanudar + vigía automático). Es el corazón del producto.
 //
-// Sacado de map.tsx (U7-ARCH) sin cambiar comportamiento: la vista pasa lo que
+// Sacado de map.tsx sin cambiar comportamiento: la vista pasa lo que
 // necesita (ubicación, ruta, destino, prioridad, vehículo) y recibe estado y
 // acciones. `goSafe` llega por callback porque a su vez necesita los refs de
 // comparación que viven aquí.
@@ -148,7 +148,7 @@ export function useTrip({
     const alert = trackerRef.current.check(riskRef.current, pos);
     if (alert) {
       alertsRef.current += 1;
-      // Mensajes por acción desde el diccionario (U2): mismo texto en banner y notificación.
+      // Mensajes por acción desde el diccionario: mismo texto en banner y notificación.
       // En «Atención», el consejo se adapta al vehículo efectivo del viaje: carro →
       // ventanas arriba; moto → casco; otro/ninguno → genérico.
       const veh = effVehicleRef.current;

@@ -1,4 +1,4 @@
-"""Configuración de producto editable desde el panel admin (U6).
+"""Configuración de producto editable desde el panel admin.
 
 Un solo documento JSON versionado en Postgres (tabla app_config). Lo leen las
 apps (móvil/escritorio) vía GET /config/app y lo edita el admin vía PUT
@@ -7,7 +7,7 @@ apps (móvil/escritorio) vía GET /config/app y lo edita el admin vía PUT
 Claves actuales:
 - protection_levels: topes de la barra de protección en % (2..7 valores, 0..100,
   ascendentes; el % se mapea a λ = pct/20 en el ruteo). Default 5 topes.
-- ads_enabled: publicidad sutil on/off (U7-BIZ; apagada hasta tener tiendas).
+- ads_enabled: publicidad sutil on/off (apagada hasta tener tiendas).
 """
 from __future__ import annotations
 

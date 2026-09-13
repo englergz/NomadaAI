@@ -10,7 +10,7 @@ export type HeatPalette = 'calor' | 'semaforo' | 'frio';
 
 export interface Settings {
   theme: ThemePref;
-  lang: LangPref;       // idioma de la UI: sistema / español / inglés (U2)
+  lang: LangPref;       // idioma de la UI: sistema / español / inglés
   palette: HeatPalette;   // paleta del mapa de calor
   intensity: number;      // 0–1: cuánto “se enciende” el heatmap a igual riesgo
   opacity: number;        // 0–1: transparencia global de la capa

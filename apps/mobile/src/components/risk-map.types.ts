@@ -48,7 +48,7 @@ export interface RiskMapProps {
   poisOn?: boolean;
   // Rótulo traducido de la categoría de un POI (para el popup al tocar un icono).
   poiCategoryLabel?: (category: string) => string;
-  // Encuadre pedido desde fuera (U3: flyTo al cambiar de ciudad).
+  // Encuadre pedido desde fuera (flyTo al cambiar de ciudad).
   focus?: { center: [number, number]; zoom: number } | null;
   // Modo NAVEGACIÓN (recorrido activo): cámara inclinada orientada al rumbo del
   // teléfono y vehículo cenital en lugar del punto azul.

@@ -106,7 +106,7 @@ export class NomadaApi {
     );
   }
 
-  // Ciudades con superficie de riesgo disponible (U3).
+  // Ciudades con superficie de riesgo disponible.
   riskCities() {
     return this.req<{ cities: string[] }>("/risk/cities");
   }

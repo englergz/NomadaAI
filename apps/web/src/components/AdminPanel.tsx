@@ -1,4 +1,4 @@
-// PANEL DE ADMINISTRACIÓN (U6). Solo se monta si /admin/me confirmó el rol EN
+// PANEL DE ADMINISTRACIÓN. Solo se monta si /admin/me confirmó el rol EN
 // SERVIDOR (token Clerk + allowlist ADMIN_USER_IDS); aquí no se decide nada de
 // seguridad, solo se consume la API admin con el Bearer.
 //

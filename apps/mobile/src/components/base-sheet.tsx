@@ -1,4 +1,4 @@
-// HOJA MODAL BASE (U7-ARCH): el andamiaje que las nueve hojas de la app repetían
+// HOJA MODAL BASE: el andamiaje que las nueve hojas de la app repetían
 // —Modal deslizante, fondo oscurecido que cierra al tocar, tarjeta pegada abajo con
 // esquinas Radii.sheet y el asa— vive aquí UNA vez. Cada hoja pone solo su contenido.
 //

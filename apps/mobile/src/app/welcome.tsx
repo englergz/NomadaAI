@@ -1,7 +1,7 @@
 // Recorrido de bienvenida (primera vez): páginas deslizables con lo esencial de la
 // app, puntos de progreso y botón «Siguiente» que se convierte en «Comenzar».
 // Al terminar (o al omitir) se persiste la marca y el mapa pasa a ser la pantalla
-// principal. Aquí vivirá también el login (U4): Google + «continuar como invitado».
+// principal. Aquí vivirá también el login: Google + «continuar como invitado».
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,7 +33,7 @@ function AutoEnterIfSignedIn({ onDone }: { onDone: () => void }) {
   return null;
 }
 
-// U4 · Login al FINAL del recorrido (no bloquea la entrada): Google real vía Clerk
+// Login al FINAL del recorrido (no bloquea la entrada): Google real vía Clerk
 // o «continuar como invitado». Solo se monta cuando hay clave de Clerk.
 function WelcomeAuth({ onDone }: { onDone: () => void }) {
   const t = useT();

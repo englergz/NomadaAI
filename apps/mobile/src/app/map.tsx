@@ -3,7 +3,7 @@
 // Permisos (ubicación, notificaciones) SIEMPRE en contexto, nunca al abrir.
 // Regla de ruteo: EVITAR cuando hay alternativa; AVISAR cuando el riesgo es inevitable.
 //
-// ARQUITECTURA (U7-ARCH): esta vista compone hooks con la lógica de negocio y se queda
+// ARQUITECTURA: esta vista compone hooks con la lógica de negocio y se queda
 // con la composición y el JSX:
 //   hooks/use-city    ciudad activa, cobertura por grados, capa de riesgo y lugares
 //   hooks/use-trip    recorrido, alertas, recálculo, inactividad, segundo plano
@@ -68,7 +68,7 @@ function prioWordKey(i: number, total: number) {
   return PRIO_WORDS[1];
 }
 
-// Foto del usuario en el FAB de perfil (U4). Solo se monta con Clerk habilitado;
+// Foto del usuario en el FAB de perfil. Solo se monta con Clerk habilitado;
 // sin sesión (o sin foto) mantiene el icono de siempre.
 function ProfileFabIcon({ color }: { color: string }) {
   const { user } = useUser();
@@ -104,7 +104,7 @@ export default function MapScreen() {
   const [focus, setFocus] = useState<{ center: [number, number]; zoom: number } | null>(null);
   // Parar el viaje antes de cambiar de ciudad: stopTrip se crea más abajo (use-trip).
   const stopTripRef = useRef<() => void>(() => {});
-  // U3 · Ciudad activa y cobertura por grados (riesgo / ruteo / predicción): hooks/use-city.ts.
+  // Ciudad activa y cobertura por grados (riesgo / ruteo / predicción): hooks/use-city.ts.
   // Estado del servicio (/health cada 60 s, con diagnóstico): punto verde/coral del
   // chip de ciudad y aviso SOLO al cambiar de estado.
   const { healthOk, netState } = useHealth((key, state) => setBanner({ text: t(key), tone: state === 'lento' ? 'info' : 'warn' }));
@@ -244,7 +244,7 @@ export default function MapScreen() {
           tone: 'info',
         });
       } else if (cov !== city) {
-        // U3: detectamos otra ciudad soportada — se PREGUNTA antes de cambiar, no se impone.
+        // Detectamos otra ciudad soportada — se PREGUNTA antes de cambiar, no se impone.
         setCitySuggest(cov);
       }
       return loc;
@@ -329,7 +329,7 @@ export default function MapScreen() {
   }
 
   // RECORRIDO: seguimiento, alertas, recálculo, inactividad y segundo plano viven en
-  // hooks/use-trip.ts (U7-ARCH). goSafe entra por callback porque necesita los refs
+  // hooks/use-trip.ts. goSafe entra por callback porque necesita los refs
   // de comparación que allí se crean.
   const {
     onTrip, heading, tripLevel, startTrip, stopTrip, handlePosition, comparisonRef, distancesRef,
@@ -383,7 +383,7 @@ export default function MapScreen() {
         />
       </View>
 
-      {/* U3: chip de ciudad (estilo inDrive) — toca para cambiar */}
+      {/* Chip de ciudad (estilo inDrive) — toca para cambiar */}
       <Pressable
         onPress={() => setShowCity(true)}
         style={[styles.cityChip, { top: insets.top + 52, backgroundColor: c.backgroundElement, borderColor: c.border }]}
@@ -449,7 +449,7 @@ export default function MapScreen() {
         </Pressable>
       </View>
 
-      {/* U3: «¿Estás en X?» — arriba, bajo el chip de ciudad; se pregunta, no se impone */}
+      {/* «¿Estás en X?» — arriba, bajo el chip de ciudad; se pregunta, no se impone */}
       {otaPending && !otaDismissed && !citySuggest && (
         <View style={[styles.citySuggest, { top: insets.top + 94, backgroundColor: c.backgroundElement, borderColor: c.accent }]}>
           <Text style={{ color: c.text, fontSize: 12.5, textAlign: 'center' }}>
@@ -543,7 +543,7 @@ export default function MapScreen() {
           <Text style={{ color: c.textSecondary, fontSize: 12, textAlign: 'center' }}>{t('map.noResults')}</Text>
         )}
 
-        {/* U3: buscador/vehículo/protección solo donde hay pipeline completo */}
+        {/* Buscador/vehículo/protección solo donde hay pipeline completo */}
         {cityFull && (<>
         <View style={[styles.inputRow, { backgroundColor: c.backgroundSelected, borderColor: c.border }]}>
           <TextInput
@@ -595,7 +595,7 @@ export default function MapScreen() {
         </>)}
 
         {!cityFull && !onTrip ? (
-          // Honestidad U3: aquí no hay ruta segura todavía, PERO sí protección.
+          // Honestidad: aquí no hay ruta segura todavía, PERO sí protección.
           <>
             <Text style={{ color: c.textSecondary, fontSize: 12.5, lineHeight: 18, textAlign: 'center', paddingVertical: 6 }}>
               {t('city.riskOnly', { city: CITIES[city].label })}
@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 6, right: 7, width: 10, height: 10, borderRadius: 5, borderWidth: 2,
   },
   brand: { position: 'absolute', alignSelf: 'center' },
-  // U3: chip de ciudad bajo la marca, alineado al centro (estilo inDrive)
+  // Chip de ciudad bajo la marca, alineado al centro (estilo inDrive)
   cityChip: {
     position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 5,
     borderWidth: 1, borderRadius: 999, paddingVertical: 5, paddingHorizontal: 12,

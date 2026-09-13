@@ -228,7 +228,7 @@ export default function App() {
   const uidRef = useRef<string>(getUid());
   const sessionRef = useRef<string>(`s_${Date.now()}`);
   const [authUid, setAuthUid] = useState<string | null>(null);          // id de Clerk si hay sesión
-  // U6/config de producto: niveles de la barra de protección (los define el admin).
+  // Config de producto: niveles de la barra de protección (los define el admin).
   const [protLevels, setProtLevels] = useState<number[]>([0, 25, 50, 75, 100]);
   const [isAdmin, setIsAdmin] = useState(false);   // confirmado por /admin/me EN SERVIDOR
   const [showAdmin, setShowAdmin] = useState(false);

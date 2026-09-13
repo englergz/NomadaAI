@@ -1,4 +1,4 @@
-// U2 · Idioma: diccionario es/en + detección del idioma del dispositivo
+// Idioma: diccionario es/en + detección del idioma del dispositivo
 // (expo-localization) con selector manual en Ajustes ('system' | 'es' | 'en').
 // t() interpola {var}. Español es la fuente de verdad; en es traducción.
 import { getLocales } from 'expo-localization';
@@ -217,7 +217,7 @@ const es = {
   'wel.4.title': 'Alertas a tiempo',
   'wel.4.body': 'En recorrido libre, la app predice tu camino y te avisa antes de un tramo de riesgo. Y lo que veas, lo puedes reportar.',
 
-  // Sesión y perfil (U4 · Clerk)
+  // Sesión y perfil (Clerk)
   'auth.google': 'Continuar con Google',
   'auth.guest': 'Continuar como invitado',
   'auth.signin': 'Iniciar sesión con Google',
@@ -237,7 +237,7 @@ const es = {
   'auth.saveError': 'No se pudo guardar. Intenta de nuevo.',
   'auth.consent': 'Opcional. Al guardarlos das tu consentimiento (Ley 1581 de 2012, Colombia) para usarlos SOLO en estadísticas agregadas de seguridad; puedes borrarlos cuando quieras.',
 
-  // Ciudad (U3, estilo inDrive)
+  // Ciudad (estilo inDrive)
   'city.title': 'Ciudad',
   'city.subtitle': 'Ciudades con mapa de riesgo disponible',
   'city.areYouIn': '¿Estás en {city}? Podemos cambiar el mapa.',

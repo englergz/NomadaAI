@@ -224,7 +224,7 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
     if (loadedRef.current) apply(); else map.once('load', apply);
   }, [routes]);
 
-  // Encuadre externo (U3): vuela a la ciudad seleccionada.
+  // Encuadre externo: vuela a la ciudad seleccionada.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !focus) return;

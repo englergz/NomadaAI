@@ -1,4 +1,4 @@
-// CIUDAD ACTIVA (U3): el mapa, la capa de riesgo y el buscador giran alrededor de ella.
+// CIUDAD ACTIVA: el mapa, la capa de riesgo y el buscador giran alrededor de ella.
 //
 // COBERTURA POR GRADOS (no un sí/no). Verificado contra el backend:
 //   · riesgo   → todas las ciudades que publica /risk/cities (Cali tiene 4.268 celdas)
@@ -72,7 +72,7 @@ export function useCity({ t, lang, setBanner, setFocus, poisOn, onBeforeSwitch, 
   const canPredict = city === DEFAULT_CITY;     // alerta anticipada sin destino
   const cityFull = canRoute;                    // compatibilidad con el resto de la vista
 
-  // Capa de riesgo POR CIUDAD y POR HORA (U3): al cambiar de ciudad se recarga la
+  // Capa de riesgo POR CIUDAD y POR HORA: al cambiar de ciudad se recarga la
   // malla, y al cambiar la hora del día también. Antes no se enviaba la hora y el
   // servidor respondía siempre la de las 19:00: el mapa y las alertas en zona
   // evaluaban el riesgo de la noche aunque fueran las 9 de la mañana.

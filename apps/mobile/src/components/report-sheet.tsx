@@ -49,7 +49,7 @@ export default function ReportSheet({
   visible: boolean;
   onClose: () => void;
   location: [number, number] | null; // [lon, lat] del usuario (o null → centro ciudad)
-  city?: CityKey;                    // ciudad activa (U3): el reporte se asocia a ella
+  city?: CityKey;                    // ciudad activa: el reporte se asocia a ella
 }) {
   const t = useT();
   const scheme = useResolvedScheme();
@@ -82,7 +82,7 @@ export default function ReportSheet({
       };
       let r: { accepted: boolean; note?: string } | null = null;
       try {
-        // U4: con sesión, el reporte viaja firmado (el backend verifica el token).
+        // Con sesión, el reporte viaja firmado (el backend verifica el token).
         r = await api.reportIncident(body, await authToken());
       } catch {
         // SIN RED: el reporte no se pierde. Se guarda cifrado y sale solo al volver la señal.

@@ -1,4 +1,4 @@
-// Sección PERFIL de la hoja «Tu protección» (U4 · Clerk). Solo se monta cuando hay
+// Sección PERFIL de la hoja «Tu protección» (Clerk). Solo se monta cuando hay
 // clave de Clerk. Sin sesión: botón de Google + nota de invitado. Con sesión: foto,
 // nombre/correo, cerrar sesión y los campos PROPIOS del perfil (fecha de nacimiento
 // y nacionalidad) con consentimiento explícito (Ley 1581) → BI agregada.
