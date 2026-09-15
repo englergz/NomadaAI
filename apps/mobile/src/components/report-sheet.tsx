@@ -2,12 +2,11 @@
 // la ubicación es la del usuario (o el centro de la ciudad) y la hora se toma sola.
 // Anti-abuso en cliente (cooldown) además del rate-limit del servidor.
 // La foto llegará cuando el backend soporte adjuntos (Storage) — no se finge.
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 
-import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
 import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
@@ -59,7 +58,10 @@ export default function ReportSheet({
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   // El campo de descripción quedaba TAPADO por el teclado: la hoja sube con él,
   // mismo mecanismo que la barra inferior del mapa.
-  const kbHeight = useKeyboardHeight();
+  // Con el teclado abierto la hoja no cabe entera: se desplaza y, al enfocar la
+  // descripción, se lleva a la vista. Antes el campo y el botón de enviar quedaban
+  // DEBAJO del teclado, sin forma de alcanzarlos (verificado en emulador).
+  const scrollRef = useRef<ScrollView>(null);
 
   async function send() {
     if (!category || sending) return;
@@ -106,7 +108,17 @@ export default function ReportSheet({
   }
 
   return (
-    <BaseSheet visible={visible} onClose={onClose} maxHeightPct={null} sheetStyle={{ marginBottom: kbHeight, paddingBottom: kbHeight ? 16 : 28, gap: 12 }}>
+    <BaseSheet visible={visible} onClose={onClose} maxHeightPct={0.9}>
+      <ScrollView
+        ref={scrollRef}
+        keyboardShouldPersistTaps="handled"
+        // La hoja es un Modal y su ventana NO se encoge con el teclado (la altura del
+        // teclado llega 0 en Android), así que el botón de enviar queda debajo mientras
+        // se escribe: arrastrar la hoja cierra el teclado y lo deja a la vista.
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ gap: 12, paddingBottom: 4 }}
+      >
         <Text style={[styles.title, { color: c.text }]}>{t('report.title')}</Text>
         <Text style={{ color: c.textSecondary, fontSize: 12, lineHeight: 17 }}>{t('report.intro')}</Text>
 
@@ -142,6 +154,13 @@ export default function ReportSheet({
           placeholderTextColor={c.textSecondary}
           maxLength={500}
           multiline
+          // Dos pasadas a propósito: la primera llega mientras el teclado todavía está
+          // abriéndose y deja el botón de enviar a medias; la segunda, ya con la hoja
+          // en su alto final, lo termina de subir.
+          onFocus={() => {
+            setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+            setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 500);
+          }}
           style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.backgroundSelected }]}
         />
 
@@ -161,6 +180,7 @@ export default function ReportSheet({
             ? <ActivityIndicator size="small" color="#fff" />
             : <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>{t('report.send')}</Text>}
         </Pressable>
+      </ScrollView>
     </BaseSheet>
   );
 }

@@ -127,16 +127,35 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
   // cambio de ciudad. flyTo/easeTo con `center`+`zoom` sí mueven la cámara.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cameraRef = useRef<any>(null);
+  // Seguimiento en navegación. Un gesto sobre el mapa lo ROMPE en nativo (MapLibre avisa con
+  // onTrackUserLocationChange = null), pero la prop seguía valiendo 'course' y React no la
+  // reenviaba: «centrar» no hacía nada durante el recorrido. Se refleja aquí el estado real y
+  // un nuevo `focus` (lo manda «centrar») lo reactiva cambiando la prop.
+  const [tracking, setTracking] = useState(true);
+  useEffect(() => { if (navOn) setTracking(true); }, [navOn]);
   useEffect(() => {
-    if (navOn || !focus) return;               // en navegación manda trackUserLocation
+    if (!focus) return;
+    if (navOn) {
+      // «centrar» en navegación: la cámara se mueve A MANO. Apagar y encender la prop de
+      // seguimiento NO devolvía la cámara (verificado en emulador: tras arrastrar el mapa, el
+      // vehículo seguía fuera de pantalla), así que primero se vuela al usuario y después se
+      // vuelve a pedir el seguimiento nativo para que siga acompañándolo.
+      setTracking(false);
+      cameraRef.current?.flyTo?.({
+        center: focus.center, zoom: 16.5, pitch: 50, duration: 900,
+      });
+      const id = setTimeout(() => setTracking(true), 1000);
+      return () => clearTimeout(id);
+    }
     // bearing:0 además de pitch:0 — al salir de navegación el mapa quedaba ROTADO
     // para siempre (trackUserLocation="course" lo gira y nadie lo devolvía al
     // norte): las etiquetas se leían al revés y la brújula quedaba torcida.
     cameraRef.current?.flyTo?.({
       center: focus.center, zoom: focus.zoom, pitch: 0, bearing: 0, duration: 1400,
     });
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focus, navOn]);
+  }, [focus]);
 
   return (
     <Map style={styles.map} mapStyle={style as never}>
@@ -147,9 +166,11 @@ export default function RiskMap({ dark, riskOn, riskData, userLocation, routes, 
         ref={cameraRef}
         initialViewState={{ center: city.center, zoom: city.zoom } as never}
         minZoom={9}
-        {...(navOn
+        {...(navOn && tracking
           ? ({ trackUserLocation: 'course', pitch: 50, followZoomLevel: 16.5 } as Record<string, unknown>)
           : {})}
+        onTrackUserLocationChange={(e: { nativeEvent: { trackUserLocation: string | null } }) =>
+          setTracking(e.nativeEvent.trackUserLocation != null)}
       />
       {riskData && riskOn && (
         <GeoJSONSource id="risk" data={riskData as never}>

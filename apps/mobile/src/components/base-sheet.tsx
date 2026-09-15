@@ -12,6 +12,8 @@ import { Modal, Pressable, StyleSheet, useWindowDimensions, View, type StyleProp
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Radii } from '@/constants/theme';
+import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
+import { useKeyboardInset } from '@/lib/keyboard-inset';
 import { useResolvedScheme } from '@/lib/settings';
 
 export interface BaseSheetProps {
@@ -33,6 +35,10 @@ export default function BaseSheet({
   const c = Colors[scheme];
   const insets = useSafeAreaInsets();
   const { height: winH } = useWindowDimensions();
+  // Teclado: iOS lo dice en el evento; en Android llega 0 y se usa lo MEDIDO en la
+  // pantalla principal (`lib/keyboard-inset`), porque la ventana del Modal no se encoge
+  // y la hoja se dibujaba debajo del teclado.
+  const kb = Math.max(useKeyboardHeight(), useKeyboardInset());
   const close = dismissible ? onClose : undefined;
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
@@ -41,8 +47,14 @@ export default function BaseSheet({
       <View
         style={[
           styles.sheet,
-          { backgroundColor: c.backgroundElement, borderColor: c.border, paddingBottom: insets.bottom + 16 },
-          maxHeightPct !== null ? { maxHeight: winH * maxHeightPct } : null,
+          {
+            backgroundColor: c.backgroundElement,
+            borderColor: c.border,
+            // Con teclado no hay barra de navegación que esquivar: la tapa él.
+            paddingBottom: kb > 0 ? 16 : insets.bottom + 16,
+            marginBottom: kb,
+          },
+          maxHeightPct !== null ? { maxHeight: (winH - kb) * maxHeightPct } : null,
           sheetStyle,
         ]}
       >

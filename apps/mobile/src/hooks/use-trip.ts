@@ -178,7 +178,7 @@ export function useTrip({
       lastMoveAtRef.current = Date.now();
       idlePromptsRef.current = 0;
     }
-    persistTrip();
+    void persistTrip();
     // RECÁLCULO AL DESVIARSE: si te alejas >45 m de la ruta segura, se traza una
     // nueva desde tu posición actual (máx. 1 recálculo cada 12 s).
     const rt = routesRef.current;
@@ -267,14 +267,19 @@ export function useTrip({
 
   // Instantánea del viaje en disco: permite REANUDAR si la app se cierra o el
   // sistema la mata durante el recorrido. Se escribe con freno (cada 10 s).
-  function persistTrip() {
+  //
+  // `force` salta el freno y ESPERA a que quede escrita. Es imprescindible al
+  // arrancar: el servicio de segundo plano lee esta instantánea en su primer aviso
+  // de GPS (menos de un segundo después) y, si no la encuentra, se apaga solo —
+  // el recorrido se quedaba sin protección con la pantalla apagada.
+  async function persistTrip(opts?: { force?: boolean }) {
     if (Platform.OS === 'web') return;
     const meta = tripMetaRef.current;
     if (!meta) return;
     const now = Date.now();
-    if (now - lastPersistRef.current < 10000) return;
+    if (!opts?.force && now - lastPersistRef.current < 10000) return;
     lastPersistRef.current = now;
-    void saveActiveTrip({
+    await saveActiveTrip({
       startedAt: tripStartedAtRef.current || now,
       updatedAt: now,
       city: meta.city,
@@ -318,10 +323,24 @@ export function useTrip({
     lastPersistRef.current = 0;
     startIdleTimer();
     setTripLevel('despejado');
+    // La meta la refresca un efecto, que todavía no ha corrido en este toque: se fija
+    // aquí con los valores del momento para que la instantánea salga completa.
+    tripMetaRef.current = {
+      city,
+      vehicle: effVehicle ?? null,
+      priority,
+      dest: dest ? { name: dest.name, center: dest.coord as [number, number] } : null,
+    };
+    // La instantánea se escribe ANTES de que el viaje sea visible, y se ESPERA. En
+    // cuanto `onTrip` cambia, el efecto de reconciliación engancha el seguimiento de
+    // fondo; su tarea se apaga sola si al primer aviso de GPS no encuentra viaje
+    // guardado, y así el recorrido se quedaba sin protección con la pantalla apagada.
+    await persistTrip({ force: true });
     setOnTrip(true);
     setBanner({ text: t('map.banner.tripStarted'), tone: 'info' });
-    await startWatchers();
-    persistTrip();
+    // Los vigilantes pueden fallar (teléfono sin brújula, GPS ocupado): que eso no
+    // tumbe el arranque y, con él, todo lo que viene después.
+    try { await startWatchers(); } catch { /* el viaje sigue con la última posición */ }
     void stopAutoTripWatch(); // el seguimiento fino del viaje sustituye al vigía
     // SEGUNDO PLANO: la protección no puede depender de que la pantalla esté
     // encendida. Se pide «Permitir siempre» EN CONTEXTO (ya empezaste a andar) y,

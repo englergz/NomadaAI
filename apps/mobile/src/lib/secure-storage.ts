@@ -28,8 +28,18 @@ import { Platform } from 'react-native';
 
 /** Clave de SecureStore que custodia la clave AES (solo [A-Za-z0-9._-]). */
 const AES_KEY_ID = 'nomadaai.aes.v1';
-/** Prefijo del sobre cifrado; la versión permite rotar formato sin romper lo guardado. */
-const PREFIX = 'enc1:';
+/**
+ * Prefijo del sobre cifrado; la versión permite rotar formato sin romper lo guardado.
+ *
+ * v2 = el sobre se guarda en HEXADECIMAL. En v1 iba en base64 y en Android la vuelta
+ * fallaba SIEMPRE («[fromCombined] Cannot convert …»): nada de lo cifrado se podía leer.
+ * Consecuencia real, verificada en el emulador: el recorrido no quedaba en disco, así que
+ * la tarea de segundo plano no lo encontraba y se apagaba sola a los pocos segundos.
+ * El hexadecimal lo convierte esta misma capa, sin depender de la lectura de cadenas del módulo.
+ */
+const PREFIX = 'enc2:';
+/** Formato v1: ilegible por el fallo anterior. Lo que quedó así se trata como si no existiera. */
+const PREFIX_V1 = 'enc1:';
 
 const SECURE_OPTS: SecureStore.SecureStoreOptions =
   Platform.OS === 'ios' ? { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK } : {};
@@ -63,15 +73,28 @@ function bytesToUtf8(b: Uint8Array): string {
   return decodeURIComponent(escape(bin));
 }
 
+// Hexadecimal a mano: el sobre cifrado entra y sale como bytes, nunca como cadena que el
+// módulo nativo tenga que interpretar (ahí estaba el fallo que dejaba todo ilegible).
+function bytesToHex(b: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, '0');
+  return s;
+}
+function hexToBytes(hex: string): Uint8Array {
+  const out = new Uint8Array(hex.length >> 1);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return out;
+}
+
 async function encrypt(storageKey: string, plaintext: string): Promise<string> {
   const sealed = await aesEncryptAsync(utf8ToBytes(plaintext), await aesKey(), {
     additionalData: utf8ToBytes(storageKey),
   });
-  return PREFIX + (await sealed.combined('base64'));
+  return PREFIX + bytesToHex((await sealed.combined('bytes')) as Uint8Array);
 }
 
 async function decrypt(storageKey: string, envelope: string): Promise<string> {
-  const sealed = AESSealedData.fromCombined(envelope.slice(PREFIX.length));
+  const sealed = AESSealedData.fromCombined(hexToBytes(envelope.slice(PREFIX.length)));
   const bytes = await aesDecryptAsync(sealed, await aesKey(), {
     additionalData: utf8ToBytes(storageKey),
     output: 'bytes',
@@ -83,6 +106,9 @@ async function decrypt(storageKey: string, envelope: string): Promise<string> {
 export async function secureGet(key: string): Promise<string | null> {
   const raw = await AsyncStorage.getItem(key);
   if (raw == null) return null;
+  // Sobre del formato v1: nunca se pudo descifrar. Se comporta como si no hubiera dato,
+  // que es justo lo que era; devolverlo tal cual lo trataría como texto en claro.
+  if (Platform.OS !== 'web' && raw.startsWith(PREFIX_V1)) return null;
   if (Platform.OS === 'web' || !raw.startsWith(PREFIX)) {
     // Legado en claro (escrito antes del cifrado): se devuelve y se cifra en la
     // siguiente escritura. No se reescribe aquí para no convertir una lectura en

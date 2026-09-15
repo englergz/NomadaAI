@@ -45,6 +45,7 @@ import { useOta } from '@/hooks/use-ota';
 import { useWriteQueue } from '@/hooks/use-write-queue';
 import { useTrip } from '@/hooks/use-trip';
 import { markBootReady } from '@/lib/boot';
+import { reportVisibleHeight } from '@/lib/keyboard-inset';
 import { applyUpdate } from '@/lib/ota';
 import { hasUnseenAlerts } from '@/lib/alert-log';
 import type { RouteLines } from '@/components/risk-map.types';
@@ -55,6 +56,7 @@ import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { levelFor, zoneAt, type AlertLevel } from '@/lib/alerts';
 import { coverageCity, searchPlaces, type Place } from '@/lib/geocode';
+import { distM } from '@/lib/geo';
 
 // Nivel de protección → λ (risk_weight) del backend. Naming de producto: habla del
 // valor (protegerte), no de la geometría de la ruta; empata con «Tu protección».
@@ -136,6 +138,10 @@ export default function MapScreen() {
   // ahí se centra la columna de FABs.
   const { height: winH } = useWindowDimensions();
   const [sheetH, setSheetH] = useState(320);
+  // Foco del buscador. Es la señal FIABLE de que hay teclado: en Android, con la
+  // ventana redimensionada, el evento del teclado llega con altura 0 y la capa para
+  // cerrarlo tocando el mapa no llegaba a existir (verificado en emulador).
+  const [searchFocused, setSearchFocused] = useState(false);
   const stackTop = Math.max(insets.top + 96, (winH - sheetH) / 2 - 135);
 
   const [query, setQuery] = useState('');
@@ -223,6 +229,12 @@ export default function MapScreen() {
       // en paralelo un fix fresco de alta precisión con más margen — el fallo
       // recurrente era el timeout corto de un único intento.
       let pos = await Location.getLastKnownPositionAsync({ maxAge: 60000 }).catch(() => null);
+      // La cámara va YA a lo que se sabe (la posición del recorrido o la última conocida) y
+      // luego se afina. Antes esperaba el fix de alta precisión —hasta 25 s bajo techo, varios
+      // segundos incluso con buena señal— antes de mover nada, y «centrar» parecía no funcionar.
+      const inmediata: [number, number] | null =
+        userLoc ?? (pos ? [pos.coords.longitude, pos.coords.latitude] : null);
+      if (inmediata) setFocus({ center: inmediata, zoom: 16 });
       try {
         pos = await withTimeout(
           Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }), 25000, 'gps',
@@ -233,8 +245,9 @@ export default function MapScreen() {
       }
       const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
       setUserLoc(loc);
-      // Centrar SIEMPRE al ubicar (antes solo volaba la primera vez).
-      setFocus({ center: loc, zoom: 16 });
+      // El fix fresco solo vuelve a mover la cámara si cayó lejos de donde ya se centró: si el
+      // usuario movió el mapa mientras llegaba, no se le arrebata por unos metros de diferencia.
+      if (!inmediata || distM(inmediata as Coordinate, loc as Coordinate) > 25) setFocus({ center: loc, zoom: 16 });
       // Cobertura: si está lejos de toda ciudad soportada, avisamos con honestidad.
       const cov = coverageCity(loc as Coordinate, 40, riskCitiesRef.current as CityKey[]);
       setOutOfCoverage(!cov);
@@ -358,7 +371,13 @@ export default function MapScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.background }}>
+    <View
+      style={{ flex: 1, backgroundColor: c.background }}
+      // Esta ventana SÍ se encoge con el teclado: su alto es la única medida fiable de
+      // cuánto ocupa, y con ella se levantan las hojas (que viven en un Modal que no se
+      // encoge). Ver `lib/keyboard-inset`.
+      onLayout={(e) => reportVisibleHeight(e.nativeEvent.layout.height)}
+    >
       <StatusBar style={dark ? 'light' : 'dark'} />
       {/* El mapa se crea cuando los ajustes ya están hidratados: nace con el tema/base
           correctos y se evita el swap de tiles (y su flash) en el arranque. */}
@@ -403,7 +422,7 @@ export default function MapScreen() {
           solo cubre el área del mapa: así no roba toques al buscador (tocar dentro
           del input para mover el cursor no debe bajar el teclado) ni a los FABs.
           Antes, si abrías el buscador y no escribías nada, no había salida. */}
-      {kbHeight > 0 && (
+      {(searchFocused || kbHeight > 0) && (
         <Pressable
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: sheetH + kbHeight }}
           onPress={() => Keyboard.dismiss()}
@@ -553,6 +572,8 @@ export default function MapScreen() {
             placeholderTextColor={c.textSecondary}
             style={[styles.input, { color: c.text }]}
             returnKeyType="search"
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
           />
           {searching && <ActivityIndicator size="small" color={c.accent} />}
           {(dest || query.length > 0) && !searching && (

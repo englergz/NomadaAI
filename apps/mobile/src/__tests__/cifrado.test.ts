@@ -1,4 +1,4 @@
-// Cifrado en reposo: se prueba la LÓGICA DEL ENVOLTORIO (sobre enc1:, AAD atada a la
+// Cifrado en reposo: se prueba la LÓGICA DEL ENVOLTORIO (sobre enc2:, AAD atada a la
 // clave, migración de legado, wipe, sin fallback a claro). El AES real es nativo de
 // Expo y se verifica en el dispositivo; aquí se simula preservando su contrato:
 // roundtrip, clave distinta falla, AAD distinta falla.
@@ -52,21 +52,29 @@ jest.mock('expo-crypto', () => {
     static async import(h: string) { return new AESEncryptionKey(h); }
     async encoded() { return this.hex; }
   }
+  // El sobre entra y sale como BYTES, igual que el módulo real: el envoltorio lo
+  // convierte a hexadecimal para guardarlo. Pasarlo como cadena era justo el fallo
+  // que dejaba ilegible todo lo cifrado en Android.
+  const aBytes = (s: string) => new Uint8Array(Array.from(s, (c) => c.charCodeAt(0)));
+  const aText = (b: Uint8Array) => Array.from(b, (x) => String.fromCharCode(x)).join('');
   class AESSealedData {
-    combined64: string;
-    constructor(combined64: string) { this.combined64 = combined64; }
-    static fromCombined(c: string) { return new AESSealedData(c); }
-    async combined() { return this.combined64; }
+    bytes: Uint8Array;
+    constructor(bytes: Uint8Array) { this.bytes = bytes; }
+    static fromCombined(c: Uint8Array) {
+      if (!(c instanceof Uint8Array)) throw new Error('[fromCombined] Cannot convert');
+      return new AESSealedData(c);
+    }
+    async combined() { return this.bytes; }
   }
   return {
     AESEncryptionKey, AESSealedData,
     aesEncryptAsync: async (pt: Uint8Array, key: AESEncryptionKey, o: { additionalData: Uint8Array }) => {
       const nonce = new Uint8Array(12).map(() => Math.floor(Math.random() * 256));
       const ct = pt.map((b, i) => b ^ nonce[i % 12] ^ key.hex.charCodeAt(i % key.hex.length));
-      return new AESSealedData(`${hex(nonce)}.${hex(ct)}.${tagOf(key.hex, ct, o.additionalData)}`);
+      return new AESSealedData(aBytes(`${hex(nonce)}.${hex(ct)}.${tagOf(key.hex, ct, o.additionalData)}`));
     },
     aesDecryptAsync: async (sd: AESSealedData, key: AESEncryptionKey, o: { additionalData: Uint8Array }) => {
-      const [n64, c64, tag] = sd.combined64.split('.');
+      const [n64, c64, tag] = aText(sd.bytes).split('.');
       const nonce = unhex(n64), ct = unhex(c64);
       if (tagOf(key.hex, ct, o.additionalData) !== tag) throw new Error('auth failed');
       return ct.map((b, i) => b ^ nonce[i % 12] ^ key.hex.charCodeAt(i % key.hex.length));
@@ -86,7 +94,7 @@ describe('cifrado en reposo', () => {
     const v = JSON.stringify({ points: [{ lon: -78.79, lat: 1.80, t: 1 }], nota: 'precaución · ñ' });
     await secureSet('nomadaai.trip.active', v);
     const raw = mem.get('nomadaai.trip.active')!;
-    expect(raw.startsWith('enc1:')).toBe(true);
+    expect(raw.startsWith('enc2:')).toBe(true);
     expect(raw).not.toContain('-78.79');
     expect(await secureGet('nomadaai.trip.active')).toBe(v);
   });
@@ -107,7 +115,14 @@ describe('cifrado en reposo', () => {
     mem.set('nomadaai_alert_log_v1', '[{"zone":"1000042"}]');
     expect(await secureGet('nomadaai_alert_log_v1')).toBe('[{"zone":"1000042"}]');
     await secureSet('nomadaai_alert_log_v1', '[{"zone":"1000042"}]');
-    expect(mem.get('nomadaai_alert_log_v1')!.startsWith('enc1:')).toBe(true);
+    expect(mem.get('nomadaai_alert_log_v1')!.startsWith('enc2:')).toBe(true);
+  });
+
+  // Regresión real: el formato v1 (sobre en base64) NUNCA se pudo descifrar en Android.
+  // Se comporta como «no hay dato»; devolverlo tal cual lo trataría como texto en claro.
+  test('un sobre del formato viejo (enc1:) se trata como si no hubiera dato', async () => {
+    mem.set('nomadaai.trip.active', 'enc1:AAAAAAAAAAAAAAAAAAAA');
+    expect(await secureGet('nomadaai.trip.active')).toBeNull();
   });
 
   test('wipe: sin clave, lo cifrado deja de ser legible y no se reescribe en claro', async () => {
