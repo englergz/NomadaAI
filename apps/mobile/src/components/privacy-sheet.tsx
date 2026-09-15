@@ -4,17 +4,19 @@
 // que el usuario debe marcar (nunca premarcada) y, encima, el diálogo del sistema
 // pidiendo confirmación. Ningún toque accidental puede borrar nada.
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { accountDeleter } from '@/lib/auth';
+import { confirmDestructive, notify } from '@/lib/confirm';
 import { deleteAllMyData } from '@/lib/data-deletion';
 import { useT, type TKey } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
-import { getUid } from '@/lib/uid';
+import { historyAuth } from '@/lib/history-auth';
 
 /** Preguntas del formulario. Cortas y concretas: nadie responde un cuestionario largo. */
 const QUESTIONS: { key: TKey; id: string }[] = [
@@ -40,6 +42,9 @@ export default function PrivacySheet({
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [alsoAccount, setAlsoAccount] = useState(false);
+  // Solo con sesión hay cuenta que eliminar: el puente de Clerk publica cómo hacerlo.
+  const canDeleteAccount = visible && accountDeleter() !== null;
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [comment, setComment] = useState('');
   const [sending, setSending] = useState(false);
@@ -50,15 +55,19 @@ export default function PrivacySheet({
   async function doDelete() {
     setDeleting(true);
     try {
-      const uid = await getUid();
-      const r = await deleteAllMyData(uid, city);
-      if (r.serverOk && r.localOk) {
-        Alert.alert(t('privacy.deleted.title'), t('privacy.deleted.body'));
+      const deleteAccount = alsoAccount && canDeleteAccount ? accountDeleter() ?? undefined : undefined;
+      const r = await deleteAllMyData({ deleteAccount });
+      // Se dice la verdad: qué se borró y qué no.
+      if (!r.serverOk || !r.localOk) {
+        const key = deleteAccount && !r.serverOk ? 'privacy.deleted.partialAccount' : 'privacy.deleted.partial';
+        notify(t('privacy.deleted.title'), t(key));
+      } else if (deleteAccount) {
+        notify(t('privacy.deleted.title'), t(r.accountOk ? 'privacy.deleted.bodyAccount' : 'privacy.deleted.accountFailed'));
       } else {
-        // Se dice la verdad: qué se borró y qué no.
-        Alert.alert(t('privacy.deleted.title'), t('privacy.deleted.partial'));
+        notify(t('privacy.deleted.title'), t('privacy.deleted.body'));
       }
       setConfirmDelete(false);
+      setAlsoAccount(false);
       onClose();
     } finally {
       setDeleting(false);
@@ -67,10 +76,8 @@ export default function PrivacySheet({
 
   function askDelete() {
     // Segunda barrera: el diálogo del sistema, con el botón destructivo marcado.
-    Alert.alert(t('privacy.delete.confirmTitle'), t('privacy.delete.confirmBody'), [
-      { text: t('settings.reset.cancel'), style: 'cancel' },
-      { text: t('privacy.delete.confirmYes'), style: 'destructive', onPress: () => { void doDelete(); } },
-    ]);
+    const body = alsoAccount && canDeleteAccount ? t('privacy.delete.confirmBodyAccount') : t('privacy.delete.confirmBody');
+    confirmDestructive(body, t('privacy.delete.confirmYes'), t('settings.reset.cancel'), () => { void doDelete(); }, t('privacy.delete.confirmTitle'));
   }
 
   function abrirCorreo() {
@@ -92,19 +99,18 @@ export default function PrivacySheet({
         comment: comment.trim() || undefined,
         city,
         platform: Platform.OS,
-        device_id: await getUid(),
-      });
+      }, await historyAuth());
       if (r.accepted) {
-        Alert.alert(t('fb.sent.title'), t('fb.sent.body'));
+        notify(t('fb.sent.title'), t('fb.sent.body'));
         setAnswers({}); setComment('');
       } else {
         // El servidor respondió pero no aceptó (sin base de datos, límite por hora…):
         // se dice y se ofrece el correo, no se pierde la opinión en silencio.
-        Alert.alert(t('fb.sent.title'), r.note ?? t('fb.sent.fallback'));
+        notify(t('fb.sent.title'), r.note ?? t('fb.sent.fallback'));
         abrirCorreo();
       }
     } catch {
-      Alert.alert(t('fb.sent.title'), t('fb.sent.fallback'));
+      notify(t('fb.sent.title'), t('fb.sent.fallback'));
       abrirCorreo();
     } finally {
       setSending(false);
@@ -187,6 +193,20 @@ export default function PrivacySheet({
               <Text style={{ color: c.text, fontSize: 13, flex: 1, lineHeight: 19 }}>{t('privacy.delete.check')}</Text>
             </Pressable>
 
+            {canDeleteAccount && (
+              <Pressable onPress={() => setAlsoAccount((v) => !v)} style={styles.checkRow}>
+                <View
+                  style={[
+                    styles.check,
+                    { borderColor: alsoAccount ? c.coral : c.border, backgroundColor: alsoAccount ? c.coral : 'transparent' },
+                  ]}
+                >
+                  {alsoAccount && <Ionicons name="checkmark" size={15} color="#fff" />}
+                </View>
+                <Text style={{ color: c.text, fontSize: 13, flex: 1, lineHeight: 19 }}>{t('privacy.delete.account')}</Text>
+              </Pressable>
+            )}
+
             {!allAnswered && (
               <Text style={{ color: c.textSecondary, fontSize: 12, lineHeight: 17 }}>{t('privacy.delete.needFeedback')}</Text>
             )}
@@ -200,7 +220,7 @@ export default function PrivacySheet({
             >
               {deleting
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={styles.ctaText}>{t('privacy.delete.action')}</Text>}
+                : <Text style={styles.ctaText}>{t(alsoAccount && canDeleteAccount ? 'privacy.delete.actionAccount' : 'privacy.delete.action')}</Text>}
             </Pressable>
           </View>
         </ScrollView>

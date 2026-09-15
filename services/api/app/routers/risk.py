@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, Query
 
 from app import state
-from app.core.auth import verify_bearer
+from app.core import identity
 from app.data import incidents
 from app.data.risk import RiskStore
 from app.models.schemas import IncidentReport, IncidentResponse
 from app.state import get_risk
 
 router = APIRouter(tags=["risk"])
+# Los errores se registran aquí y al cliente llega un mensaje genérico: el texto de una
+# excepción puede traer detalles internos, como el servidor de la base de datos.
+logger = logging.getLogger("nomadaai.risk")
 
 
 @router.get("/risk/cities")
@@ -47,25 +51,28 @@ def incidents_aggregate(
     """
     try:
         return incidents.aggregate(city, half_life_days)
-    except Exception as e:  # noqa: BLE001
-        return {"available": False, "error": str(e), "cells": []}
+    except Exception:  # noqa: BLE001
+        logger.exception("GET /incidents/aggregate")
+        return {"available": False, "error": "No se pudieron leer los reportes", "cells": []}
 
 
 @router.post("/incidents/report", response_model=IncidentResponse)
 def report_incident(
-    report: IncidentReport, authorization: Optional[str] = Header(None)
+    report: IncidentReport,
+    authorization: Optional[str] = Header(None),
+    x_device_key: Optional[str] = Header(None),
 ) -> IncidentResponse:
     """Reporte ciudadano (OE2, participativo): persiste con rate-limit y sin exponer crudos.
 
-    La identidad la manda el token cuando existe (usuario autenticado); si no, 'anon'.
+    Se atribuye a quien prueba su identidad (token o llave del dispositivo), para que «Borrar mis
+    datos» lo alcance y el límite por hora sea por persona. Reglas en `identity.write_attribution`.
     """
     try:
         data = report.model_dump()
-        # Identidad: token > id anónimo del dispositivo > "anon". Antes saltaba directo a
-        # "anon" y todos los invitados compartían un único cubo de rate-limit.
-        data["user_id"] = verify_bearer(authorization) or data.get("device_id") or "anon"
-        data.pop("device_id", None)   # no es columna de la tabla
+        # `device_id` no es columna: solo lo mandan las versiones de la app anteriores a la llave.
+        data["user_id"] = identity.write_attribution(authorization, x_device_key, data.pop("device_id", None))
         r = incidents.report(data)
         return IncidentResponse(accepted=r["accepted"], id=r.get("id"), note=r.get("note"))
-    except Exception as e:  # noqa: BLE001 — el reporte nunca debe tumbar la app
-        return IncidentResponse(accepted=False, note=f"Error al guardar: {e}")
+    except Exception:  # noqa: BLE001 — el reporte nunca debe tumbar la app
+        logger.exception("POST /incidents/report")
+        return IncidentResponse(accepted=False, note="No se pudo guardar tu reporte. Intenta de nuevo más tarde.")

@@ -17,7 +17,7 @@ const base = () => import.meta.env.VITE_API_URL ?? "";
 type Section = "resumen" | "ciudades" | "config" | "reportes" | "opiniones";
 
 interface Report {
-  id: number; created_at: string; city: string; user_id: string;
+  id: number; created_at: string; city: string; autor: string;
   category: string; description: string | null; lon: number; lat: number; hour: number | null;
 }
 interface AppCfg { protection_levels: number[]; ads_enabled: boolean }
@@ -372,7 +372,7 @@ git add services/api/artifacts/risk && git commit && git push space main:main`}<
                         </div>
                         {r.description && <div className="adm-item-body">{r.description}</div>}
                         <div className="adm-meta">
-                          ({r.lat.toFixed(4)}, {r.lon.toFixed(4)}) · hora {r.hour ?? "—"} · usuario {String(r.user_id).slice(0, 14)}…
+                          ({r.lat.toFixed(4)}, {r.lon.toFixed(4)}) · hora {r.hour ?? "—"} · autor {r.autor}
                         </div>
                       </div>
                       <button className="secondary adm-del" onClick={() => removeReport(r.id)}>Eliminar</button>

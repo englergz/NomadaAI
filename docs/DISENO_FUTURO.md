@@ -153,7 +153,7 @@ Aquí hay que ser honestos sobre qué es posible desde una app:
 
 ## 3. Legal y confianza (obligatorio antes de publicar)
 
-> ✅ **Hecho** (v1.0.0, 2026-08-03): términos, privacidad, aceptación registrada y borrado de datos.
+> ✅ **Hecho** (v1.0.0, 2026-08-03; política revisada en v1.1.0 el 2026-09-15): términos, privacidad, aceptación registrada y borrado de datos.
 
 - **Términos de uso** y **Política de privacidad** con fecha oficial de vigencia,
   aceptación explícita en el primer arranque (no preseleccionada) y registro de

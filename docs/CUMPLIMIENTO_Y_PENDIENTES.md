@@ -10,8 +10,8 @@ Estado a 2026-08-03 (filas actualizadas hasta 2026-09-12). Lo que dice **✅** e
 
 | Requisito | Estado |
 |---|---|
-| Términos de uso con fecha de vigencia | ✅ v1.0.0, 2026-08-03 |
-| Política de privacidad con fecha de vigencia | ✅ v1.0.0, 2026-08-03 |
+| Términos de uso con fecha de vigencia | ✅ v1.1.0, vigente desde 2026-09-15 (antes v1.0.0, 2026-08-03) |
+| Política de privacidad con fecha de vigencia | ✅ v1.1.0, vigente desde 2026-09-15. Corrige dos frases que no eran exactas en la v1.0.0 («de forma anónima» y «sin cuenta, tus datos se quedan en tu teléfono»); añade qué guarda el servidor, a quién se asocia, proveedores, moderación con seudónimos y qué hace «Borrar mis datos». La app pide aceptarla de nuevo |
 | Aceptación explícita en el primer arranque (no premarcada) | ✅ verificado |
 | Registro de qué versión aceptó cada usuario | ✅ versión + fecha |
 | Ley 1581/2012: finalidad, responsable, derechos del titular | ✅ en la política |

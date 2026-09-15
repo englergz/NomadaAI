@@ -28,4 +28,12 @@ def health() -> dict:
         # Solo booleanos: ni el emisor ni los identificadores salen de aquí.
         "auth_ready": bool(s.clerk_issuer),
         "admin_ready": bool(s.admin_id_list),
+        # Contrato de identidad del histórico: lo propio exige token o llave del dispositivo y
+        # ningún `user_id` del cliente cuenta (app/core/identity.py). Los clientes lo comprueban
+        # antes de borrar: contra un backend anterior, su DELETE /history sin `user_id` borraba
+        # la ciudad entera.
+        "history_identity": True,
+        # «Borrar mis datos» completo: `DELETE /me/data` borra el histórico y los reportes de quien
+        # prueba su identidad y desvincula sus opiniones. Los clientes lo comprueban antes de pedirlo.
+        "data_deletion": True,
     }

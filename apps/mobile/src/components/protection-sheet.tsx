@@ -2,27 +2,16 @@
 // Paridad con la tarjeta del panel de escritorio: riesgo evitado, viajes, alertas
 // a tiempo, contexto de comunidad y reinicio del histórico propio.
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import ProfileSection from '@/components/profile-section';
 import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
 import { CLERK_ENABLED } from '@/lib/auth';
+import { confirmDestructive } from '@/lib/confirm';
 import { fetchSummaries, resetHistory, type HistorySummary } from '@/lib/history';
 import { useDateLocale, useT } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
-
-// Confirmación previa a acciones destructivas: Alert nativo; confirm() del navegador en web.
-function confirmDestructive(message: string, confirmLabel: string, cancelLabel: string, onConfirm: () => void) {
-  if (Platform.OS === 'web') {
-    if (window.confirm(message)) onConfirm();
-    return;
-  }
-  Alert.alert(confirmLabel, message, [
-    { text: cancelLabel, style: 'cancel' },
-    { text: confirmLabel, style: 'destructive', onPress: onConfirm },
-  ]);
-}
 
 function fmtDate(iso: string | null, locale: string): string {
   if (!iso) return '—';

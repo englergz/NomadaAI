@@ -2,7 +2,7 @@ import React, { useEffect, useState, type ReactNode } from 'react';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { Sora_700Bold, useFonts } from '@expo-google-fonts/sora';
-import { ClerkProvider as ClerkProviderImpl, useAuth } from '@clerk/clerk-expo';
+import { ClerkProvider as ClerkProviderImpl, useAuth, useUser } from '@clerk/clerk-expo';
 import { tokenCache } from '@clerk/clerk-expo/token-cache';
 
 // Clerk trae su propio @types/react (sin bigint en ReactNode) y choca con el del
@@ -21,18 +21,24 @@ import { markBootReady, useBoot } from '@/lib/boot';
 import { useT } from '@/lib/i18n';
 import { setupAlerts } from '@/lib/notify';
 import { checkForUpdate } from '@/lib/ota';
-import { CLERK_ENABLED, registerAuth } from '@/lib/auth';
+import { CLERK_ENABLED, registerAccountDeleter, registerAuth } from '@/lib/auth';
 import { SettingsProvider, useResolvedScheme, useSettings } from '@/lib/settings';
 
 SplashScreen.preventAutoHideAsync();
 
-// Publica getToken/userId para los módulos no-React (histórico, reportes).
+// Publica getToken/userId para los módulos no-React (histórico, reportes) y, con sesión,
+// cómo eliminar la cuenta (lo usa «Borrar mis datos», nunca otra cosa).
 function AuthBridge() {
   const { getToken, userId, isSignedIn } = useAuth();
+  const { user } = useUser();
   useEffect(() => {
     registerAuth(isSignedIn ? getToken : null, isSignedIn ? (userId ?? null) : null);
-    return () => registerAuth(null, null);
-  }, [getToken, userId, isSignedIn]);
+    registerAccountDeleter(isSignedIn && user ? () => user.delete() : null);
+    return () => {
+      registerAuth(null, null);
+      registerAccountDeleter(null);
+    };
+  }, [getToken, userId, isSignedIn, user]);
   return null;
 }
 

@@ -163,6 +163,11 @@ contra verdad-terreno; ver §8–§9.)
 
 ## 6. Reporte ciudadano de incidentes (capa dinámica — cierra la dependencia del dato)
 
+> **Supresión (Ley 1581).** Quien usa «Borrar mis datos» retira sus reportes: dejan de contar en
+> `F_report(z,t)` desde ese momento. Es deliberado, porque un dato que su autor retiró no puede seguir
+> pesando en el mapa. Con poco volumen un solo borrado puede mover una celda; por eso el factor exige un
+> mínimo de celdas antes de activarse.
+
 En investigación el dato es simulado; en el **producto**, los usuarios **reportan incidentes** desde la
 app (tipo, ubicación, hora, foto), alimentando una capa viva:
 

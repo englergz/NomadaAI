@@ -158,7 +158,8 @@ export interface IncidentReport {
   category: string;
   description?: string;
   city?: string;
-  hour?: number;  /** id anónimo del dispositivo: rate-limit por persona sin exigir cuenta */
+  hour?: number;
+  /** uid anónimo de versiones anteriores a la llave del dispositivo; con token o llave no se envía */
   device_id?: string;
 }
 
@@ -179,6 +180,20 @@ export interface HealthResponse {
   n_segments: number;
   corridors_ready: boolean;
   n_corridors: number;
+  /** El histórico exige token o llave del dispositivo (ver history.ts). Ausente en backends anteriores. */
+  history_identity?: boolean;
+  /** Existe `DELETE /me/data`: histórico, reportes y opiniones. Ausente en backends anteriores. */
+  data_deletion?: boolean;
+}
+
+/** Respuesta de «Borrar mis datos» en el servidor. */
+export interface DataDeletionResponse {
+  ok?: boolean;
+  /** Filas borradas: histórico de viajes y reportes ciudadanos. */
+  deleted?: { history: number; reports: number };
+  /** Opiniones desvinculadas: se conservan sin nada que las ate a la persona. */
+  unlinked?: { feedback: number };
+  error?: string;
 }
 
 /** Formulario de opinión: cuatro respuestas obligatorias (1–5), comentario opcional. */
@@ -190,7 +205,7 @@ export interface FeedbackIn {
   comment?: string;
   city?: string;
   platform?: string;
-  /** identificador anónimo del dispositivo: rate-limit por persona sin exigir cuenta */
+  /** uid anónimo de versiones anteriores a la llave del dispositivo; con token o llave no se envía */
   device_id?: string;
 }
 
@@ -198,4 +213,41 @@ export interface FeedbackResponse {
   accepted: boolean;
   id?: string;
   note?: string;
+}
+
+// --- Histórico «Tu protección» ---
+/** Agregados de `/history/summary`: propios con `scope=me`, de todos con `scope=global`. */
+export interface HistorySummary {
+  available: boolean;
+  scope?: "me" | "global";
+  trips: number;
+  users: number;
+  alerts: number;
+  prediccion: {
+    n: number; model_acc50_pct: number; base_acc50_pct: number; mejora_pp: number;
+    model_err_mean_m: number; base_err_mean_m: number;
+  } | null;
+  proteccion: { n: number; exposure_reduction_avg_pct: number } | null;
+  since: string | null;
+  updated: string | null;
+}
+
+/** Un viaje para `POST /history/trip`. Sin `user_id`: la identidad va en las cabeceras. */
+export interface TripLogIn {
+  session_id?: string | null;
+  mode?: string | null;
+  vehicle?: string | null;
+  hour?: number | null;
+  n_pred?: number;
+  model_err_sum?: number;
+  base_err_sum?: number;
+  model_hit50?: number;
+  base_hit50?: number;
+  alerts?: number;
+  exposure_reduction_pct?: number | null;
+  safe_exposure?: number | null;
+  direct_exposure?: number | null;
+  safe_dist_m?: number | null;
+  direct_dist_m?: number | null;
+  city?: string;
 }

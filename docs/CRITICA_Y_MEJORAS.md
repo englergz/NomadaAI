@@ -94,7 +94,7 @@
 6. **Costo de onboarding por ciudad.** Cada ciudad requiere ensamblar a mano trayectorias + DANE +
    OSM + policía. No está automatizado → no escala barato.
 7. **Privacidad/regulación.** Rastrear movimiento + perfilar riesgo toca Ley 1581/2012; el manejo de
-   datos de criminalidad es sensible. 🟡 **MITIGADO:** términos y política v1.0.0 con Ley 1581,
+   datos de criminalidad es sensible. 🟡 **MITIGADO:** términos y política (v1.1.0) con Ley 1581,
    aceptación registrada, borrado de datos y cifrado en reposo (2026-08/09).
 8. ~~La app no existe.~~ ✅ **Existe** (Android/iOS con Expo): ruta segura, alertas, reporte,
    segundo plano, modo sin conexión y actualizaciones por aire. Sin publicar en tiendas y sin usuarios

@@ -11,6 +11,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-09-15',
+    items: [
+      { es: '«Borrar mis datos» ahora borra también tus reportes en el servidor. La opinión que nos dejes se conserva sin nada que la vincule contigo.',
+        en: '“Delete my data” now also deletes your reports on the server. The feedback you leave is kept with nothing linking it to you.' },
+      { es: 'Si iniciaste sesión, puedes eliminar también tu cuenta desde la app.',
+        en: 'If you are signed in, you can also delete your account from the app.' },
+      { es: 'Tu histórico, tus reportes y tus opiniones solo los puedes borrar tú: van protegidos con tu cuenta o con una llave que vive en tu teléfono.',
+        en: 'Only you can delete your history, reports and feedback: they are protected by your account or by a key that lives on your phone.' },
+      { es: 'Política de privacidad actualizada: dice exactamente qué guardamos, dónde, quién interviene y cómo borrarlo. Te pediremos aceptarla de nuevo.',
+        en: 'Updated privacy policy: it says exactly what we keep, where, who is involved and how to delete it. We will ask you to accept it again.' },
+    ],
+  },
+  {
     date: '2026-09-10',
     items: [
       { es: 'Nuevo fondo de mapa (OpenFreeMap, datos de OpenStreetMap): el proveedor anterior dejó de servir sin clave y tapaba el mapa.',

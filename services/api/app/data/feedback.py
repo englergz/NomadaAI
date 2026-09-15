@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from app.core.config import get_settings
+from app.core.identity import ANON, DEVICE_ID_PREFIX, is_legacy_device_id, pseudonym
 
 _DDL = """
 create table if not exists feedback (
@@ -121,7 +122,7 @@ def summary() -> dict[str, Any]:
 
 
 def list_recent(limit: int = 100) -> list[dict[str, Any]]:
-    """Opiniones recientes con comentario (moderación; incluye user_id: uso interno admin)."""
+    """Opiniones recientes (moderación). El autor llega como seudónimo, nunca su identificador."""
     if not available():
         return []
     _ensure()
@@ -137,9 +138,47 @@ def list_recent(limit: int = 100) -> list[dict[str, Any]]:
         rows = cur.fetchall()
     return [
         {
-            "id": int(r[0]), "created_at": r[1].isoformat(), "city": r[2], "user_id": r[3],
+            "id": int(r[0]), "created_at": r[1].isoformat(), "city": r[2], "autor": pseudonym(r[3]),
             "useful": r[4], "on_time": r[5], "trust": r[6], "recommend": r[7],
             "comment": r[8], "platform": r[9],
         }
         for r in rows
     ]
+
+
+# --- Derecho de supresión (routers/privacy.py) y reclamo del uid anterior (routers/history.py) ---
+def unlink_user(user_id: str) -> int:
+    """Desvincula de una identidad TODAS sus opiniones. Devuelve cuántas.
+
+    No se borran: la app pide la opinión justo antes de borrar los datos, para aprender de quien se
+    va. Pasan a `anon` y se conservan sin nada que las ate a la persona. Sin identidad, o con
+    `anon`, no se hace nada.
+    """
+    if not user_id or user_id == ANON:
+        raise ValueError("unlink_user exige una identidad: no hay desvinculación sin ella")
+    _ensure()
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "update feedback set user_id = %(anon)s where user_id = %(uid)s",
+                {"anon": ANON, "uid": user_id},
+            )
+            n = cur.rowcount
+        conn.commit()
+    return n
+
+
+def claim(legacy_id: str, user_id: str) -> int:
+    """Pasa a la llave del dispositivo las opiniones firmadas con su uid anterior. Devuelve cuántas."""
+    if not is_legacy_device_id(legacy_id) or not str(user_id).startswith(DEVICE_ID_PREFIX):
+        raise ValueError("claim solo pasa filas de un uid de dispositivo a una llave")
+    _ensure()
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "update feedback set user_id = %(new)s where user_id = %(old)s",
+                {"new": user_id, "old": legacy_id},
+            )
+            n = cur.rowcount
+        conn.commit()
+    return n

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import type { NetState } from '@/lib/connectivity';
+import { claimLegacyHistory } from '@/lib/history';
 import { flush, subscribePending } from '@/lib/write-queue';
 
 export function useWriteQueue(netState: NetState, onSent: (n: number) => void) {
@@ -28,6 +29,9 @@ export function useWriteQueue(netState: NetState, onSent: (n: number) => void) {
       flush()
         .then((r) => { if (mounted.current && r.sent > 0) onSentRef.current(r.sent); })
         .catch(() => {});
+      // El reclamo único del histórico del uid anterior también espera a la señal: cuanto
+      // antes pase a la llave, antes deja ese uid de alcanzar nada (ver lib/history).
+      void claimLegacyHistory();
     };
     run();
     const sub = AppState.addEventListener('change', (s) => { if (s === 'active') run(); });

@@ -90,20 +90,21 @@ El contrato se mantiene en dos sitios sincronizados: `services/api/app/models/sc
 | GET | `/trajectories/evaluate` | evaluación OE1/OE4 (`n`, `noise_m`) | — |
 | GET | `/corridors` | corredores TRACLUS | — |
 | GET | `/risk/cities` · `/risk/zones` | ciudades con capa de riesgo; malla por `city`, `hour`, `day`, `bbox` | — |
-| POST | `/incidents/report` | reporte ciudadano (rate-limit) | opcional |
+| POST | `/incidents/report` | reporte ciudadano (rate-limit); se atribuye a quien prueba su identidad | token o llave (`X-Device-Key`), opcionales |
 | GET | `/incidents/aggregate` | reportes agregados | — |
 | GET | `/route/cities` | ciudades que rutean | — |
 | POST | `/route/build` | ruta segura vs directa con exposición comparada | — |
 | POST | `/route/safe` | variante simple de ruta segura | — |
 | GET | `/pois` | lugares de interés | — |
 | GET | `/evaluate/alerts` · `/evaluate/scenarios` | barridos de alerta | — |
-| POST · GET · GET · DELETE | `/history/trip` · `/history/summary` · `/history/stats` · `/history` | histórico por usuario y BI | token en escritura |
-| POST | `/feedback` | opinión antes de borrar datos | opcional |
+| POST · GET · GET · DELETE · POST | `/history/trip` · `/history/summary` · `/history/stats` · `/history` · `/history/claim` | histórico por usuario y BI; `summary?scope=global` da los agregados de todos | lo propio exige token o llave del dispositivo (`X-Device-Key`): sin prueba, 401 al leer y al borrar. Nunca se acepta `user_id` (`DEPLOY.md` §6) |
+| POST | `/feedback` | opinión antes de borrar datos; se atribuye a quien prueba su identidad | token o llave, opcionales |
+| DELETE | `/me/data` | «Borrar mis datos»: borra histórico y reportes propios, desvincula las opiniones | token o llave; sin prueba, 401 (`DEPLOY.md` §6) |
 | GET | `/config/app` | niveles de protección, `ads_enabled` | — |
 | GET | `/cities/catalog` | ciudades que la app puede encontrar | — |
 | GET | `/admin/me` | ¿el token es admin? | admin |
 | PUT | `/admin/config/app` | editar configuración de la app | admin |
-| GET · DELETE | `/admin/reports` · `/admin/reports/{id}` | moderar reportes | admin |
+| GET · DELETE | `/admin/reports` · `/admin/reports/{id}` | moderar reportes; el autor llega como seudónimo | admin |
 | GET | `/admin/summary` · `/admin/feedback` | KPIs y opiniones | admin |
 | GET | `/admin/cities` | por ciudad: riesgo, red vial, predicción y factores con motivo | admin |
 | POST · DELETE | `/admin/cities/catalog` · `/admin/cities/catalog/{key}` | alta y baja en el catálogo | admin |

@@ -17,7 +17,19 @@ import type {
   DemoResponse,
   FeedbackIn,
   FeedbackResponse,
+  DataDeletionResponse,
+  HistorySummary,
+  TripLogIn,
 } from "./types";
+import { DEVICE_KEY_HEADER, historyHeaders, type HistoryAuth } from "./history";
+
+/** Con prueba de identidad, el uid anónimo anterior que traiga un cuerpo encolado sobra: no se envía. */
+function withoutLegacyId<T extends { device_id?: string }>(body: T, auth?: HistoryAuth | null): T {
+  if (Object.keys(historyHeaders(auth)).length === 0) return body;
+  const copy = { ...body };
+  delete copy.device_id;
+  return copy;
+}
 
 export class NomadaApi {
   constructor(private baseUrl: string) {
@@ -39,16 +51,88 @@ export class NomadaApi {
     return this.req<HealthResponse>("/health");
   }
 
+  // --- Histórico «Tu protección» ---
+  // La identidad va SIEMPRE en cabeceras (token o llave del dispositivo, ver ./history):
+  // el servidor ignora cualquier user_id, y en la URL acabaría en los logs de acceso.
+
   /**
-   * Borrado de los datos del usuario en el SERVIDOR (Ley 1581: derecho de
-   * supresión). Con token borra los del usuario autenticado; sin él, los del
-   * identificador anónimo del dispositivo.
+   * Agregados del histórico: `me` (exige sesión o llave) o `global` (sin identidad).
+   * null si el servidor no responde 2xx, o si se pide `me` sin credenciales.
    */
-  deleteMyData(userId: string, city = "tumaco", token?: string | null) {
-    const q = new URLSearchParams({ city, user_id: userId });
-    return this.req<{ ok?: boolean; error?: string }>(`/history?${q}`, {
+  async historySummary(
+    auth: HistoryAuth | null,
+    opts: { city?: string; scope?: "me" | "global" } = {},
+  ): Promise<HistorySummary | null> {
+    const scope = opts.scope ?? "me";
+    const headers = scope === "me" ? historyHeaders(auth) : {};
+    if (scope === "me" && Object.keys(headers).length === 0) return null;
+    const q = new URLSearchParams({ scope });
+    if (opts.city) q.set("city", opts.city);
+    const res = await fetch(`${this.baseUrl}/history/summary?${q}`, { headers });
+    if (!res.ok) return null;
+    const body = (await res.json()) as HistorySummary;
+    // Un backend anterior ignora `scope` y, sin user_id, responde lo de todos: nunca se
+    // muestra como propio. Sin base de datos llega `available: false`, sin scope.
+    return body.available === false || body.scope === scope ? body : null;
+  }
+
+  /** Registra un viaje. Devuelve el status HTTP; solo lanza si no hubo respuesta (sin red). */
+  async logTrip(auth: HistoryAuth | null, trip: TripLogIn): Promise<number> {
+    // Lo encolado por versiones anteriores puede traer `user_id`: no se envía.
+    const body: Record<string, unknown> = { ...trip };
+    delete body.user_id;
+    const res = await fetch(`${this.baseUrl}/history/trip`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...historyHeaders(auth) },
+      body: JSON.stringify(body),
+    });
+    return res.status;
+  }
+
+  /**
+   * Borra el histórico de quien lo pide: en todas las ciudades, o solo en `city`.
+   * Es también el borrado del servidor del derecho de supresión (Ley 1581). Lanza si
+   * el servidor no acepta (401 sin credenciales válidas).
+   *
+   * Antes pregunta a /health si el servidor verifica la identidad del histórico. Contra
+   * un backend anterior, este mismo DELETE (sin user_id) borraba la ciudad entera: si la
+   * app se actualiza antes que el servidor, no se borra nada.
+   */
+  async deleteHistory(auth: HistoryAuth, city?: string) {
+    const health = await this.health();
+    if (health.history_identity !== true) {
+      throw new Error("El servidor aún no verifica la identidad del histórico: no se borra nada");
+    }
+    const q = city ? `?${new URLSearchParams({ city })}` : "";
+    return this.req<{ ok?: boolean; deleted?: number; error?: string }>(`/history${q}`, {
       method: "DELETE",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      headers: historyHeaders(auth),
+    });
+  }
+
+  /** Pasa a la llave el histórico guardado con el uid anterior (ver claimLegacyHistoryOnce). */
+  claimLegacyHistory(deviceKey: string, legacyId: string) {
+    return this.req<{ ok?: boolean; moved?: number; error?: string }>("/history/claim", {
+      method: "POST",
+      headers: { "content-type": "application/json", [DEVICE_KEY_HEADER]: deviceKey },
+      body: JSON.stringify({ legacy_id: legacyId }),
+    });
+  }
+
+  /**
+   * «Borrar mis datos» en el servidor (Ley 1581): borra el histórico y los reportes de quien lo
+   * pide y desvincula sus opiniones, en una sola petición. Cuenta y dispositivo son identidades
+   * distintas: se llama con cada una. Lanza si el servidor no acepta (401 sin credenciales
+   * válidas) o si aún no ofrece este borrado: nunca se da por hecho un borrado que no existe.
+   */
+  async deleteMyData(auth: HistoryAuth) {
+    const health = await this.health();
+    if (health.data_deletion !== true || health.history_identity !== true) {
+      throw new Error("El servidor aún no permite borrar reportes y opiniones: no se borra nada");
+    }
+    return this.req<DataDeletionResponse>("/me/data", {
+      method: "DELETE",
+      headers: historyHeaders(auth),
     });
   }
 
@@ -146,11 +230,15 @@ export class NomadaApi {
     });
   }
 
-  reportIncident(body: IncidentReport, token?: string | null) {
+  /**
+   * Reporte ciudadano. La identidad va en cabeceras (token o llave, ver ./history): así «Borrar mis
+   * datos» lo alcanza y el límite por hora es por persona.
+   */
+  reportIncident(body: IncidentReport, auth?: HistoryAuth | null) {
     return this.req<IncidentResponse>("/incidents/report", {
       method: "POST",
-      body: JSON.stringify(body),
-      ...(token ? { headers: { "content-type": "application/json", Authorization: `Bearer ${token}` } } : {}),
+      headers: { "content-type": "application/json", ...historyHeaders(auth) },
+      body: JSON.stringify(withoutLegacyId(body, auth)),
     });
   }
 
@@ -158,11 +246,11 @@ export class NomadaApi {
    * Opinión del usuario → servidor, no correo. La consumen móvil y escritorio; el panel
    * admin la lee agregada. Si el servidor no acepta, el cliente decide el respaldo.
    */
-  sendFeedback(body: FeedbackIn, token?: string | null) {
+  sendFeedback(body: FeedbackIn, auth?: HistoryAuth | null) {
     return this.req<FeedbackResponse>("/feedback", {
       method: "POST",
-      body: JSON.stringify(body),
-      ...(token ? { headers: { "content-type": "application/json", Authorization: `Bearer ${token}` } } : {}),
+      headers: { "content-type": "application/json", ...historyHeaders(auth) },
+      body: JSON.stringify(withoutLegacyId(body, auth)),
     });
   }
 }

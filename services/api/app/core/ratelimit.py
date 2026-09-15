@@ -35,6 +35,8 @@ from starlette.responses import JSONResponse
 REGLAS: list[tuple[str, str, int, int]] = [
     ("POST",   "/history/trip",        180, 3600),   # un viaje cada 20 s, sostenido
     ("DELETE", "/history",              10, 3600),
+    ("POST",   "/history/claim",        20, 3600),   # una vez por dispositivo; margen para reintentos
+    ("DELETE", "/me/data",              10, 3600),   # «Borrar mis datos»: margen para reintentos
     ("POST",   "/incidents/report",     30, 3600),   # el límite fino (5/h) es por identidad
     ("POST",   "/feedback",             10, 3600),   # ídem (3/h por identidad)
     ("POST",   "/route/build",         600, 3600),   # cómputo: 10/min de media, con ráfagas

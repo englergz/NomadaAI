@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from app.core.config import get_settings
+from app.core.identity import DEVICE_ID_PREFIX, is_legacy_device_id
 
 _DDL = """
 create table if not exists sim_effectiveness (
@@ -170,8 +171,8 @@ def summary(city: str = "tumaco", user_id: Optional[str] = None) -> dict[str, An
         prot = {"n": int(n_routes), "exposure_reduction_avg_pct": round(float(exp_avg), 1)}
     return {
         "available": True,
-        "scope": "user" if user_id else "global",
-        "user_id": user_id,
+        # Sin eco del `user_id`: el cliente no lo necesita y, con llave, sería su hash.
+        "scope": "me" if user_id else "global",
         "trips": int(trips),
         "users": int(users),
         "alerts": int(alerts),
@@ -242,18 +243,47 @@ def stats(city: str = "tumaco") -> dict[str, Any]:
     }
 
 
-def reset(city: str = "tumaco", user_id: Optional[str] = None) -> dict[str, Any]:
-    """Borra el histórico. Si `user_id`, solo el de ese usuario; si no, toda la ciudad."""
+def reset(user_id: str, city: Optional[str] = None) -> dict[str, Any]:
+    """Borra el histórico de UNA identidad: en todas las ciudades o solo en `city`.
+
+    Sin `user_id` no hay borrado. Antes, omitirlo borraba la ciudad entera, y la API pública lo
+    permitía sin identidad; la comprobación va aquí para que ningún llamador futuro lo reabra.
+    """
+    if not user_id:
+        raise ValueError("reset exige user_id: no hay borrado sin identidad")
     if not available():
         return {"ok": False, "available": False}
     _ensure()
-    where = "where city = %(city)s"
-    params: dict[str, Any] = {"city": city}
-    if user_id:
-        where += " and user_id = %(uid)s"
-        params["uid"] = user_id
+    where = "where user_id = %(uid)s"
+    params: dict[str, Any] = {"uid": user_id}
+    if city:
+        where += " and city = %(city)s"
+        params["city"] = city
     with _connect() as conn:
         with conn.cursor() as cur:
             cur.execute(f"delete from sim_effectiveness {where}", params)
+            deleted = cur.rowcount
         conn.commit()
-    return {"ok": True}
+    return {"ok": True, "deleted": deleted}
+
+
+def claim(legacy_id: str, user_id: str) -> dict[str, Any]:
+    """Re-asigna a la llave del dispositivo (`user_id` = `dev_…`) las filas de su uid anterior.
+
+    Solo mueve filas de un uid de dispositivo hacia un identificador de llave: nunca toca filas
+    de cuenta (`user_…`) ni `anon`, aunque un llamador futuro se salte la validación del router.
+    """
+    if not is_legacy_device_id(legacy_id) or not user_id.startswith(DEVICE_ID_PREFIX):
+        raise ValueError("claim solo pasa filas de un uid de dispositivo a una llave")
+    if not available():
+        return {"ok": False, "available": False}
+    _ensure()
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "update sim_effectiveness set user_id = %(new)s where user_id = %(old)s",
+                {"new": user_id, "old": legacy_id},
+            )
+            moved = cur.rowcount
+        conn.commit()
+    return {"ok": True, "moved": moved}

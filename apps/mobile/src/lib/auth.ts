@@ -24,3 +24,15 @@ export async function authToken(): Promise<string | null> {
 export function authUserId(): string | null {
   return clerkUserId;
 }
+
+// Eliminar la cuenta de Clerk de la sesión activa. Lo publica el mismo puente; null sin sesión.
+// Solo lo invoca «Borrar mis datos», y siempre después de confirmar el borrado del servidor.
+let accountDeleterFn: (() => Promise<void>) | null = null;
+
+export function registerAccountDeleter(fn: (() => Promise<void>) | null) {
+  accountDeleterFn = fn;
+}
+
+export function accountDeleter(): (() => Promise<void>) | null {
+  return accountDeleterFn;
+}

@@ -30,6 +30,13 @@ Docs interactivas: http://localhost:8000/docs
 `fetch_road_graph.py` (red vial OSM), `oe*.py` y `t*.py` (evaluaciones),
 `c5_humo_route_build.py` (16 invariantes de `/route/build`). Hashes en `scripts/GOLDEN.md`.
 
+`humo_history_identidad.py` comprueba que nadie lee ni borra el histórico de otra persona. Corre
+en proceso contra la app, con una base simulada: no abre red ni toca ninguna base de datos real.
+
+```bash
+cd services/api && .venv/bin/python scripts/humo_history_identidad.py
+```
+
 ## Ejemplo
 
 ```bash

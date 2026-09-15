@@ -2,24 +2,14 @@
 // hora / zona / acción, filtros por tipo y limpieza con confirmación. Al abrirla
 // se marca todo como visto (el puntico del FAB desaparece hasta la próxima).
 import { useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
 import { clearAlerts, getAlerts, markAlertsSeen, type AlertRecord } from '@/lib/alert-log';
+import { confirmDestructive } from '@/lib/confirm';
 import { useDateLocale, useT } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
-
-function confirmDestructive(message: string, confirmLabel: string, cancelLabel: string, onConfirm: () => void) {
-  if (Platform.OS === 'web') {
-    if (window.confirm(message)) onConfirm();
-    return;
-  }
-  Alert.alert(confirmLabel, message, [
-    { text: cancelLabel, style: 'cancel' },
-    { text: confirmLabel, style: 'destructive', onPress: onConfirm },
-  ]);
-}
 
 function fmtDate(iso: string, locale: string): string {
   try {

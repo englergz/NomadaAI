@@ -5,9 +5,11 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import type {
   FeatureCollection as ApiFC,
   HealthResponse,
+  HistoryAuth,
   TripSummary,
 } from "@nomadaai/shared";
 import { api } from "./lib/api";
+import { claimLegacyHistory, getDeviceKey } from "./lib/historyIdentity";
 import { basemapStyle, keepOwnLayers, TUMACO_CENTER, TUMACO_ZOOM } from "./lib/mapStyle";
 import { HEAT_PALETTES, loadRiskPrefs, paletteGradient, riskFillColor, saveRiskPrefs, type HeatPaletteKey, type RiskPrefs } from "./lib/riskStyle";
 import { escapeHtml, LEGAL_DOCS, LEGAL_EFFECTIVE_DATE, LEGAL_VERSION } from "@nomadaai/shared";
@@ -153,19 +155,6 @@ function AuthBar({ onUser, setGetToken }: {
   );
 }
 
-// Identidad anónima del usuario (persistente en este navegador). Habilita histórico por usuario,
-// personalización y BI. Más adelante se puede enlazar a un login real sin cambiar el esquema.
-function getUid(): string {
-  try {
-    let u = localStorage.getItem("nomadaai_uid");
-    if (!u) {
-      u = (crypto?.randomUUID?.() ?? `u_${Date.now()}_${Math.random().toString(36).slice(2)}`);
-      localStorage.setItem("nomadaai_uid", u);
-    }
-    return u;
-  } catch { return "anon"; }
-}
-
 export default function App() {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const baseRef = useRef<{ sat: boolean; th: "dark" | "light" } | null>(null);
@@ -225,7 +214,6 @@ export default function App() {
   const tripAggRef = useRef<TripAgg>(emptyTripAgg());
   const protectionRef = useRef<Protection | null>(null);
   const tripMetaRef = useRef<{ mode: string; vehicle: string; hour: number }>({ mode: "test", vehicle: "car", hour: 20 });
-  const uidRef = useRef<string>(getUid());
   const sessionRef = useRef<string>(`s_${Date.now()}`);
   const [authUid, setAuthUid] = useState<string | null>(null);          // id de Clerk si hay sesión
   // Config de producto: niveles de la barra de protección (los define el admin).
@@ -233,7 +221,6 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);   // confirmado por /admin/me EN SERVIDOR
   const [showAdmin, setShowAdmin] = useState(false);
   const authGetTokenRef = useRef<null | (() => Promise<string | null>)>(null);
-  const effUidRef = useRef<string>(uidRef.current);                     // usuario efectivo (sesión o anónimo)
   const histLocalRef = useRef<HistLocal>(emptyHist());
   const [histLocal, setHistLocal] = useState<HistLocal | null>(null);   // respaldo (navegador)
   const [histSummary, setHistSummary] = useState<any>(null);            // agregados del usuario (DB)
@@ -326,9 +313,8 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cuando cambia la sesión (login/logout) se recalcula el usuario efectivo y se recarga.
+  // Cuando cambia la sesión (login/logout) cambia la identidad del histórico: se recarga.
   useEffect(() => {
-    effUidRef.current = authUid ?? uidRef.current;
     refreshSummary();
     // ¿Es admin? Lo decide el SERVIDOR (/admin/me con el token); aquí solo se consulta.
     if (!authUid) { setIsAdmin(false); return; }
@@ -354,19 +340,29 @@ export default function App() {
       .catch(() => { /* defaults locales */ });
   }, []);
 
+  async function sessionToken(): Promise<string | null> {
+    try { return authGetTokenRef.current ? await authGetTokenRef.current() : null; } catch { return null; }
+  }
+
   async function authHeader(): Promise<Record<string, string>> {
-    try {
-      const t = authGetTokenRef.current ? await authGetTokenRef.current() : null;
-      return t ? { Authorization: `Bearer ${t}` } : {};
-    } catch { return {}; }
+    const t = await sessionToken();
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  }
+
+  // Identidad del histórico: el token si hay sesión; si no, la llave de este navegador.
+  // Nunca un user_id: el servidor no lo acepta (packages/shared/src/history.ts).
+  async function historyAuth(): Promise<HistoryAuth> {
+    const token = await sessionToken();
+    return token ? { token } : { deviceKey: getDeviceKey() };
   }
 
   async function refreshSummary() {
     try {
-      const h = await authHeader();
+      // Antes de leer lo propio, que lo guardado con el uid anterior ya cuente como propio.
+      await claimLegacyHistory();
       const [mine, global] = await Promise.all([
-        fetch(`${base()}/history/summary?user_id=${encodeURIComponent(effUidRef.current)}`, { headers: h }).then((r) => r.json()),
-        fetch(`${base()}/history/summary`).then((r) => r.json()),  // sin sesión → contexto global
+        api.historySummary(await historyAuth(), { scope: "me" }),
+        api.historySummary(null, { scope: "global" }),  // contexto de comunidad, sin identidad
       ]);
       setHistSummary(mine?.available ? mine : null);
       setHistGlobal(global?.available ? global : null);
@@ -392,17 +388,14 @@ export default function App() {
     // DB
     const m = tripMetaRef.current;
     try {
-      await fetch(`${base()}/history/trip`, {
-        method: "POST", headers: { "content-type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({
-          user_id: effUidRef.current, session_id: sessionRef.current,
-          mode: m.mode, vehicle: m.vehicle, hour: m.hour,
-          n_pred: a.n, model_err_sum: a.modelErr, base_err_sum: a.baseErr,
-          model_hit50: a.modelHit50, base_hit50: a.baseHit50, alerts: a.alerts,
-          exposure_reduction_pct: p?.exposure_reduction_pct ?? null,
-          safe_exposure: p?.safe_exposure ?? null, direct_exposure: p?.direct_exposure ?? null,
-          safe_dist_m: p?.safe_dist_m ?? null, direct_dist_m: p?.direct_dist_m ?? null,
-        }),
+      await api.logTrip(await historyAuth(), {
+        session_id: sessionRef.current,
+        mode: m.mode, vehicle: m.vehicle, hour: m.hour,
+        n_pred: a.n, model_err_sum: a.modelErr, base_err_sum: a.baseErr,
+        model_hit50: a.modelHit50, base_hit50: a.baseHit50, alerts: a.alerts,
+        exposure_reduction_pct: p?.exposure_reduction_pct ?? null,
+        safe_exposure: p?.safe_exposure ?? null, direct_exposure: p?.direct_exposure ?? null,
+        safe_dist_m: p?.safe_dist_m ?? null, direct_dist_m: p?.direct_dist_m ?? null,
       });
       refreshSummary();
     } catch { /* silencioso: la simulación no depende de la DB */ }
@@ -412,7 +405,7 @@ export default function App() {
     histLocalRef.current = emptyHist();
     setHistLocal(null);
     try { localStorage.removeItem("nomadaai_hist"); } catch { /* ignore */ }
-    try { await fetch(`${base()}/history?user_id=${encodeURIComponent(effUidRef.current)}`, { method: "DELETE", headers: await authHeader() }); } catch { /* ignore */ }
+    try { await api.deleteHistory(await historyAuth()); } catch { /* ignore */ }
     refreshSummary();
   }
 

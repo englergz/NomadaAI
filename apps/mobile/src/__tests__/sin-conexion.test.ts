@@ -28,6 +28,7 @@ jest.mock('@/lib/secure-storage', () => {
 });
 jest.mock('@/lib/api', () => ({ api: {}, baseUrl: 'http://test' }));
 jest.mock('@/lib/auth', () => ({ authToken: async () => null }));
+jest.mock('@/lib/history-auth', () => ({ historyAuth: async () => ({}) }));
 
 import { ageLabel, cachedFetch, clearOfflineCache, readCached } from '@/lib/offline-cache';
 import { clearWriteQueue, enqueue, flush, pendingCount, prune, type Job, type Senders } from '@/lib/write-queue';
@@ -77,13 +78,13 @@ describe('cola de escrituras (reportes y viajes)', () => {
 
   it('encola y cuenta pendientes', async () => {
     await enqueue({ kind: 'report', body: report });
-    await enqueue({ kind: 'trip', body: { user_id: 'd1', mode: 'mobile', alerts: 2 } });
+    await enqueue({ kind: 'trip', body: { mode: 'mobile', alerts: 2 } });
     expect(await pendingCount()).toBe(2);
   });
 
   it('con señal envía en orden y vacía la cola', async () => {
     await enqueue({ kind: 'report', body: report });
-    await enqueue({ kind: 'trip', body: { user_id: 'd1', mode: 'mobile' } });
+    await enqueue({ kind: 'trip', body: { mode: 'mobile' } });
     const order: string[] = [];
     const senders: Senders = {
       report: async () => { order.push('report'); },
@@ -97,7 +98,7 @@ describe('cola de escrituras (reportes y viajes)', () => {
 
   it('sin señal se para en el primer fallo y NO pierde nada', async () => {
     await enqueue({ kind: 'report', body: report });
-    await enqueue({ kind: 'trip', body: { user_id: 'd1', mode: 'mobile' } });
+    await enqueue({ kind: 'trip', body: { mode: 'mobile' } });
     let calls = 0;
     const senders: Senders = {
       report: async () => { calls += 1; throw new Error('sin red'); },

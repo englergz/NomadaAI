@@ -134,8 +134,8 @@ class IncidentReport(BaseModel):
     description: Optional[str] = Field(default=None, max_length=500)
     city: str = "tumaco"
     hour: Optional[int] = Field(default=None, ge=0, le=23)
-    # identificador anónimo del dispositivo: sin él, TODOS los invitados compartían un
-    # solo cubo "anon" de 5 reportes/hora, y un abusador bloqueaba a la ciudad entera
+    # uid anónimo que mandan las versiones de la app anteriores a la llave del dispositivo. Sin
+    # prueba de identidad solo sirve para atribuir el reporte (identity.write_attribution)
     device_id: Optional[str] = Field(default=None, max_length=64)
 
 
@@ -154,7 +154,8 @@ class FeedbackIn(BaseModel):
     comment: Optional[str] = Field(default=None, max_length=800)
     city: str = "tumaco"
     platform: Optional[str] = Field(default=None, max_length=20)
-    # identificador anónimo del dispositivo: rate-limit por persona sin exigir cuenta
+    # uid anónimo que mandan las versiones de la app anteriores a la llave del dispositivo. Sin
+    # prueba de identidad solo sirve para atribuir la opinión (identity.write_attribution)
     device_id: Optional[str] = Field(default=None, max_length=64)
 
 

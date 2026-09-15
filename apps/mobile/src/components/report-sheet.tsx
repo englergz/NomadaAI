@@ -12,9 +12,8 @@ import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
 import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
-import { getUid } from '@/lib/uid';
 import { enqueue } from '@/lib/write-queue';
-import { authToken } from '@/lib/auth';
+import { historyAuth } from '@/lib/history-auth';
 import { useT } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
 
@@ -78,12 +77,12 @@ export default function ReportSheet({
         description: description.trim() || undefined,
         city,
         hour: new Date().getHours(),
-        device_id: await getUid(), // rate-limit por persona aunque no haya sesión
       };
       let r: { accepted: boolean; note?: string } | null = null;
       try {
-        // Con sesión, el reporte viaja firmado (el backend verifica el token).
-        r = await api.reportIncident(body, await authToken());
+        // Firmado con el token si hay sesión o con la llave del dispositivo: así «Borrar mis
+        // datos» lo alcanza y el límite por hora es por persona.
+        r = await api.reportIncident(body, await historyAuth());
       } catch {
         // SIN RED: el reporte no se pierde. Se guarda cifrado y sale solo al volver la señal.
         await enqueue({ kind: 'report', body });
