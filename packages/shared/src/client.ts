@@ -22,6 +22,9 @@ import type {
   TripLogIn,
 } from "./types";
 import { DEVICE_KEY_HEADER, historyHeaders, type HistoryAuth } from "./history";
+import type {
+  CircleEventKind, CircleEventOpened, CircleMember, CircleOpenEvent, CirclePrefs, CircleSummary,
+} from "./circles";
 
 /** Con prueba de identidad, el uid anónimo anterior que traiga un cuerpo encolado sobra: no se envía. */
 function withoutLegacyId<T extends { device_id?: string }>(body: T, auth?: HistoryAuth | null): T {
@@ -276,5 +279,64 @@ export class NomadaApi {
       headers: { "content-type": "application/json", ...historyHeaders(auth) },
       body: JSON.stringify(withoutLegacyId(body, auth)),
     });
+  }
+
+  // ---------------------------------------------------------------- Círculos de cuidado
+  // Todas exigen CUENTA: el servidor responde 403 a la llave de dispositivo, porque un
+  // círculo tiene que sobrevivir al cambio de teléfono. Ver ./circles.
+
+  private circleJson<T>(path: string, auth: HistoryAuth, method: string, body?: unknown) {
+    return this.req<T>(path, {
+      method,
+      headers: { "content-type": "application/json", ...historyHeaders(auth) },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+  }
+
+  myCircles(auth: HistoryAuth) {
+    return this.circleJson<{ circles: CircleSummary[] }>("/circles", auth, "GET");
+  }
+
+  createCircle(auth: HistoryAuth, body: { name: string; kind: string; alias: string }) {
+    return this.circleJson<CircleSummary>("/circles", auth, "POST", body);
+  }
+
+  joinCircle(auth: HistoryAuth, body: { code: string; alias: string }) {
+    return this.circleJson<CircleSummary>("/circles/join", auth, "POST", body);
+  }
+
+  leaveCircle(auth: HistoryAuth, circleId: number) {
+    return this.circleJson<{ left: boolean }>(`/circles/${circleId}/me`, auth, "DELETE");
+  }
+
+  circleMembers(auth: HistoryAuth, circleId: number) {
+    return this.circleJson<{ members: CircleMember[] }>(`/circles/${circleId}/members`, auth, "GET");
+  }
+
+  circlePrefs(auth: HistoryAuth, circleId: number) {
+    return this.circleJson<CirclePrefs>(`/circles/${circleId}/prefs`, auth, "GET");
+  }
+
+  saveCirclePrefs(auth: HistoryAuth, circleId: number, prefs: CirclePrefs) {
+    return this.circleJson<CirclePrefs>(`/circles/${circleId}/prefs`, auth, "PUT", prefs);
+  }
+
+  circleEvents(auth: HistoryAuth, circleId: number) {
+    return this.circleJson<{ events: CircleOpenEvent[] }>(`/circles/${circleId}/events`, auth, "GET");
+  }
+
+  /** Empieza a compartir ubicación con el círculo por un motivo concreto. */
+  openCircleEvent(auth: HistoryAuth, circleId: number, kind: CircleEventKind) {
+    return this.circleJson<CircleEventOpened>(`/circles/${circleId}/events`, auth, "POST", { kind });
+  }
+
+  /** Deja de compartir. El servidor borra el rastro de ese evento en el mismo acto. */
+  closeCircleEvent(auth: HistoryAuth, circleId: number, eventId: number) {
+    return this.circleJson<{ closed: boolean }>(`/circles/${circleId}/events/${eventId}/close`, auth, "POST");
+  }
+
+  /** 409 si el evento ya no está abierto: el cliente debe dejar de mandar. */
+  sendCirclePosition(auth: HistoryAuth, circleId: number, eventId: number, pos: { lon: number; lat: number; acc?: number | null }) {
+    return this.circleJson<{ ok: boolean }>(`/circles/${circleId}/events/${eventId}/positions`, auth, "POST", pos);
   }
 }

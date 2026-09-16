@@ -39,8 +39,9 @@ export const VEHICLES = [
   { key: 'truck', tKey: 'settings.vehicle.truck', icon: '🚚' },
 ] as const;
 
-export default function SettingsSheet({ visible, onClose, onHelp, onLegal, onPrivacy }: {
+export default function SettingsSheet({ visible, onClose, onHelp, onLegal, onPrivacy, onCircles }: {
   visible: boolean; onClose: () => void; onHelp: () => void; onLegal: () => void; onPrivacy: () => void;
+  onCircles: () => void;
 }) {
   const t = useT();
   const scheme = useResolvedScheme();
@@ -225,21 +226,20 @@ export default function SettingsSheet({ visible, onClose, onHelp, onLegal, onPri
         </View>
         </View>
 
-        {/* CÍRCULOS: existe en el diseño (docs/DISENO_FUTURO.md §2), no en el código.
-            Se muestra con honestidad —«próximamente»— para que el usuario sepa a
-            dónde va el producto, sin un botón que no haga nada. */}
+        {/* CÍRCULOS: grupos de cuidado con la ubicación por excepción. Ya existe; lo que
+            todavía no hace (avisar con la app cerrada) lo dice la propia hoja al abrirla. */}
         <Text style={[styles.sec, { color: c.textSecondary, marginTop: 14 }]}>{t('circles.sec')}</Text>
-        <View style={[styles.circles, { borderColor: c.border, backgroundColor: c.background }]}>
+        <Pressable
+          onPress={onCircles}
+          style={({ pressed }) => [styles.circles, { borderColor: c.border, backgroundColor: c.background, opacity: pressed ? 0.85 : 1 }]}
+          accessibilityRole="button"
+        >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={{ color: c.text, fontSize: 14, fontWeight: '700', flex: 1 }}>{t('circles.card.title')}</Text>
-            <View style={[styles.soon, { borderColor: c.accent }]}>
-              <Text style={{ color: c.accent, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>
-                {t('wel.soon').toUpperCase()}
-              </Text>
-            </View>
+            <Text style={{ color: c.accent, fontSize: 13, fontWeight: '700' }}>{t('circles.open')}</Text>
           </View>
           <Text style={{ color: c.textSecondary, fontSize: 12.5, lineHeight: 18 }}>{t('circles.card.body')}</Text>
-        </View>
+        </Pressable>
 
         {/* MÁS OPCIONES: tarjeta plegable con lo que se usa una vez (pedido 08-04: agrupar
             los cuatro botones). Ayuda · mis datos y opinión · términos · restablecer. */}
@@ -302,7 +302,6 @@ export default function SettingsSheet({ visible, onClose, onHelp, onLegal, onPri
 
 const styles = StyleSheet.create({
   circles: { marginHorizontal: 16, borderWidth: 1, borderRadius: Radii.card, padding: 12, gap: 6 },
-  soon: { borderWidth: 1.5, borderRadius: Radii.pill, paddingVertical: 3, paddingHorizontal: 9 },
   more: { marginHorizontal: 16, marginTop: 18, borderWidth: 1, borderRadius: Radii.card, overflow: 'hidden' },
   moreHead: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14 },
   moreList: { borderTopWidth: 1, paddingVertical: 4 },

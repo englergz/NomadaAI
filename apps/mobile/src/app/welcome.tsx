@@ -96,13 +96,13 @@ function WelcomeAuth({ onDone }: { onDone: () => void }) {
 
 // ONBOARDING DE VALOR: cada página es algo que la app HACE por la persona, en el
 // orden en que lo va a vivir. La protección automática y los reportes son lo que
-// diferencia el producto; Círculos se anuncia como «próximamente» sin fingir que existe.
+// diferencia el producto; Círculos ya existe (el aviso con la app cerrada llegará con el push).
 const SLIDES: { icon: keyof typeof Ionicons.glyphMap; title: TKey; body: TKey; soon?: boolean }[] = [
   { icon: 'heart-circle-outline', title: 'wel.1.title', body: 'wel.1.body' },
   { icon: 'shield-checkmark-outline', title: 'wel.auto.title', body: 'wel.auto.body' },
   { icon: 'navigate-circle-outline', title: 'wel.route.title', body: 'wel.route.body' },
   { icon: 'megaphone-outline', title: 'wel.report.title', body: 'wel.report.body' },
-  { icon: 'people-circle-outline', title: 'wel.circles.title', body: 'wel.circles.body', soon: true },
+  { icon: 'people-circle-outline', title: 'wel.circles.title', body: 'wel.circles.body' },
 ];
 
 export default function Welcome() {

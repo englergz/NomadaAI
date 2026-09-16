@@ -25,6 +25,7 @@ import { DEFAULT_PROTECTION_LEVELS, lambdaForLevel } from '@nomadaai/shared';
 import type { BuildRouteResponse, Coordinate } from '@nomadaai/shared';
 
 import BrandWordmark from '@/components/brand';
+import CirclesSheet from '@/components/circles-sheet';
 import CitySheet from '@/components/city-sheet';
 import WhatsNewSheet from '@/components/whats-new-sheet';
 import { CLERK_ENABLED } from '@/lib/auth';
@@ -45,6 +46,7 @@ import { useOta } from '@/hooks/use-ota';
 import { useWriteQueue } from '@/hooks/use-write-queue';
 import { useTrip } from '@/hooks/use-trip';
 import { markBootReady } from '@/lib/boot';
+import { useCircleSharing } from '@/lib/circle-sharing';
 import { fixEscalonado, type IntentoGps } from '@/lib/gps';
 import { reportVisibleHeight } from '@/lib/keyboard-inset';
 import { applyUpdate } from '@/lib/ota';
@@ -103,6 +105,9 @@ export default function MapScreen() {
   const kbHeight = useKeyboardHeight();
   const { settings, set, hydrated } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
+  const [showCircles, setShowCircles] = useState(false);
+  // Mientras tengas un evento abierto en un círculo, tu posición le llega cada poco.
+  useCircleSharing();
   const [showHelp, setShowHelp] = useState(false);
   const [showLegal, setShowLegal] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -706,7 +711,12 @@ export default function MapScreen() {
       <SettingsSheet visible={showSettings}
         onHelp={() => { setShowSettings(false); setShowHelp(true); }}
         onLegal={() => { setShowSettings(false); setShowLegal(true); }}
-        onPrivacy={() => { setShowSettings(false); setShowPrivacy(true); }} onClose={() => setShowSettings(false)} />
+        onPrivacy={() => { setShowSettings(false); setShowPrivacy(true); }}
+        onCircles={() => { setShowSettings(false); setShowCircles(true); }}
+        onClose={() => setShowSettings(false)} />
+      <CirclesSheet visible={showCircles} onClose={() => setShowCircles(false)}
+        onRequestSignIn={() => setShowProtection(true)}
+        onShowOnMap={(lon, lat) => setFocus({ center: [lon, lat], zoom: 16 })} />
       <ReportSheet visible={showReport} onClose={() => setShowReport(false)} location={userLoc} city={city} />
       <ProtectionSheet visible={showProtection} onClose={() => setShowProtection(false)} />
       <CitySheet visible={showCity} current={city} riskCities={riskCities} routeCities={routeCities} onSelect={switchCity} onClose={() => setShowCity(false)} />

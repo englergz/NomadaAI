@@ -7,3 +7,4 @@ export * from "./help";
 export * from "./legal";
 export * from "./basemap";
 export * from "./html";
+export * from "./circles";
