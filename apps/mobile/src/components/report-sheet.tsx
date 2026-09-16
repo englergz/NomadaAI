@@ -11,6 +11,7 @@ import { CITIES, DEFAULT_CITY, type CityKey } from '@/constants/map';
 import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { ApiError } from '@nomadaai/shared';
 import { enqueue } from '@/lib/write-queue';
 import { historyAuth } from '@/lib/history-auth';
 import { useT } from '@/lib/i18n';
@@ -85,8 +86,15 @@ export default function ReportSheet({
         // Firmado con el token si hay sesión o con la llave del dispositivo: así «Borrar mis
         // datos» lo alcanza y el límite por hora es por persona.
         r = await api.reportIncident(body, await historyAuth());
-      } catch {
-        // SIN RED: el reporte no se pierde. Se guarda cifrado y sale solo al volver la señal.
+      } catch (e) {
+        // Un rechazo del servidor (4xx: mal formado o límite por hora) NO es «sin red»:
+        // encolarlo lo reenviaría igual y taparía la cola. Se muestra y se acaba.
+        if (e instanceof ApiError && !e.retryable) {
+          setMsg({ text: e.detail ?? t('report.rejected'), ok: false });
+          return;
+        }
+        // SIN RED (o servidor caído): el reporte no se pierde. Se guarda cifrado y sale solo
+        // al volver la señal.
         await enqueue({ kind: 'report', body });
         await AsyncStorage.setItem(LAST_KEY, String(Date.now()));
         setMsg({ text: t('report.queued'), ok: true });

@@ -31,6 +31,30 @@ function withoutLegacyId<T extends { device_id?: string }>(body: T, auth?: Histo
   return copy;
 }
 
+/**
+ * El servidor RESPONDIÓ y rechazó (4xx/5xx). Se distingue de «sin red» (fetch lanza
+ * TypeError) porque las consecuencias son opuestas: un 4xx ya no se reintenta —hubo
+ * veredicto—, un fallo de red o un 5xx sí. `detail` es el texto que manda el servidor
+ * (p. ej. el aviso de límite por hora), apto para mostrar.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly detail: string | null;
+  constructor(status: number, bodyText: string) {
+    super(`API ${status}: ${bodyText}`);
+    this.name = "ApiError";
+    this.status = status;
+    let detail: string | null = null;
+    try {
+      const parsed = JSON.parse(bodyText) as { detail?: unknown };
+      if (typeof parsed?.detail === "string") detail = parsed.detail;
+    } catch { /* cuerpo no JSON: sin detalle */ }
+    this.detail = detail;
+  }
+  /** El servidor no está o falló (5xx): tiene sentido reintentar más tarde. */
+  get retryable(): boolean { return this.status >= 500; }
+}
+
 export class NomadaApi {
   constructor(private baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
@@ -42,7 +66,7 @@ export class NomadaApi {
       ...init,
     });
     if (!res.ok) {
-      throw new Error(`API ${res.status}: ${await res.text()}`);
+      throw new ApiError(res.status, await res.text());
     }
     return res.json() as Promise<T>;
   }

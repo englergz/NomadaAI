@@ -3,7 +3,9 @@
 //
 // Reglas:
 //   · Solo se encola lo que falló por RED (excepción al pedir). Un rechazo del
-//     servidor (422, rate-limit) no se reintenta: ya hubo respuesta.
+//     servidor (422, rate-limit) no se reintenta: ya hubo respuesta. Al vaciar, un
+//     rechazo 4xx se DESCARTA y se sigue con el siguiente; antes se tomaba por «sin
+//     red», se conservaba y bloqueaba el resto de la cola hasta caducar a los 7 días.
 //   · Se envía en orden; al primer fallo de red se para y se espera a la próxima
 //     oportunidad (arranque, app al frente, servicio de vuelta).
 //   · Caduca a los 7 días: un reporte de hace una semana ya no describe la calle.
@@ -12,7 +14,7 @@
 import { api } from '@/lib/api';
 import { historyAuth } from '@/lib/history-auth';
 import { secureGet, secureRemove, secureSet } from '@/lib/secure-storage';
-import type { IncidentReport, TripLogIn } from '@nomadaai/shared';
+import { ApiError, type IncidentReport, type TripLogIn } from '@nomadaai/shared';
 
 const KEY = 'nomadaai.queue.v1';
 const MAX_AGE_MS = 7 * 24 * 3600 * 1000;
@@ -67,13 +69,19 @@ export async function pendingCount(): Promise<number> {
   return prune(await load()).length;
 }
 
-// Envíos reales. Un `throw` del sender = fallo de red → se conserva el trabajo.
-// Una respuesta del servidor (aceptada o rechazada) = trabajo terminado.
+// Envíos reales. Un `throw` del sender = fallo de red o 5xx → se conserva el trabajo.
+// Un veredicto del servidor (aceptado, o rechazado con 4xx) = trabajo terminado.
 const defaultSenders: Senders = {
   report: async (job) => {
     // Identidad del momento del envío (token o llave), como el viaje: así el borrado de datos
     // alcanza el reporte. El device_id de lo encolado por versiones anteriores no se envía.
-    await api.reportIncident(job.body, await historyAuth());
+    try {
+      await api.reportIncident(job.body, await historyAuth());
+    } catch (e) {
+      // 4xx (422 mal formado, 429 límite por hora): el servidor ya decidió; no se reintenta.
+      if (e instanceof ApiError && !e.retryable) return;
+      throw e; // sin red o 5xx: se conserva y se reintenta luego
+    }
   },
   trip: async (job) => {
     // La identidad es la del momento del envío (token o llave), nunca un user_id guardado.

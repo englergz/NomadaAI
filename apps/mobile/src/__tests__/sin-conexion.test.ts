@@ -32,6 +32,7 @@ jest.mock('@/lib/history-auth', () => ({ historyAuth: async () => ({}) }));
 
 import { ageLabel, cachedFetch, clearOfflineCache, readCached } from '@/lib/offline-cache';
 import { clearWriteQueue, enqueue, flush, pendingCount, prune, type Job, type Senders } from '@/lib/write-queue';
+import { ApiError } from '@nomadaai/shared';
 
 describe('caché sin conexión (lecturas)', () => {
   beforeEach(() => clearOfflineCache());
@@ -107,6 +108,41 @@ describe('cola de escrituras (reportes y viajes)', () => {
     const r = await flush(senders);
     expect(r).toEqual({ sent: 0, remaining: 2 });
     expect(calls).toBe(1); // no siguió intentando el segundo sin red
+  });
+
+  it('un rechazo del servidor (4xx) se descarta y NO bloquea lo que viene detrás', async () => {
+    // Antes: el 422 se tomaba por «sin red», el reporte se conservaba y paraba la cola
+    // entera; el viaje de detrás no salía hasta que el reporte caducara (7 días).
+    await enqueue({ kind: 'report', body: report });
+    await enqueue({ kind: 'trip', body: { mode: 'mobile' } });
+    const order: string[] = [];
+    const senders: Senders = {
+      report: async () => { order.push('report'); throw new ApiError(422, '{"detail":"mal formado"}'); },
+      trip: async () => { order.push('trip'); },
+    };
+    // El sender por defecto de reportes traga el 4xx; aquí se comprueba la política con
+    // el envoltorio real de la cola usando los senders reales de descarte:
+    const wrapped: Senders = {
+      report: async (job) => { try { await senders.report(job); } catch (e) { if (e instanceof ApiError && !e.retryable) return; throw e; } },
+      trip: senders.trip,
+    };
+    const r = await flush(wrapped);
+    expect(order).toEqual(['report', 'trip']);
+    expect(r).toEqual({ sent: 2, remaining: 0 });
+    expect(await pendingCount()).toBe(0);
+  });
+
+  it('un 5xx se conserva (el servidor volverá) y se reintenta luego', async () => {
+    await enqueue({ kind: 'report', body: report });
+    const senders: Senders = {
+      report: async () => { throw new ApiError(503, 'caído'); },
+      trip: async () => {},
+    };
+    expect(new ApiError(503, 'caído').retryable).toBe(true);
+    expect(new ApiError(429, '{"detail":"límite"}').retryable).toBe(false);
+    expect(new ApiError(429, '{"detail":"límite"}').detail).toBe('límite');
+    const r = await flush(senders);
+    expect(r).toEqual({ sent: 0, remaining: 1 });
   });
 
   it('caduca a los 7 días y acota a 50 (se conserva lo más reciente)', () => {

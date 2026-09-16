@@ -123,7 +123,7 @@ lleva el comando que la regenera.
 - **Panel admin**: KPIs, qué le falta a cada ciudad, configuración de la app, moderación de reportes,
   opiniones y alta de ciudades en el catálogo.
 - **Ciudades**: Tumaco completa (riesgo, rutas y predicción). Cali con riesgo y rutas, sin predicción.
-- **Pruebas**: 48 en el cliente móvil y 16 invariantes de `/route/build`.
+- **Pruebas**: 104 en el cliente móvil, 16 invariantes de `/route/build` y 45 de humo del backend (supresión de datos, identidad y errores de base).
 
 ## Documentación
 
