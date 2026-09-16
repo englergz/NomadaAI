@@ -153,7 +153,7 @@ catálogo; ingesta y entrenamiento no caben en el Space.
 | API + escritorio | Hugging Face Space `englergz/nomadaai` (Docker, CPU gratuita) | `git push space main:main` |
 | Base de datos | Neon Postgres (gratuito) | secret `DATABASE_URL` |
 | Identidad | Clerk | `VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_ISSUER`, `ADMIN_USER_IDS` |
-| App móvil | APK local (gradle) · EAS Update canal `production` | `runtimeVersion` por huella; ver `COMANDOS.md` §3–§5 |
+| App móvil | APK local (gradle) · EAS Update canal `production` | `runtimeVersion` por huella; ver `COMANDOS.md` §5–§7 |
 | Código | GitHub `englergz/nomadaai` | `git push origin main` |
 
 Pasos y variables en [DEPLOY.md](DEPLOY.md).

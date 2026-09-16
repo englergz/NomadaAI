@@ -66,7 +66,7 @@ curl -s https://englergz-nomadaai.hf.space/health
 
 Debe responder con `predictor_ready: true`, `corridors_ready: true`, `auth_ready: true`,
 `admin_ready: true` y `history_identity: true`. Si `auth_ready` o `admin_ready` es `false`, falta `CLERK_ISSUER` o `ADMIN_USER_IDS`
-(ver `COMANDOS.md` §5a). La documentación interactiva está en `/docs`.
+(ver `COMANDOS.md` §14). La documentación interactiva está en `/docs`.
 
 ## 5. Base de datos (Neon)
 
@@ -153,8 +153,8 @@ código.
 
 ## 7. App móvil
 
-- **APK**: se compila en local con gradle y el bundle embebido (`COMANDOS.md` §3). No se usa EAS Build.
-- **OTA**: `eas update --branch production` (`COMANDOS.md` §5). El canal `production` ya existe. Un
+- **APK**: se compila en local con gradle y el bundle embebido (`COMANDOS.md` §5). No se usa EAS Build.
+- **OTA**: `eas update --branch production` (`COMANDOS.md` §7). El canal `production` ya existe. Un
   update solo llega a los APK cuya huella (`runtimeVersion` por *fingerprint*) coincide; los APK
   anteriores al 2026-09-10 no envían el canal y no reciben nada.
 - **Tiendas**: sin publicar.

@@ -179,7 +179,7 @@ cp apps/web/.env.example apps/web/.env # VITE_API_URL=http://localhost:8000
 npm run dev:web                        # http://localhost:5173
 ```
 
-**3. App móvil:** compilación del APK, simulador iOS y OTA en [docs/COMANDOS.md](docs/COMANDOS.md) §2–§5.
+**3. App móvil:** compilación del APK, simulador iOS y OTA en [docs/COMANDOS.md](docs/COMANDOS.md) §4–§7.
 
 ## Uso de la API (ejemplo)
 
