@@ -60,7 +60,7 @@ Estado a 2026-08-03 (filas actualizadas hasta 2026-09-16). Lo que dice **✅** e
 | Reglas de R8 para lo que se carga por reflexión | ✅ (su ausencia rompía el segundo plano) |
 | Errores que no se tragan en silencio | ✅ corregido en fondo y notificaciones |
 | `map.tsx` partido en hooks | ✅ **(2026-09-10)** 1.294 → 744 líneas con `use-trip`, `use-city`, `use-banner`, `use-health`, `use-ota`; `BaseSheet` común a las nueve hojas |
-| Pruebas automatizadas | ✅ **104/104** en el cliente móvil (11 suites) + **16/16** invariantes de `/route/build` en Tumaco y Cali + humo del backend en proceso (supresión 18, identidad 24, errores 3) (2026-09-16) |
+| Pruebas automatizadas | ✅ **104/104** en el cliente móvil (11 suites) + **16/16** invariantes de `/route/build` en Tumaco y Cali + humo del backend en proceso (supresión 18, identidad 24, errores 3, riesgo por ciudad 13) (2026-09-16) |
 
 ### A.5 Funcionalidad verificada ejecutando
 

@@ -3,14 +3,12 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 
 from app import state
 from app.core import identity
 from app.data import incidents
-from app.data.risk import RiskStore
 from app.models.schemas import IncidentReport, IncidentResponse
-from app.state import get_risk
 
 router = APIRouter(tags=["risk"])
 # Los errores se registran aquí y al cliente llega un mensaje genérico: el texto de una
@@ -29,13 +27,25 @@ def risk_zones(
     hour: int = Query(19, ge=0, le=23, description="Hora del día (0-23)"),
     day: int | None = Query(None, ge=0, le=6, description="Día de la semana (0=lun … 6=dom)"),
     city: str = Query("tumaco", description="Ciudad (tumaco, cali, …)"),
-    risk: RiskStore = Depends(get_risk),
 ) -> dict:
-    """Zonas de riesgo por hora, día y ciudad (OE2): riesgo espacio-temporal por zona."""
-    store = state.risk_cities.get(city, risk)
+    """Zonas de riesgo por hora, día y ciudad (OE2): riesgo espacio-temporal por zona.
+
+    Una ciudad sin malla responde 404. Antes caía a la malla de Tumaco y la devolvía
+    etiquetada con la ciudad pedida (`/risk/zones?city=bogota` → las 475 celdas de Tumaco
+    como si fueran de Bogotá): un cliente o un script que pidiera una ciudad recién dada
+    de alta en el catálogo recibía datos de otra ciudad sin ninguna señal de que lo eran.
+    El criterio es el mismo que usa el ruteo (`state.get_risk_for`).
+    """
+    key = city.strip().lower()
+    store = state.get_risk_for(key)
+    if store is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No hay mapa de riesgo para «{city}». Ciudades con mapa: {', '.join(sorted(state.risk_cities) or ['tumaco'])}.",
+        )
     fc = store.zones_geojson(hour, day)
     fc["max_risk"] = round(store.max_risk, 2)
-    fc["city"] = city
+    fc["city"] = key
     return fc
 
 
