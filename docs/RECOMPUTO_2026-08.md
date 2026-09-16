@@ -1,7 +1,8 @@
 # Recómputo de cifras de la tesis · agosto 2026
 
-Respuesta a la auditoría conjunta (Research + evaluación crítica), tareas
-**T1–T13**. Rama de trabajo: `recomputo-2026-08`. No se ha tocado `Documentos/*.docx`.
+Respuesta a la auditoría conjunta (repositorio de investigación + evaluación crítica), tareas
+**T1–T13**. El trabajo se hizo en la rama `recomputo-2026-08`, ya integrada en `main`; las
+correcciones que de aquí pasan al documento de la tesis se listan en §4.
 
 **Regla que gobierna este documento:** ninguna cifra aparece sin el comando que la
 reproduce. Lo que no se pudo recomputar está en §3 como *no recomputable*, con el

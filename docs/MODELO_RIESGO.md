@@ -92,7 +92,7 @@ que produce los resultados de la tesis) de lo **definido pero DESHABILITADO** aq
 
 | Factor | Estado (Tumaco) | Motivo — **hallazgo documentado** | Fuente cuando se active |
 |---|---|---|---|
-| **Vulnerabilidad socioeconómica** | **OFF** | **Homogeneidad socioeconómica:** ~**96 % de las zonas (290/301) quedan en vulnerabilidad máxima**; Tumaco es de **predominio de estrato 1** (IPM 53,7 %; alcantarillado urbano 6,7 %, TerriData). Un factor casi constante **no discrimina intra-urbano** → sumarlo sería un multiplicador plano. En **Cali** (heterogéneo en estratos) el factor se **habilita**; si reordena el mapa resultó **no concluyente** (T6b: ρ con/sin factor 0,8491, efecto débil; ver `T6B_CRITERIO.md`). | DANE manzana / TerriData / CEDRE 2024 |
+| **Vulnerabilidad socioeconómica** | **OFF** | **Homogeneidad socioeconómica:** el **96,3 % de las celdas comparten el mismo valor** (σ = 0,046); Tumaco es de **predominio de estrato 1** (IPM 53,7 %; alcantarillado urbano 6,7 %, TerriData). Un factor casi constante **no discrimina intra-urbano** → sumarlo sería un multiplicador plano. En **Cali** (heterogéneo en estratos) el factor se **habilita**; si reordena el mapa resultó **no concluyente** (T6b: ρ con/sin factor 0,8491, efecto débil; ver `T6B_CRITERIO.md`). | DANE manzana / TerriData / CEDRE 2024 |
 | **Generadores / atractores (POIs de riesgo)** | **OFF** | **Dato escaso (verificado Overpass, jul-2026):** OSM en Tumaco solo reporta **2 POIs** del tipo correcto (1 bar, 1 discoteca) para 475 celdas — insuficiente para una superficie; no reporta licoreras ni más vida nocturna (los generadores de la teoría [R6]); los POIs disponibles (colegios, bancos) **no** son atractores de delito. Activarlo con esos POIs inyectaría señal equivocada. | OSM/Overpass (`amenity=bar/pub/nightclub`, `shop=alcohol`, `marketplace`) |
 | **Diseño ambiental / iluminación (CPTED)** | **OFF** | **Sin dato (verificado Overpass, jul-2026: 0 elementos):** OSM en Tumaco no tiene alumbrado (`highway=street_lamp`, `lit=*`). La evidencia (mejor alumbrado ↓ delito ~21 %) [R9] la respalda para cuando exista el dato. | OSM / relevamiento de campo |
 | **Delito reportado (capa espacial)** | **OFF (espacial)** | Los homicidios abiertos **carecen de coordenadas y de hora** → no son espacializables por celda. Sí se usan para el **patrón temporal** (día de la semana) y para caracterizar el fenómeno. | Microdato DIJIN o **reporte ciudadano** (§6) |
@@ -102,7 +102,7 @@ que produce los resultados de la tesis) de lo **definido pero DESHABILITADO** aq
 | Componente | Estado | Nota |
 |---|---|---|
 | **Modulación temporal (hora × día)** | **ACTIVO** | `TEMP(h)` con piso nocturno; el día se estima con homicidios locales [R3]. |
-| **Reporte ciudadano (capa viva)** | **OPERATIVO (ingesta)** | La app persiste reportes (`/incidents/report`, rate-limit) y los agrega anónimos con decaimiento (`/incidents/aggregate` → `F_report(z,t)`); el pipeline activa el factor `delito_reportado` al alcanzar volumen mínimo (≥10 celdas). Habilita calibración **sin depender solo de la DIJIN** (§6). |
+| **Reporte ciudadano (capa viva)** | **Ingesta operativa; factor apagado** | La app guarda reportes (`/incidents/report`, con rate-limit, atribuidos a quien prueba su identidad) y los sirve agregados con decaimiento (`/incidents/aggregate`). El pipeline sabe leer ese agregado como factor `delito_reportado` si se exporta a `tumaco_reportes.json` y hay al menos 10 celdas con reportes; hoy no existe ese volumen y el factor sigue con `enabled: false` en la configuración. Nada del índice servido depende de reportes. Es la vía para calibrar **sin depender solo de la DIJIN** (§6). |
 
 ![Zonificación de Tumaco](img/tumaco_zonas.png)
 *Figura 3. Zonificación en malla (~150 m) sobre el área urbana simulada. La malla entregada tiene 475 zonas; la prototipo tenía 425.*
@@ -169,13 +169,14 @@ contra verdad-terreno; ver §8–§9.)
 > mínimo de celdas antes de activarse.
 
 En investigación el dato es simulado; en el **producto**, los usuarios **reportan incidentes** desde la
-app (tipo, ubicación, hora, foto), alimentando una capa viva:
+app (tipo, ubicación, hora y descripción; la foto es trabajo futuro). El diseño de la capa viva es:
 
 ```
 F_report(z,t) = Σ_r  c_r · decay(t − t_r) · verif_r
 ```
 - `c_r`: severidad; `decay(Δt)`: los recientes pesan más; `verif_r`: auto-reporte < confirmado <
-  validado por autoridad.
+  validado por autoridad. Hoy el agregado que sirve la API aplica severidad y decaimiento; la
+  verificación por terceros no existe todavía.
 - **Cold start:** el índice arranca con los factores oficiales (§3.1); el reporte aporta señal local
   casi en tiempo real a medida que llegan datos.
 - **Aporte estratégico:** genera **dato georreferenciado propio** → habilita la calibración por datos
@@ -230,8 +231,9 @@ figuras/tablas.
 - Curva horaria = **supuesto** [R3], no microdato local.
 - **Correlación ≠ causalidad:** el índice señala *condiciones de riesgo del entorno*, no culpa a
   territorios ni personas; uso **preventivo**, hablando de **exposición relativa** (nunca "seguro"),
-  evitando estigmatización [R5]. Tratamiento de datos conforme a la **Ley 1581 de 2012**; reportes
-  ciudadanos anonimizados.
+  evitando estigmatización [R5]. Tratamiento de datos conforme a la **Ley 1581 de 2012**: los
+  reportes se atribuyen a la cuenta o a la llave del dispositivo, el panel de moderación ve seudónimos,
+  al público solo llegan agregados y el autor puede retirarlos con «Borrar mis datos».
 
 ---
 
@@ -260,4 +262,4 @@ configuraciones del mismo modelo — esa **configurabilidad trazable** es la con
 - [R10] A. S. Fotheringham, C. Brunsdon y M. Charlton, *Geographically Weighted Regression*. Chichester, UK: Wiley, 2002.
 - [T0] A. O. Calderón Romero, *Base de simulación de movilidad (red vial de Tumaco + generación de trayectorias SUMO)*, Universidad de Nariño. https://github.com/aocalderon/Research/tree/master/Scripts/SUMO
 
-> Indicadores de Tumaco: DNP, TerriData, entidad 52835 (`Research/.../TerriData52835f.xlsx`).
+> Indicadores de Tumaco: DNP, TerriData, ficha del municipio 52835 (San Andrés de Tumaco).

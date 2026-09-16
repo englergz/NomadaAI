@@ -3,8 +3,9 @@
 > Hoja de ruta para: (1) un **modelo de riesgo defendible y citable**, y (2) el **producto/app**
 > (Android/iOS) escalable y replicable a otras ciudades. Cada factor de riesgo va con su respaldo.
 >
-> **Estado a 2026-09-12.** Es el documento de **visión** escrito en julio de 2026. Las notas ✅/🟡/❌
-> de abajo marcan dónde la realidad ya difiere del plan.
+> **Estado a 2026-09-16.** Es el documento de **visión** escrito en julio de 2026, y se conserva como
+> tal. Las notas fechadas marcan dónde la realidad ya difiere del plan (✅ construido · 🟡 parcial ·
+> ❌ no construido).
 
 ---
 
@@ -24,7 +25,7 @@ celda. Marco: **Caplan & Kennedy (2011)**. Esto es lo correcto ante escasez de m
 | **Generadores/atractores** | bares, expendios, cantinas | ↑ riesgo | **Brantingham & Brantingham (1995)** crime generators/attractors | OSM `amenity=bar/pub/nightclub` (ya bajamos POIs) |
 | **Presencia estatal** | lejos de policía/instituciones | ↑ riesgo | CEDRE (2024): débil presencia estatal en periferia | OSM `amenity=police`; distancia |
 | **Infraestructura precaria** | paredes madera, hacinamiento, sin servicios | ↑ vulnerabilidad | **Shaw & McKay (1942)** desorganización social; CEDRE (2024) NBI | CEDRE por zona (7 zonas) / DANE |
-| **Temporal (hora/día)** | noche/madrugada, fines de semana | ↑ riesgo | **INMLCF – Forensis** (patrón horario de homicidios en Colombia) ← *conseguir y citar* | Forensis (Medicina Legal) |
+| **Temporal (hora/día)** | noche/madrugada, fines de semana | ↑ riesgo | **CEJ, Reloj de la Criminalidad (2019)**; **INMLCF, Forensis** (patrón horario de homicidios en Colombia); ambas en `REFERENCIAS.md` | Homicidios de Tumaco (día) · patrón nacional (hora) |
 
 ### A.3 Índice y calibración
 - Índice = Σ wᵢ · pctl(Fᵢ) sobre los factores **activos**. Pesos reales hoy (fuente de verdad
@@ -37,10 +38,11 @@ celda. Marco: **Caplan & Kennedy (2011)**. Esto es lo correcto ante escasez de m
   activos). Tumaco y Cali = dos configuraciones. 🟡 **(2026-09-12)** el panel admin **muestra** factores,
   pesos y motivos por ciudad; editarlos exige re-correr el pipeline offline y no se hace desde la UI.
 
-### A.4 Curva temporal (pendiente clave)
-Hoy es **supuesto**. Acciones: (a) obtener el patrón horario/diario de **Forensis (INMLCF)** o un
-estudio revisado por pares y citarlo; (b) si no, dejarla como **parámetro de escenario** explícito,
-sin afirmar una curva validada. Piso nocturno ya aplicado (la violencia no se anula de madrugada).
+### A.4 Curva temporal
+🟡 Quedó declarada como **supuesto de diseño informado**: sigue la forma del patrón nacional (CEJ
+2019, INMLCF) con pico a las 19:00 y amplitud efectiva ×1,17 sobre la media diaria, con piso nocturno
+(la violencia no se anula de madrugada). No está calibrada con dato horario de Tumaco porque ese
+dato no existe en las bases públicas; se dice así en la tesis y en `RECOMPUTO_2026-08.md` §1.2.
 
 ### A.5 Validación
 - **Con lo que hay:** caracterización real (arma/modalidad), sensibilidad, coherencia con CEDRE.
@@ -57,18 +59,24 @@ sin afirmar una curva validada. Piso nocturno ya aplicado (la violencia no se an
 
 ### B.2 Vista principal
 - Mapa en vivo + **navegación segura** (turn-by-turn), capa de riesgo (toggle), ruta segura vs directa.
+  🟡 **(2026-09-16)** la app traza la ruta segura, la compara con la directa y avisa por zona y por tramo;
+  no da indicaciones giro a giro.
 - Barra inferior: destino, prioridad de seguridad, hora. Botón grande "Ir seguro".
 
 ### B.3 Notificaciones (3 tipos, no confundir)
 1. **Alertas de proximidad (locales):** al acercarse a una zona de alto riesgo en la ruta.
    **Una sola vez por zona** (ya corregido en web). Silencio configurable.
 2. **Push (servidor):** incidente reportado cerca, cambio de riesgo por hora, alerta comunitaria.
+   ❌ **(2026-09-16)** no hay push desde el servidor; todas las alertas se calculan en el teléfono.
 3. **Banners flotantes in-app:** estado ("generando ruta", "ruta segura −X%"), no intrusivos.
 
 ### B.4 Reporte de incidentes (clave)
 - El usuario reporta: tipo (robo, riña, iluminación dañada, presencia sospechosa), ubicación, foto,
   hora. → alimenta el modelo (**participativo**, Arteaga Botello 2005) y **llena el vacío de datos**.
+  🟡 **(2026-09-16)** tipo, ubicación, hora y descripción existen, con cola sin conexión; la foto no.
+  El agregado se sirve, pero todavía no alimenta el índice (`MODELO_RIESGO.md` §3.3).
 - Moderación/anti-abuso: rate-limit, verificación, agregación (no exponer reportes crudos).
+  ✅ rate-limit por identidad y por IP, moderación en el panel con seudónimos, solo agregados al público.
 
 ### B.5 Escalable / replicable a otras ciudades
 - **Config por ciudad** (`city`): dataset de trayectorias + malla de riesgo + POIs + bbox. Cambiar de
@@ -129,18 +137,6 @@ Un **panel web de admin** para administrar TODO sin tocar código (tiene sentido
 > del histórico existe. **No construido:** edición de pesos con vista previa, selectores
 > país → municipio, ingesta de trayectorias y entrenamientos (no caben en el Space).
 
-## Presentación para la sustentación (objetivo: completa, contundente, fenomenal)
-Guion propuesto (con las cifras y figuras ya listas):
-1. **Problema** (Tumaco, violencia/inseguridad = problema #1, CEDRE) → figura de contexto.
-2. **Objetivos** (textual del anteproyecto).
-3. **Método** (predicción por recuperación; riesgo RTM multi-factor citado; ruteo consciente del riesgo).
-4. **Resultados con IC** (recomputados, `RECOMPUTO_2026-08.md`): OE1 87,5 % [85,2–89,8]; OE3 alerta en el punto de operación (99,1 % con aviso, 58,7 % anticipados, mediana 756 m); OE4 −4,84 % [3,62–6,22].
-5. **El giro honesto**: el mapa era de tráfico → reconstrucción con DANE; `img/riesgo_antes_despues.png`.
-6. **Portabilidad**: el marco corre en Cali (4.268 celdas, rutea sobre OSM); el efecto del factor socioeconómico es no concluyente (T6b), y se dice así; `img/replica_cali_vs_tumaco.png`.
-7. **Autocrítica** (las 10 grietas) → madurez investigativa.
-8. **Producto y roadmap** (app, reporte ciudadano, multi-ciudad).
-9. **Cierre**: "marco replicable que funciona en el extremo de la escasez y escala hacia la abundancia".
-
 ## Roadmap por fases
 1. **Modelo v2 (corto):** 🟡 distancia a policía ✅; iluminación y POIs de riesgo **apagados con motivo**
    (sin dato apto en Tumaco). La curva temporal quedó declarada como supuesto de diseño.
@@ -149,9 +145,7 @@ Guion propuesto (con las cifras y figuras ya listas):
 4. **Producto:** 🟡 moderación ✅, multi-ciudad ✅ (Tumaco y Cali), panel BI ✅ · push ❌, fotos ❌,
    tiendas ❌.
 
-## Referencias nuevas a citar
-- Welsh, B. C., & Farrington, D. P. (2008). *Effects of improved street lighting on crime.* Campbell/Cochrane.
-- Brantingham, P. & Brantingham, P. (1995). *Criminality of place: crime generators and crime attractors.*
-- INMLCF — *Forensis: Datos para la vida* (patrón temporal de homicidios en Colombia).
-- (Ya en `VALIDACION_RIESGO.md`): Caplan & Kennedy 2011; Jacobs 1961; Newman 1972; Cohen & Felson 1979;
-  Shaw & McKay 1942; Bámaca/Brender 2014; CEDRE 2024.
+## Referencias
+Todas las fuentes citadas en este plan (Welsh & Farrington 2008; Brantingham & Brantingham 1995;
+INMLCF, Forensis; CEJ 2019; Caplan & Kennedy; Jacobs; Newman; Cohen & Felson; Shaw & McKay; CEDRE
+2024) están consolidadas en formato IEEE en `REFERENCIAS.md`.

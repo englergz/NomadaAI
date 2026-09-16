@@ -16,7 +16,7 @@
 | **OSM sin iluminación** | 0 luminarias, 0 `lit` en Tumaco | Pendiente: **luces nocturnas satelitales (VIIRS)** como proxy real | Welsh & Farrington (2008) |
 | **Validación sin verdad-terreno** | no hay incidentes punto a punto | Caracterización real + **análisis de sensibilidad** (robustez ρ≈0,99) + **reporte ciudadano** futuro | Arteaga Botello (2005) |
 
-## 2. Patrón temporal: DÍA × HORA, ambos respaldados (no supuestos)
+## 2. Patrón temporal: el día con dato local, la hora con patrón nacional
 
 El riesgo se modula por **día de la semana** y **hora**, cada uno con soporte:
 
@@ -26,12 +26,16 @@ El riesgo se modula por **día de la semana** y **hora**, cada uno con soporte:
   respaldo. Ver `img/homicidios_dia_semana.png`.
 - **Hora — cita:** **CEJ Reloj de la Criminalidad (2019)** + **INMLCF/Medicina Legal**: los homicidios
   se concentran **18:00–23:59 (hasta 2× el promedio)**, con pico tarde-noche; menor en la
-  madrugada/mañana. La curva horaria del sistema **reproduce ese patrón citado** (pico ~20:00), no es
-  una suposición propia. `DAY_FACTOR` y `HOUR_REL` documentan la fuente en el código.
+  madrugada/mañana. La curva horaria del sistema sigue la **forma** de ese patrón (pico a las 19:00,
+  valle a las 03:00), pero su amplitud efectiva en el índice servido es de ×1,17 sobre la media diaria,
+  no el ×2 de la fuente, porque el piso nocturno la comprime. `DAY_FACTOR` y `HOUR_REL` documentan la
+  fuente en el código.
 
-Así, la afirmación "a las 20:00 hay más riesgo que a las 03:00" **está sostenida por fuente**, no por
-nosotros. Lo único no calibrable con dato local exacto (la forma hora-a-hora precisa *en Tumaco*) se
-toma del patrón nacional publicado — que es lo correcto cuando no hay microdato municipal.
+Así, la afirmación «a las 20:00 hay más riesgo que a las 03:00» tiene respaldo en la literatura
+nacional, y el día de la semana tiene respaldo en el dato propio de Tumaco. Lo que no existe es la
+forma hora a hora *en Tumaco*, porque las bases públicas no traen la hora del hecho. Por eso la curva
+horaria se declara como **supuesto de diseño informado**, no como resultado (`RECOMPUTO_2026-08.md`
+§1.2): es lo correcto cuando no hay microdato municipal.
 
 ## 3. El modelo de riesgo (antes → después)
 
@@ -93,6 +97,8 @@ Sí. Trazabilidad de los hallazgos:
 - `PLAN_PRODUCTO.md` — modelo robusto por factores + app + roadmap.
 - `HALLAZGOS_Y_DESAFIOS.md` — este documento (desafíos, alternativas, generalización).
 - `MODELO_PREDICCION.md`, `MODELO_RIESGO.md`, `METODOLOGIA.md` — modelos y método.
-- **Figuras:** `img/riesgo_antes_despues.png`, `img/homicidios_dia_semana.png`, y las de Cowork
-  (`tumaco_riesgo_rtm.png`, `tumaco_tendencias.png`, evaluación de alerta, etc.).
+- **Figuras (`docs/img/`):** `riesgo_antes_despues.png`, `homicidios_dia_semana.png`,
+  `tumaco_riesgo_rtm.png`, `tumaco_zonas.png`, `riesgo_config_comparativa.png`, `risk_hour_curve.png`,
+  `sweep_alerta.png`, `eval_alerta_anticipada.png`, `tumaco_tendencias.png` y
+  `replica_cali_vs_tumaco.png`.
 - **Scripts reproducibles:** `rebuild_risk_full.py`, `oe2_valida_riesgo.py`, `oe4_od_sweep.py`.

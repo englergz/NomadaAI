@@ -1,6 +1,6 @@
 # Despliegue en la nube
 
-> **Estado a 2026-09-13.** Comandos del día a día en [COMANDOS.md](COMANDOS.md).
+> **Estado a 2026-09-16.** Comandos del día a día en [COMANDOS.md](COMANDOS.md).
 
 Qué hay desplegado:
 
@@ -21,7 +21,7 @@ y se reemplazó por Neon porque el plan gratuito de Supabase se pausa a los 7 d�
 ## 1. Remotos
 
 ```bash
-cd /Users/englergonzalez/Downloads/NomadaAI/app
+cd app
 git remote -v
 # origin  https://github.com/englergz/nomadaai.git
 # space   https://huggingface.co/spaces/englergz/nomadaai
@@ -65,8 +65,9 @@ curl -s https://englergz-nomadaai.hf.space/health
 ```
 
 Debe responder con `predictor_ready: true`, `corridors_ready: true`, `auth_ready: true`,
-`admin_ready: true` y `history_identity: true`. Si `auth_ready` o `admin_ready` es `false`, falta `CLERK_ISSUER` o `ADMIN_USER_IDS`
-(ver `COMANDOS.md` §14). La documentación interactiva está en `/docs`.
+`admin_ready: true`, `history_identity: true`, `data_deletion: true` y `circles_ready: true` (este
+último solo con `DATABASE_URL`). Si `auth_ready` o `admin_ready`
+es `false`, falta `CLERK_ISSUER` o `ADMIN_USER_IDS` (ver `COMANDOS.md` §14). La documentación interactiva está en `/docs`.
 
 ## 5. Base de datos (Neon)
 
@@ -98,7 +99,7 @@ el cuerpo: la identidad sale de una prueba (`services/api/app/core/identity.py`)
 | `POST /history/trip` | se guarda como `anon`: cuenta en la estadística, nadie puede leerlo ni borrarlo | se atribuye a quien prueba |
 | `POST /history/claim` | 401 | pasa a la llave lo guardado con el uid anterior del dispositivo: histórico, reportes y opiniones |
 | `POST /incidents/report` · `POST /feedback` | se aceptan. Con el uid anónimo de una versión anterior de la app se atribuyen a ese uid; con cualquier otra cosa, a `anon` | se atribuyen a quien prueba |
-| `DELETE /me/data` | 401 | borra el histórico y los reportes propios y desvincula las opiniones propias |
+| `DELETE /me/data` | 401 | borra el histórico y los reportes propios, desvincula las opiniones propias y sale de todos los círculos |
 
 No existe borrado de una ciudad entera en la API pública. Lo comprueba
 `services/api/scripts/humo_history_identidad.py`, que corre en proceso y nunca contra el Space.

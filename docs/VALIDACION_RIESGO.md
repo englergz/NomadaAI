@@ -3,10 +3,11 @@
 > Resultados reproducibles con `services/api/scripts/oe2_valida_riesgo.py` (validación) y
 > `services/api/scripts/rebuild_risk.py` (reconstrucción con datos DANE).
 >
-> **Aviso (2026-09-12).** Las secciones «5. Verificación de OE4» y «6. Verificación exhaustiva» son el
-> **historial de verificación** del 2026-08-04 y conservan cifras que después se retiraron o
-> recomputaron (OE4 −7,0 % y 5,24 %, alerta 88,7 %, «95 % de rutas que mejoran»). Las cifras vigentes,
-> con comando y hash, están en `RECOMPUTO_2026-08.md` y en el `README.md`.
+> **Aviso (2026-09-16).** Las secciones §6 y §7 son el **historial de verificación** del 2026-08-04 y
+> conservan cifras que después se retiraron o recomputaron (OE1 90,5 %, robustez 90,5/85,5/72,5/55,0,
+> OE4 −7,0 % y 5,24 %, alerta 88,7 %, «95 % de rutas que mejoran»). Se conservan porque muestran cómo se
+> llegó a las cifras finales, no para citarlas. Las cifras vigentes, con comando y hash, están en
+> `RECOMPUTO_2026-08.md` y en el `README.md`.
 
 ## 1. Alcance honesto
 
@@ -193,7 +194,9 @@ ofrece técnicas diseñadas justamente para eso.
 
 ---
 
-## 5. Verificación de OE4 contra la malla actual (2026-08-04)
+## 6. Historial: verificación de OE4 contra la malla actual (2026-08-04, superado)
+
+> Sección histórica. La cifra vigente de OE4 es −4,84 % [3,62–6,22] a λ = 2,5 (`RECOMPUTO_2026-08.md` §1.8).
 
 Motivo: si la superficie de riesgo cambió (425 → 475 + ponderación por percentil),
 la **reducción de exposición** medida sobre esa superficie pudo cambiar también.
@@ -252,7 +255,10 @@ rutas que mejoran.
 
 ---
 
-## 6. Verificación exhaustiva de cifras de la tesis (2026-08-04)
+## 7. Historial: verificación exhaustiva de cifras de la tesis (2026-08-04, superado)
+
+> Sección histórica. Varias de estas cifras se remidieron después sobre las 805 trayectorias de prueba
+> completas y con el ruido reproducible; las vigentes están en `RECOMPUTO_2026-08.md` §1.
 
 Todas contra el sistema entregado. **Fuente = endpoint en producción o artefacto del
 repo**, nunca memoria.
@@ -340,7 +346,8 @@ ajustar solo uno. Reproducible con:
 
 ### Verificadas contra `Research/analysis_v2/` (2026-08-04)
 
-Los artefactos originales SÍ están en el repo. Confirmado:
+Los artefactos originales están en el repositorio de investigación (`Research/analysis_v2/`, fuera de
+este repositorio de la aplicación). Confirmado:
 
 | Cifra en la tesis | Valor verificado | Fuente | Veredicto |
 |---|---|---|---|
@@ -372,9 +379,11 @@ Los artefactos originales SÍ están en el repo. Confirmado:
 | Sensibilidad **ρ** sobre la malla de **475** | El artefacto de contribuciones por factor es de 425 y declara 3 factores frente a los 4 activos. |
 | ~~Serie 216 → 40~~ | ✅ **verificada** en `Research/analysis_v2/tumaco_homicidios_por_anio.csv` |
 
-### Estado final de la validación
+### Estado de la validación a 2026-08-04
 
-**VALIDACIÓN COMPLETA. No queda ninguna cifra sin verificar.**
+En esa fecha no quedaba ninguna cifra sin verificar contra el sistema desplegado. Días después el
+recómputo de agosto encontró que dos de ellas (OE1 y la robustez GPS) dependían de un muestreo no
+reproducible y las remidió; ver `RECOMPUTO_2026-08.md`.
 
 ### ρ sobre la malla ENTREGADA de 475 — cerrado (2026-08-04)
 

@@ -5,7 +5,7 @@
 > el producto. Política: cada afirmación que sostenemos con literatura debe apoyarse en **2-4
 > referencias (IEEE)**, no una sola (ver §4).
 >
-> **Estado a 2026-09-12.** Cifras alineadas con `RECOMPUTO_2026-08.md` y el `README.md`; las
+> **Estado a 2026-09-16.** Cifras alineadas con `RECOMPUTO_2026-08.md` y el `README.md`; las
 > marcas ✅/🟡 reflejan lo que ya existe en código.
 
 ---
@@ -116,20 +116,19 @@ Varias afirmaciones hoy penden de **una sola** cita. Hay que **reforzarlas**. Es
 |------------|-------------|----------------------------------------|
 | Densidad/actividad → oportunidad de delito | Cohen & Felson [1] | Brantingham & Brantingham [2]; Sampson et al. [3] |
 | Aislamiento/baja vigilancia → violencia | Jacobs [4]; Newman [5] | Shaw & McKay [6]; Sampson et al. [3] |
-| Iluminación → delito | Welsh & Farrington [7] | *(reforzar: Painter; Farrington & Welsh; Chalfin et al. — verificar)* |
-| RTM como marco ante escasez | Caplan & Kennedy [8] | *(reforzar: Kennedy et al.; Drawve — verificar)* |
-| Patrón temporal (noche/domingo) | CEJ 2019 [9]; INMLCF [10] | *(reforzar con 1-2 artículos académicos — verificar)* |
-| Pesos locales por zona (GWR) | Fotheringham et al. [11] | *(reforzar: Brunsdon; Cahill & Mulligan — verificar)* |
+| Iluminación → delito | Welsh & Farrington [7] | Painter (1996); Chalfin et al. (2022) |
+| RTM como marco ante escasez | Caplan & Kennedy [8] | Caplan & Kennedy, *RTM Manual* (2010); Drawve (2016) |
+| Patrón temporal (noche/domingo) | CEJ 2019 [9]; INMLCF [10] | Ratcliffe (2006), teoría de restricción temporal |
+| Pesos locales por zona (GWR) | Fotheringham et al. [11] | Cahill & Mulligan (2007) |
 
-> **Regla:** no inventar referencias. **Estado: reforzado** — cada afirmación tiene ahora 2-4 fuentes
-> verificadas en `REFERENCIAS.md` (Painter, Chalfin et al., Drawve, Sampson et al., Ratcliffe,
-> Cahill & Mulligan, Felson & Boba, etc.).
+> **Regla:** no inventar referencias. La columna de refuerzo ya está incorporada: cada afirmación
+> tiene entre dos y cuatro fuentes verificadas, con su entrada completa en `REFERENCIAS.md`.
 
 ## 5. Mejoras priorizadas (qué atacar y en qué orden)
-1. **Reforzar citación** (2-4 por afirmación) en todos los docs — barato, sube el rigor de inmediato.
+1. ✅ **Citación reforzada** (2-4 fuentes por afirmación), consolidada en `REFERENCIAS.md`.
 2. ✅ **Intervalos de confianza / significancia** en OE1 y OE4 (bootstrap sobre el held-out y el barrido).
-3. **Declarar explícitamente** en la tesis la no-validación del riesgo y el sesgo del dato simulado
-   (ya iniciado en `VALIDACION_RIESGO.md` — reforzar).
+3. ✅ **Declarado explícitamente** que el riesgo no está validado contra verdad-terreno y que el dato
+   es simulado: en la tesis entregada, en `VALIDACION_RIESGO.md` §4 y en el `README.md`.
 4. 🟡 **Prueba de replicabilidad mínima**: el pipeline ya corre en Cali, pero solo prueba portabilidad
    técnica; T6b resultó no concluyente. Pasar a «demostrar» exige el barrido canónico sobre Cali y dato
    de resultado.

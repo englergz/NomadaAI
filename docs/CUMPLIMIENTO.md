@@ -1,6 +1,6 @@
 # Cumplimiento de resultados vs. lo propuesto en el anteproyecto
 
-> **Estado a 2026-09-12.** Autoevaluación frente a los objetivos, resultados esperados e indicadores
+> **Estado a 2026-09-16.** Autoevaluación frente a los objetivos, resultados esperados e indicadores
 > del anteproyecto aprobado. Todas las cifras son las **recomputadas** sobre el sistema desplegado
 > (`RECOMPUTO_2026-08.md`, cada una con su comando y el hash de su artefacto) y coinciden con el
 > `README.md`. La tesis se entregó el **2026-08-11**.
@@ -24,7 +24,7 @@
 | **OE3** | Sistema de recomendaciones operativo con **69 % de precisión** en identificación de áreas de riesgo y rutas optimizadas en tiempo real. | Ruteo ponderado por riesgo (`/route/build`) y alerta evaluada en el punto de operación real (percentil 0,70): a la hora pico **99,1 %** de los recorridos recibe aviso, **65,8 %** cruza zona de nivel alto; el **58,7 %** de los avisos precede a la entrada, con mediana de **756 m (91 s)**. El 69 % de identificación depende de la misma verdad-terreno que falta en OE2. | 🟡 sistema ✅ · 69 % ❌ |
 | OE3 | Panel visual con **al menos tres capas** (riesgo, puntos de interés, rutas). | Riesgo, lugares (`/pois`), ruta segura y directa, recorrido y corredores, en escritorio y en la app. | ✅ |
 | **OE4** | Informe sobre **≥5 escenarios** urbanos, con **mejora de al menos 30 %**. | 45 escenarios de alerta y barrido origen-destino de 1.200 rutas (40 pares × 5 horas × 6 valores de λ). En la configuración de fábrica (λ = 2,5): **−4,84 % de exposición (IC 95 % [3,62–6,22])**, bootstrap por conglomerados sobre 40 pares, con 1,7 % de sobrecosto; mejora el **100 %** de los recorridos. En λ = 5: −5,88 %. **Ninguna ruta llega al 30 %.** | 🟡 escenarios ✅ · 30 % ❌ |
-| OE4 | Sistema revisado y optimizado, con **95 % de funcionalidad operativa sin errores críticos**. | El «95 %» no tenía denominador y se retiró. La cifra medida hoy: **48/48 pruebas automáticas del cliente móvil** y **16/16 invariantes de `/route/build`** (Tumaco y Cali). Sistema desplegado en `https://englergz-nomadaai.hf.space`. | ✅ con denominador |
+| OE4 | Sistema revisado y optimizado, con **95 % de funcionalidad operativa sin errores críticos**. | El «95 %» no tenía denominador y se retiró. La cifra medida hoy: **104/104 pruebas automáticas del cliente móvil**, **16/16 invariantes de `/route/build`** (Tumaco y Cali) y **67 comprobaciones de humo del backend** (supresión de datos, identidad, errores de base de datos, riesgo por ciudad y validación de reportes). Sistema desplegado en `https://englergz-nomadaai.hf.space`. | ✅ con denominador |
 
 ## Lo que está sólido
 
@@ -59,7 +59,7 @@ El modelo de destino es de **recuperación**: no reentrena, pero su base crece c
 observada. En la demo los datos son simulados, así que esa mejora con el uso es una **capacidad del
 producto**, no un indicador medido de la tesis.
 
-## Veredicto (2026-09-12)
+## Veredicto (2026-09-16)
 
 **OE1 cumplido** en entorno simulado, con robustez declarada. **OE3 y OE4 cumplidos en su parte
 operativa** (sistema, capas, escenarios, funcionalidad con denominador) y **no alcanzados en sus

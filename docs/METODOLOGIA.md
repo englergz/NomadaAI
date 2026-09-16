@@ -2,9 +2,9 @@
 
 > Trabajo de Grado *NómadaAI: aplicación inteligente para la gestión segura de rutas urbanas
 > mediante análisis de datos en tiempo real en el Distrito de Tumaco, Nariño*. MGTIC, Facultad de
-> Ingeniería, Universidad de Nariño. Autor: Engler González Prado. Director: PhD. Andrés Oswaldo
-> Calderón Romero. La numeración de referencias `[n]` coincide con la del
-> anteproyecto aprobado para facilitar el mapeo en el documento final.
+> Ingeniería, Universidad de Nariño. Autor: Engler González Prado. Director: PhD. Manuel Ernesto
+> Bolaños Gonzáles. La base de simulación de movilidad es del PhD. Andrés Oswaldo Calderón Romero
+> [T0]. La numeración de referencias `[n]` sigue la del anteproyecto aprobado.
 
 Este documento describe **qué método, modelo y técnica** se emplea en cada componente, con el paradigma, los objetivos, la metodología y los resultados esperados del
 anteproyecto, y precisa qué está implementado en el repositorio/aplicación.
@@ -58,10 +58,11 @@ Modeling (RTM)**. Factores, fórmula, pesos, sensibilidad y referencias en
   zona a la **hora estimada de llegada** (reloj de simulación corriendo) y se avisa **antes** de
   alcanzar una zona de alto riesgo, con su distancia y ETA. Un **umbral configurable** controla
   sensibilidad/especificidad del aviso.
-- **Ruteo:** grafo navegable construido con **networkx** sobre la red vial real; camino más corto
-  (Dijkstra) origen→destino, preparado para ponderar por riesgo.
-- **Panel de visualización** con al menos tres capas (zonas de riesgo, recorrido y ruta predicha),
-  según el indicador del anteproyecto.
+- **Ruteo:** grafo navegable construido con **networkx** sobre la red vial real; camino de menor
+  coste (Dijkstra) origen→destino con `peso = distancia · (1 + λ·riesgo)`, comparado siempre con la
+  ruta directa (`/route/build`), que informa cuánta exposición se evita y a qué sobrecosto de distancia.
+- **Panel de visualización** con más de las tres capas que pedía el anteproyecto: zonas de riesgo,
+  lugares de interés, ruta segura y directa, recorrido en curso y corredores, en escritorio y en la app.
 
 ## 6. Fase 4 — OE4: Evaluación de la efectividad
 
@@ -74,8 +75,11 @@ Modeling (RTM)**. Factores, fórmula, pesos, sensibilidad y referencias en
 - **Métrica de predicción:** **FDE** (*Final Displacement Error*) = distancia entre el punto
   predicho y el real al mismo horizonte de continuación; se reporta **acierto ≤50 m y ≤100 m**,
   global y por tipo. Endpoint reproducible `GET /trajectories/evaluate`.
-- **Resultado actual (held-out):** **acierto ≈90% a ≤50 m**, error mediano ≈8 m, superando la meta
-  del **85%** fijada como indicador de OE1 en el anteproyecto.
+- **Resultado (conjunto de prueba no visto, n = 805):** acierto del **87,5 %** a ≤50 m (IC 95 %
+  [85,2–89,8]), 92,7 % a ≤100 m y error mediano de 7,70 m. Supera la meta del **85 %** fijada como
+  indicador de OE1 en el anteproyecto, en el entorno simulado. Con ruido GPS gaussiano de 5, 10 y
+  20 m el acierto baja a 77,4 %, 63,7 % y 47,7 %, así que con la precisión típica de un teléfono la
+  meta no se sostiene; se declara así. Detalle y cifras retiradas en `MODELO_PREDICCION.md` §4.
 - **Caracterización del motor de alerta (OE3/OE4):** análisis de sensibilidad sobre múltiples
   escenarios (hora × umbral × horizonte), reportando cobertura de rutas, anticipación (m/s) y la
   respuesta del riesgo a la hora del día.
@@ -118,12 +122,12 @@ interactiva en `"$BASE/docs"`.
 - [50] S. R. Timarán-Pereira, G. J. Hernández-Garzón y N. E. Quemá-Taimbud, "Identificación de lesiones no fatales en la cartografía del municipio de Pasto con la técnica de agrupamiento," *Rev. Investig. Desarro. Innov.*, vol. 8, no. 1, pp. 147–159, dic. 2017, doi: 10.19053/20278306.v8.n1.2017.5793.
 - [52] S. Shekhar et al., "Spatiotemporal Data Mining: A Computational Perspective," *ISPRS Int. J. Geoinf.*, vol. 4, no. 4, pp. 2306–2338, oct. 2015, doi: 10.3390/ijgi4042306.
 
-### Referencias técnicas y de software (verificar formato/inclusión con el director)
+### Referencias técnicas y de software
 
 - [T0] A. O. Calderón Romero, *Research — Scripts/SUMO* (software/repositorio base de simulación de movilidad). GitHub. [En línea]. Disponible: https://github.com/aocalderon/Research/tree/master/Scripts/SUMO
 
 - [T1] X. Chang, E. Tanin, J. Qi et al., "Contrastive Trajectory Similarity Learning with Dual-Feature Attention (TrajCL)," *ICDE*, 2023.
-- [T2] Y. Chang, X. Cai, C. S. Jensen y J. Qi, "K Nearest Neighbor-Guided Trajectory Similarity Learning (TSMini)," *arXiv:2502.00285*, 2025. *(implementación base en `Research/TSMini`).*
+- [T2] Y. Chang, X. Cai, C. S. Jensen y J. Qi, "K Nearest Neighbor-Guided Trajectory Similarity Learning (TSMini)," *arXiv:2502.00285*, 2025.
 - [T3] J.-G. Lee, J. Han y K.-Y. Whang, "Trajectory Clustering: A Partition-and-Group Framework (TRACLUS)," en *Proc. ACM SIGMOD*, 2007, pp. 593–604.
 - [T4] M. Ester, H.-P. Kriegel, J. Sander y X. Xu, "A Density-Based Algorithm for Discovering Clusters (DBSCAN)," en *Proc. KDD*, 1996, pp. 226–231.
 - [T5] H. Alt y M. Godau, "Computing the Fréchet distance between two polygonal curves," *Int. J. Comput. Geom. Appl.*, vol. 5, pp. 75–91, 1995.

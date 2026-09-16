@@ -1,6 +1,7 @@
 # Nómada.AI — Arquitectura del software
 
-> **Estado a 2026-09-12.** Describe lo que está desplegado hoy, verificado contra el código.
+> **Estado a 2026-09-16.** Describe lo que está en `main`, verificado contra el código. Lo que aún no
+> está desplegado en producción se señala.
 > Tesis MGTIC · Universidad de Nariño · Engler González.
 > Fundamentación de métodos en [METODOLOGIA.md](METODOLOGIA.md) y [MODELO_RIESGO.md](MODELO_RIESGO.md);
 > cifras en [RECOMPUTO_2026-08.md](RECOMPUTO_2026-08.md).
@@ -59,7 +60,7 @@
 │ services/api — FastAPI (Python 3.11) en Hugging Face Space (Docker)    │
 │  lifespan: predictor · corredores · RiskStore por ciudad · grafos      │
 │  routers: health predict trajectories corridors risk route pois        │
-│           evaluation history feedback admin                            │
+│           evaluation history feedback privacy admin circles            │
 │  core: config · auth (Clerk JWT) · ratelimit (ventana por IP)          │
 └───────────┬───────────────────────────────────┬──────────────────────┘
             │ lee al arrancar                    │ psycopg
@@ -67,8 +68,8 @@
 ┌────────────────────────────┐   ┌──────────────────────────────────────┐
 │ /research (artefactos)      │   │ Neon Postgres                          │
 │ parquet, geojson, CSV de    │   │ sim_effectiveness · incidents ·        │
-│ riesgo, risk_config.*.json, │   │ feedback · app_config · city_catalog   │
-│ red vial, POIs              │   │                                        │
+│ riesgo, risk_config.*.json, │   │ feedback · app_config · city_catalog · │
+│ red vial, POIs              │   │ circles y sus tablas                   │
 └────────────────────────────┘   └──────────────────────────────────────┘
 
 Servicios externos: Clerk (identidad) · OpenFreeMap / Esri (teselas) ·
@@ -83,14 +84,14 @@ El contrato se mantiene en dos sitios sincronizados: `services/api/app/models/sc
 
 | Método | Ruta | Uso | Auth |
 |--------|------|-----|------|
-| GET | `/health` | estado, conteos y preparación de auth/admin (`auth_ready`, `admin_ready`) | — |
+| GET | `/health` | estado, conteos y qué está listo: `auth_ready`, `admin_ready`, `history_identity`, `data_deletion`, `circles_ready` | — |
 | POST | `/predict/destination` | candidatos de destino (OE1) | — |
 | POST | `/predict/online` | predicción en marcha con alerta anticipada | — |
 | GET | `/trajectories/sample` · `/{tid}/track` · `/{tid}/demo` · `/similar` | trayectorias para el simulador | — |
 | GET | `/trajectories/evaluate` | evaluación OE1/OE4 (`n`, `noise_m`) | — |
 | GET | `/corridors` | corredores TRACLUS | — |
-| GET | `/risk/cities` · `/risk/zones` | ciudades con capa de riesgo; malla por `city`, `hour`, `day`, `bbox` | — |
-| POST | `/incidents/report` | reporte ciudadano (rate-limit); se atribuye a quien prueba su identidad | token o llave (`X-Device-Key`), opcionales |
+| GET | `/risk/cities` · `/risk/zones` | ciudades con capa de riesgo; malla por `city`, `hour`, `day`, `bbox`. Una ciudad sin malla responde 404 con la lista de las que sí tienen | — |
+| POST | `/incidents/report` | reporte ciudadano (rate-limit); se atribuye a quien prueba su identidad. Coordenadas fuera de rango o textos vacíos o demasiado largos responden 422 antes de tocar la base | token o llave (`X-Device-Key`), opcionales |
 | GET | `/incidents/aggregate` | reportes agregados | — |
 | GET | `/route/cities` | ciudades que rutean | — |
 | POST | `/route/build` | ruta segura vs directa con exposición comparada | — |
@@ -99,7 +100,8 @@ El contrato se mantiene en dos sitios sincronizados: `services/api/app/models/sc
 | GET | `/evaluate/alerts` · `/evaluate/scenarios` | barridos de alerta | — |
 | POST · GET · GET · DELETE · POST | `/history/trip` · `/history/summary` · `/history/stats` · `/history` · `/history/claim` | histórico por usuario y BI; `summary?scope=global` da los agregados de todos | lo propio exige token o llave del dispositivo (`X-Device-Key`): sin prueba, 401 al leer y al borrar. Nunca se acepta `user_id` (`DEPLOY.md` §6) |
 | POST | `/feedback` | opinión antes de borrar datos; se atribuye a quien prueba su identidad | token o llave, opcionales |
-| DELETE | `/me/data` | «Borrar mis datos»: borra histórico y reportes propios, desvincula las opiniones | token o llave; sin prueba, 401 (`DEPLOY.md` §6) |
+| DELETE | `/me/data` | «Borrar mis datos»: borra histórico y reportes propios, desvincula las opiniones y sale de los círculos | token o llave; sin prueba, 401 (`DEPLOY.md` §6) |
+| POST · GET · DELETE · GET · PUT · POST | `/circles` · `/circles/join` · `/circles/{id}/me` · `/circles/{id}/members` · `/circles/{id}/prefs` · `/circles/{id}/events` (y `/close`, `/positions`, `/trail`) | Círculos de cuidado: grupos donde la posición se comparte solo mientras hay un evento abierto (`DISENO_FUTURO.md` §2). Backend en `main`; la pantalla de la app está en construcción | cuenta (token); la llave del dispositivo no basta: 403 |
 | GET | `/config/app` | niveles de protección, `ads_enabled` | — |
 | GET | `/cities/catalog` | ciudades que la app puede encontrar | — |
 | GET | `/admin/me` | ¿el token es admin? | admin |
@@ -127,6 +129,7 @@ Las escrituras y el cómputo pesado tienen rate-limit por IP (429 con `Retry-Aft
 | `feedback` | `data/feedback.py` | cuatro respuestas y comentario |
 | `app_config` | `data/appconfig.py` | configuración editable desde el panel |
 | `city_catalog` | `data/citycatalog.py` | ciudades visibles en el selector (no dan cobertura) |
+| `circles`, `circle_members`, `circle_prefs`, `circle_events`, `circle_positions` | `data/circles.py` | círculos de cuidado; las posiciones solo viven mientras dura un evento y se borran al cerrarlo |
 
 `db/migrations/001_init_postgis.sql` es el esquema PostGIS del primer diseño (corredores, grafo y
 riesgo en base de datos). **El backend actual no lo usa**: esas capas se sirven desde artefactos.

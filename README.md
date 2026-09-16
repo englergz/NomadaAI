@@ -114,7 +114,7 @@ Los artefactos de evaluación están versionados con su `sha256` en
 [`services/api/scripts/GOLDEN.md`](services/api/scripts/GOLDEN.md), y cada cifra publicada arriba
 lleva el comando que la regenera.
 
-## Estado del producto (2026-09-12)
+## Estado del producto (2026-09-16)
 
 - **Escritorio** (`apps/web`): la herramienta de la tesis, con simulador, BI y panel admin. Es la demo en vivo.
 - **App móvil** (`apps/mobile`, Expo SDK 57): viaje protegido con alertas, ruta segura, reporte
@@ -123,7 +123,10 @@ lleva el comando que la regenera.
 - **Panel admin**: KPIs, qué le falta a cada ciudad, configuración de la app, moderación de reportes,
   opiniones y alta de ciudades en el catálogo.
 - **Ciudades**: Tumaco completa (riesgo, rutas y predicción). Cali con riesgo y rutas, sin predicción.
-- **Pruebas**: 104 en el cliente móvil, 16 invariantes de `/route/build` y 58 de humo del backend (supresión de datos, identidad, errores de base y riesgo por ciudad).
+- **Pruebas**: 104 en el cliente móvil (11 suites), 16 invariantes de `/route/build` (Tumaco y Cali) y 67
+  comprobaciones de humo del backend que corren en proceso, sin tocar producción: supresión de datos,
+  identidad en el histórico, errores de base de datos, riesgo por ciudad y validación de reportes.
+  Cómo correrlas, en [docs/COMANDOS.md](docs/COMANDOS.md) §11.
 
 ## Documentación
 
@@ -143,7 +146,7 @@ lleva el comando que la regenera.
 | [docs/T6B_CRITERIO.md](docs/T6B_CRITERIO.md) | Criterio fijado antes de medir el efecto del factor socioeconómico |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arquitectura, stack, contrato de API, modelo de datos |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Despliegue (Hugging Face Space + Neon + Clerk + EAS Update) |
-| [docs/COMANDOS.md](docs/COMANDOS.md) | Comandos del día a día: web, APK, iOS, OTA, backend |
+| [docs/COMANDOS.md](docs/COMANDOS.md) | Todos los comandos del proyecto, paso a paso: backend local, web, APK, iOS, OTA, emulador, publicación, pruebas, datos y auditorías |
 | [docs/DEPENDENCIAS.md](docs/DEPENDENCIAS.md) | Auditoría de dependencias y por qué se acepta lo que queda |
 
 ## Estructura
@@ -156,7 +159,7 @@ app/
   services/api/      FastAPI (OE1–OE4, histórico, reportes, admin) + artifacts/ + scripts/
   db/                esquema PostGIS del diseño inicial y ETL (sin uso en producción)
   scripts/           utilidades del monorepo
-  docs/              metodología, modelos, cumplimiento, arquitectura, despliegue, pendientes
+  docs/              metodología, modelos, cumplimiento, arquitectura, despliegue y comandos
   Dockerfile         imagen del Hugging Face Space (API + web)
 ```
 
@@ -174,7 +177,7 @@ uvicorn app.main:app --reload --port 8000
 
 **2. Frontend:**
 ```bash
-npm install                            # desde app/ (workspaces)
+npm ci                                 # desde app/ (workspaces); respeta package-lock.json
 cp apps/web/.env.example apps/web/.env # VITE_API_URL=http://localhost:8000
 npm run dev:web                        # http://localhost:5173
 ```

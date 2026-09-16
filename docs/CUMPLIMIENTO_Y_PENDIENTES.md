@@ -1,142 +1,144 @@
-# Nómada.AI · Cumplimiento y pendientes
+# Nómada.AI · Cumplimiento del producto y trabajo pendiente
 
-Estado a 2026-08-03 (filas actualizadas hasta 2026-09-16). Lo que dice **✅** está verificado ejecutando, no solo escrito.
+Estado a 2026-09-16. Este documento responde a dos preguntas sobre el producto (la app y el servicio):
+qué de lo prometido ya está hecho y comprobado, y qué falta. Lo que aparece como «verificado» se comprobó
+ejecutando la app o el servicio, no solo leyendo el código. El cumplimiento de los objetivos de la
+tesis está aparte, en `CUMPLIMIENTO.md`.
 
 ---
 
-## A. Cumplimiento
+## A. Lo que está cumplido
 
-### A.1 Legal y protección de datos — ✅ RESUELTO
-
-| Requisito | Estado |
-|---|---|
-| Términos de uso con fecha de vigencia | ✅ v1.1.0, vigente desde 2026-09-15 (antes v1.0.0, 2026-08-03) |
-| Política de privacidad con fecha de vigencia | ✅ v1.1.0, vigente desde 2026-09-15. Corrige dos frases que no eran exactas en la v1.0.0 («de forma anónima» y «sin cuenta, tus datos se quedan en tu teléfono»); añade qué guarda el servidor, a quién se asocia, proveedores, moderación con seudónimos y qué hace «Borrar mis datos». La app pide aceptarla de nuevo |
-| Aceptación explícita en el primer arranque (no premarcada) | ✅ verificado |
-| Registro de qué versión aceptó cada usuario | ✅ versión + fecha |
-| Ley 1581/2012: finalidad, responsable, derechos del titular | ✅ en la política |
-| Canal de contacto y solicitud de borrado | ✅ borrado en la app + contacto |
-| Declarar que la app es gratuita y las donaciones voluntarias no dan funciones | ✅ en los términos |
-| Aviso de que el índice es orientativo y la IA puede equivocarse | ✅ visible en la app |
-
-> Ya no hay bloqueantes legales. El borrado ejecuta en el dispositivo Y en el
-> servidor (`DELETE /history`), con doble confirmación: casilla no premarcada +
-> diálogo del sistema. Se conserva únicamente la constancia de aceptación legal,
-> que es prueba de un acto del usuario, no un dato personal que él aportó.
-
-### A.2 Privacidad en el producto — ✅ en buen estado
+### A.1 Legal y protección de datos
 
 | Requisito | Estado |
 |---|---|
-| Funciona sin cuenta (sesión opcional) | ✅ |
-| Las coordenadas no se imprimen en logs | ✅ verificado por búsqueda en el código |
-| El rastro del viaje se borra al finalizar | ✅ |
-| Solo se retiene un prefijo de 120 puntos, no el viaje entero | ✅ |
-| Reportes ciudadanos anónimos y agregados | ✅ |
-| Notificación persistente mientras se sigue la ubicación | ✅ verificado |
-| Permisos mínimos (sin «dibujar sobre otras apps» ni almacenamiento) | ✅ verificado en el manifiesto |
-| Cifrado del histórico local en reposo | ✅ **(2026-09-08)** AES-256-GCM nativo (`expo-crypto`) con la clave en Keystore/Keychain (`expo-secure-store`, `AFTER_FIRST_UNLOCK` en iOS para la tarea de fondo). Cubre recorrido en curso, cola de posiciones, última posición del vigía y registro de alertas; el `uid` pasa a SecureStore. AAD = nombre de la clave; migración transparente del legado; **sin fallback a claro**; el borrado de datos destruye la clave. 6 pruebas nuevas. `expo-crypto` ya estaba en el APK a 57.0.0 (vía `expo-auth-session`): debería salir por OTA |
-| Flujo de borrado de datos a petición | ✅ en Configuración → Privacidad, doble confirmación |
+| Términos de uso con fecha de vigencia | Sí: v1.1.0, vigente desde 2026-09-15 (antes v1.0.0, del 2026-08-03) |
+| Política de privacidad con fecha de vigencia | Sí: v1.1.0, vigente desde 2026-09-15. Corrige dos frases de la v1.0.0 que no eran exactas («de forma anónima» y «sin cuenta, tus datos se quedan en tu teléfono») y añade qué guarda el servidor, a quién se asocia, qué proveedores intervienen, cómo se modera con seudónimos y qué hace «Borrar mis datos». La app pide aceptarla de nuevo |
+| Aceptación explícita en el primer arranque, sin casilla premarcada | Verificado |
+| Registro de qué versión aceptó cada persona | Sí: versión y fecha |
+| Ley 1581 de 2012: finalidad, responsable y derechos del titular | En la política |
+| Canal de contacto y solicitud de borrado | Borrado desde la app y correo de contacto |
+| La app es gratuita y las donaciones voluntarias no dan funciones | En los términos |
+| Aviso de que el índice es orientativo y puede equivocarse | Visible en la app |
+
+El borrado ejecuta en el dispositivo y en el servidor. En el servidor lo hace `DELETE /me/data`, que
+borra el histórico y los reportes de quien prueba su identidad, desvincula sus opiniones y lo saca de
+sus círculos; la app lo pide con doble confirmación (casilla no premarcada y diálogo del sistema). Se
+conserva únicamente la constancia de aceptación legal, que es la prueba de un acto de la persona y no
+un dato que ella aportó.
+
+### A.2 Privacidad en el producto
+
+| Requisito | Estado |
+|---|---|
+| Funciona sin cuenta; iniciar sesión es opcional | Sí |
+| Las coordenadas no se escriben en los registros del servidor | Verificado buscando en el código |
+| El rastro del viaje se borra al terminarlo | Sí |
+| Solo se retiene un prefijo de 120 puntos, nunca el viaje entero | Sí |
+| Reportes ciudadanos | Se atribuyen a la cuenta o a la llave del dispositivo; el panel de moderación ve seudónimos; al público solo llegan agregados; el autor puede retirarlos con «Borrar mis datos» |
+| Notificación persistente mientras se sigue la ubicación | Verificado |
+| Permisos mínimos: sin «dibujar sobre otras apps» ni almacenamiento | Verificado en el manifiesto |
+| Cifrado del histórico local en reposo | Sí, desde el 2026-09-08: AES-256-GCM nativo con la clave en Keystore o Keychain. Cubre el recorrido en curso, la cola de posiciones, la última posición del vigía y el registro de alertas. Sin retroceso a texto claro; el borrado de datos destruye la clave |
+| Flujo de borrado de datos a petición | En Configuración → Privacidad, con doble confirmación |
 
 ### A.3 Seguridad técnica
 
 | Requisito | Estado |
 |---|---|
-| Sin secretos embebidos en el cliente | ✅ verificado |
-| Todo el tráfico por HTTPS (sin cleartext) | ✅ verificado |
-| Rol de admin verificado **en servidor** (nunca en cliente) | ✅ `/admin/me` → 401 sin token |
-| Escapado de datos externos en el mapa (XSS) | ✅ escritorio desde julio · **(2026-09-12)** también la versión web de la app, que insertaba el nombre del lugar (OSM) sin escapar; ahora las dos usan `escapeHtml` de `packages/shared` |
-| Rate-limit en escrituras del backend | ✅ **en servidor** (2026-09-08): ventana deslizante por IP en `core/ratelimit.py` sobre escrituras y cómputo, 429 con `Retry-After`; límites por identidad en BD como control primario; el cubo `anon` compartido de reportes corregido con `device_id` |
-| Auditoría de dependencias (`npm audit`) | ✅ **revisado (2026-09-08)**: 29 → 28; el único HIGH directo (Clerk, bypass de autorización) parcheado quirúrgicamente; los 28 residuales son tooling de build/dev-server o transitivos sin parche seguro, clasificados y aceptados con motivo en `docs/DEPENDENCIAS.md`. **Nunca `npm audit fix --force`** (degrada expo 57→46). **Revisión 2026-09-12:** 30 (1 crítica en `maplibre-gl`, no explotable en 4.7.1; 1 high nueva en `nanoid`), ver `DEPENDENCIAS.md` |
-| Auditoría de dependencias backend (`pip-audit`) | ✅ **22 → 0** (2026-09-08): `pyjwt` 2.13.0 (12 avisos, incl. cabecera `crit`), `starlette` 1.6.0 vía `fastapi` 0.141.1 (9 avisos: validación de Host y ruta), `pyarrow` 23.0.1 (use-after-free). Verificado con la suite completa con lifespan sobre la malla real. **Sigue en 0 el 2026-09-12** |
+| Sin secretos embebidos en el cliente | Verificado |
+| Todo el tráfico por HTTPS | Verificado |
+| Rol de administrador verificado en el servidor, nunca en el cliente | Sí: `/admin/me` responde 401 sin token |
+| Escapado de datos externos en el mapa | Sí, en el escritorio y en la versión web de la app, con la misma función compartida |
+| Identidad en el histórico por prueba, no por identificador enviado | Sí: token de sesión o llave del dispositivo; el servidor nunca acepta un `user_id` del cliente (`DEPLOY.md` §6) |
+| Límite de peticiones en las escrituras del servidor | Sí: ventana deslizante por IP y límites por identidad en la base; responde 429 con `Retry-After` |
+| Validación de entrada en los reportes | Sí: coordenadas fuera de rango y textos vacíos o demasiado largos se rechazan con 422 antes de tocar la base |
+| Auditoría de dependencias del cliente (`npm audit`) | Revisada el 2026-09-12: lo que queda es herramienta de compilación o transitivo sin parche seguro, clasificado y aceptado con motivo en `DEPENDENCIAS.md`. Nunca se usa `npm audit fix --force`, porque degrada Expo |
+| Auditoría de dependencias del servidor (`pip-audit`) | Cero avisos desde el 2026-09-08, confirmado el 2026-09-12 |
 
-### A.4 Calidad y buenas prácticas
+### A.4 Calidad
 
 | Requisito | Estado |
 |---|---|
-| Tipos sin errores en móvil, web y compartido | ✅ |
-| Lógica común en `packages/shared`, sin duplicar | ✅ paletas, protección, ayuda, API |
-| Contrato de diseño en tokens (radios, colores) | ✅ un solo sitio por plataforma |
-| Reglas de R8 para lo que se carga por reflexión | ✅ (su ausencia rompía el segundo plano) |
-| Errores que no se tragan en silencio | ✅ corregido en fondo y notificaciones |
-| `map.tsx` partido en hooks | ✅ **(2026-09-10)** 1.294 → 744 líneas con `use-trip`, `use-city`, `use-banner`, `use-health`, `use-ota`; `BaseSheet` común a las nueve hojas |
-| Pruebas automatizadas | ✅ **104/104** en el cliente móvil (11 suites) + **16/16** invariantes de `/route/build` en Tumaco y Cali + humo del backend en proceso (supresión 18, identidad 24, errores 3, riesgo por ciudad 13) (2026-09-16) |
+| Tipos sin errores en móvil, web y código compartido | Sí |
+| Lógica común en `packages/shared`, sin duplicar | Sí: paletas, protección, textos de ayuda, cliente de API, base cartográfica |
+| Contrato de diseño en tokens | Un solo sitio por plataforma |
+| Reglas de R8 para lo que se carga por reflexión | Sí; su ausencia rompía el segundo plano |
+| Errores que no se tragan en silencio | Corregido en el segundo plano y en las notificaciones |
+| La pantalla del mapa partida en piezas | Sí, desde el 2026-09-10: de 1.294 a 744 líneas, con los hooks de viaje, ciudad, avisos, salud del servicio y actualizaciones, y una hoja base común a las nueve hojas |
+| Pruebas automatizadas | 104 de 104 en el cliente móvil (11 suites); 16 de 16 invariantes de `/route/build` en Tumaco y Cali; 67 comprobaciones de humo del servidor que corren en proceso, sin tocar producción (supresión de datos 18, identidad 24, errores de base 3, riesgo por ciudad 13, validación de reportes 9). Cómo correrlas, en `COMANDOS.md` §11 |
 
 ### A.5 Funcionalidad verificada ejecutando
 
 | Función | Android | iOS |
 |---|---|---|
-| Arranque e instalación limpia | ✅ | ✅ |
-| Mapa, capa de riesgo y ubicación | ✅ | ✅ |
-| Recorrido con servicio en primer plano | ✅ | ✅ |
-| Segundo plano con la app cerrada | ✅ | ✅ |
-| Reanudar el viaje al reabrir | ✅ | ✅ |
-| Reenganche del servicio al reabrir | ✅ **resuelto 2026-08-03** | ✅ |
-| Protección automática con la app cerrada | ✅ | ⚠️ sin probar |
-| Cambio de ciudad | ✅ | ⚠️ sin probar |
-| Canal de alertas con vibración | ✅ | ⚠️ sin probar |
-| Inicio de sesión con Google | ✅ (probado manualmente) | ⚠️ sin probar |
-| Rendimiento: 60 fps, arranque <400 ms | ✅ medido | ⚠️ sin medir |
+| Arranque e instalación limpia | Sí | Sí |
+| Mapa, capa de riesgo y ubicación | Sí | Sí |
+| Recorrido con servicio en primer plano | Sí | Sí |
+| Segundo plano con la app cerrada | Sí | Sí |
+| Reanudar el viaje al reabrir | Sí | Sí |
+| Reenganche del servicio al reabrir | Sí | Sí |
+| Protección automática con la app cerrada | Sí | Sin probar |
+| Cambio de ciudad | Sí | Sin probar |
+| Canal de alertas con vibración | Sí | Sin probar |
+| Inicio de sesión con Google | Sí, probado a mano | Sin probar |
+| Rendimiento: 60 fps y arranque por debajo de 400 ms | Medido | Sin medir |
+
+Las filas de iOS marcadas «sin probar» son exactamente eso: la app compila y arranca en el simulador,
+pero esas funciones no se han ejercitado en un iPhone.
 
 ---
 
-## B. Pendientes por prioridad
+## B. Lo que falta
 
-### B.1 Bloqueantes para publicar
-~~1. Términos y política de privacidad~~ — **RESUELTO** (v1.0.0, aceptación verificada).
-~~2. Flujo de borrado de datos~~ — **RESUELTO** (Configuración → Privacidad y opinión).
+No queda ningún bloqueante legal para publicar. Lo pendiente es funcionalidad y validación:
 
-**No quedan bloqueantes legales.**
+1. **Fotos en los reportes.** Falta el selector, el almacenamiento de archivos y su endpoint. Postgres
+   no es sitio para archivos, así que hace falta decidir un almacenamiento de objetos.
+2. **Avisos con la app cerrada.** No hay notificaciones enviadas desde el servidor; todas las alertas se
+   calculan en el teléfono. Exige un servicio de push y sigue sin decidirse.
+3. **Círculos de cuidado.** El backend está en el repositorio (`DISENO_FUTURO.md` §2); la pantalla de la
+   app se está construyendo y no se ha publicado. En la app publicada aparece como «Próximamente».
+4. **Editar los pesos del riesgo desde el panel.** El panel los muestra por ciudad con su motivo;
+   cambiarlos exige volver a correr el pipeline fuera del servidor.
+5. **Vista de usuario en el navegador del teléfono.** El dominio sirve el escritorio; la app de usuario
+   en web solo existe como compilación local de Expo.
+6. **Publicación en tiendas.** La app se distribuye como APK de prueba y recibe actualizaciones por
+   aire; no está en Google Play ni en App Store.
+7. **Verificación completa en iOS.** Ver A.5.
+8. **Predicción de destino en Cali.** Cali tiene riesgo y rutas; la predicción exige trayectorias de
+   la ciudad, que no se descargan de ningún sitio.
+9. **Validación con recorridos reales.** Todas las cifras de efectividad son sobre trayectorias
+   simuladas. No hay todavía un viaje de una persona real.
+10. **Publicidad discreta y donaciones.** Previstas en los términos; no construidas.
 
-### B.2 Funcionalidad prometida que falta
-~~2b. Endpoint propio de opiniones~~ — **RESUELTO (2026-09-08).** `POST /feedback`
-   guarda las cuatro respuestas y el comentario en Postgres con rate-limit por
-   persona; el panel admin (pestaña «Opiniones») muestra promedios por pregunta y
-   comentarios recientes. El correo queda solo como respaldo si el servidor no
-   acepta. Además, responder el formulario es ahora **obligatorio para borrar los
-   datos** (el comentario sigue siendo opcional), como se pidió.
-3. **Fotos en los reportes** (selector + almacenamiento de objetos + endpoint).
-   Postgres no es sitio para archivos: aquí sí aplica un almacenamiento tipo
-   Supabase Storage o R2.
-~~4. Onboarding de valor~~ — **RESUELTO (2026-09-10)**: cinco páginas, con Círculos «próximamente».
-~~5. Modal de ciudad por país~~ — **RESUELTO (2026-09-10)**: estados dichos por el servidor y buscador.
-   Desde 2026-09-12 las ciudades que se pueden buscar vienen del catálogo del servidor.
+La cobertura por grados (abrir una ciudad solo con capa de riesgo y ofrecer recorrido libre con avisos
+en zona) ya está construida y es como funciona Cali hoy.
 
-### B.3 Bugs abiertos
-6. ~~Android: el servicio de fondo no se reengancha~~ — **RESUELTO**.
-   Causa: `hasStartedLocationUpdatesAsync` informa del REGISTRO de la tarea, que
-   sobrevive a que el sistema mate la app, no de que el servicio esté vivo. El
-   código preguntaba «¿ya corre?», recibía sí y no arrancaba nada (sin error y sin
-   aviso). En iOS no se veía porque allí el seguimiento sí sobrevive. Ahora al
-   reanudar se fuerza un ciclo limpio de parada y arranque. Verificado matando la
-   app y reabriendo: servicio en primer plano con tipo 0x8 (ubicación).
-~~7. Animación de arranque decorativa~~ — **RESUELTO (2026-09-10)**: espera ajustes, ubicación y
-   capa de riesgo, con tope de 4 s, y dice qué está cargando.
+## C. Resuelto recientemente
 
-### B.4 Calidad
-~~8. Refactor de `map.tsx`~~ — **RESUELTO (2026-09-10)**, ver A.4.
-~~9. Pruebas automatizadas de lo crítico~~ — **RESUELTO (2026-08-10): 29/29.**
-   21 en el cliente móvil (alertas por zona, recálculo por desvío, reanudación en
-   segundo plano) + 8 invariantes sobre `/route/build` en el backend, que es donde
-   vive el manejo de rutas seguras del indicador. Reproducir:
-   `npm test` en `apps/mobile` y `python services/api/scripts/c5_humo_route_build.py`.
-~~10. Cifrado del histórico local y revisión de `npm audit`~~ — **RESUELTO (2026-09-08)**, ver filas A.2 y A.3.
+Se deja constancia de lo cerrado desde agosto, con fecha, para que la lista de arriba se lea con
+contexto.
 
-### B.5 Producto futuro (diseñado, no construido)
-11. **Círculos** — cuidarnos juntos. Diseño completo en `DISENO_FUTURO.md`.
-12. **Cobertura por grados**: navegar solo con modelo de riesgo para abrir ciudades
-    nuevas sin esperar a tener datos de predicción. Análisis en `DISENO_FUTURO.md`.
-13. **Publicidad sutil y donaciones**.
+- 2026-08-03: términos y política v1.0.0 con aceptación registrada; flujo de borrado de datos; el
+  servicio de fondo en Android vuelve a engancharse al reabrir la app (el sistema informaba del
+  registro de la tarea, no de que el servicio estuviera vivo, y por eso no arrancaba).
+- 2026-09-08: cifrado del histórico local; límite de peticiones en el servidor; opiniones guardadas en
+  Postgres con su pestaña en el panel; auditorías de dependencias revisadas.
+- 2026-09-10: onboarding de cinco páginas; selector de ciudad con estados dichos por el servidor;
+  pantalla de arranque que espera lo que de verdad hace falta; refactor de la pantalla del mapa.
+- 2026-09-12: catálogo de ciudades desde el servidor con alta y baja en el panel; escapado en la
+  versión web de la app; panel admin con datos de producción.
+- 2026-09-15: identidad en el histórico por prueba; `DELETE /me/data`; política v1.1.0.
+- 2026-09-16: la cola sin conexión descarta los envíos que el servidor rechaza por inválidos (antes un
+  reporte rechazado bloqueaba a todos los demás); `/risk/zones` responde 404 para una ciudad sin mapa
+  en vez de devolver la malla de Tumaco con otra etiqueta; el esquema del reporte acota coordenadas y
+  longitudes.
 
----
+## D. Configuración externa pendiente
 
-## C. Depende de ti (no del código)
+Dos cosas no dependen del código:
 
-| Tarea | Estado |
-|---|---|
-| `ADMIN_USER_IDS` en el Space con tu **User ID** (`user_…`, no `app_…`) | ✅ `/health` responde `admin_ready: true` y el panel carga con datos de producción (2026-09-12) |
-| Google Cloud Console: crear proyecto y marca en la pantalla de consentimiento | ❌ pendiente |
-| Neon: **no hay que cambiar nada**, el nivel gratuito sirve | ✅ sin acción |
-| Publicar la primera OTA (`eas update --branch production`) | ✅ canal `production` creado el 2026-09-10; último update «Catálogo de ciudades desde el servidor» (2026-09-12) |
-| Instalar el APK del 2026-09-10 en el teléfono (los anteriores no reciben OTA) | ❌ pendiente |
-| Decidir almacenamiento para fotos de reportes (Supabase Storage o Cloudflare R2) | ❌ pendiente |
+- La pantalla de consentimiento de Google todavía muestra «Clerk» como nombre de la aplicación. Se
+  cambia en Google Cloud Console.
+- El almacenamiento de objetos para las fotos de los reportes sigue sin elegirse.

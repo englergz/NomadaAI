@@ -1,7 +1,8 @@
 # Nómada.AI · Diseño de trabajo futuro
 
 Documento de arquitectura y producto para lo que NO entra en la tesis pero cuyos
-cimientos se dejan puestos. Fecha: 2026-08-03.
+cimientos se dejan puestos. Escrito el 2026-08-03; las notas fechadas dicen qué se ha
+construido desde entonces.
 
 ---
 
@@ -55,8 +56,9 @@ Son **tres ingredientes independientes**, y cada uno habilita cosas distintas:
 **Cali rutea desde 2026-09-07.** Su grafo viene de OpenStreetMap
 (`scripts/fetch_road_graph.py`), no de trayectorias: `RouteGraph.from_osm` construye
 la misma estructura desde las vías, con el ancho de vehículo derivado del `highway=*`.
-Verificado en producción con los 8 invariantes de `/route/build`: a λ=2,5 (defecto
-del producto) reduce la exposición un **19,1 %** por un 2,9 % más de distancia.
+Verificado en producción con los invariantes de `/route/build` (ocho por ciudad, dieciséis
+en total): a λ=2,5 (defecto del producto) reduce la exposición un **19,1 %** por un 2,9 %
+más de distancia.
 
 > **Dato para no sobreinterpretar:** en Tumaco el mismo λ da 4,84 %. No es
 > comparable — ciudades, superficies y fuentes de grafo distintas — pero apunta a
@@ -77,7 +79,16 @@ da de alta desde el panel admin. Estar en el catálogo no da cobertura; la dan l
 **Pendiente para que Cali quede completa:** la predicción (paso 3), que exige
 recoger trayectorias de la ciudad. Es el único ingrediente que no se descarga.
 
-## 2. «Círculos» — cuidarnos juntos (trabajo futuro, con cimientos ya)
+## 2. «Círculos» — cuidarnos juntos (backend hecho, app en construcción)
+
+> **Estado a 2026-09-16.** El backend de esta sección ya está en el repositorio
+> (`services/api/app/routers/circles.py` y `app/data/circles.py`): crear y unirse a un
+> círculo, disparadores por persona, eventos con posiciones que se borran al cerrarlos,
+> y «Borrar mis datos» saca a la persona de todos sus círculos. Exige cuenta (la llave del
+> dispositivo no basta), porque un círculo debe sobrevivir al cambio de teléfono. Lo que no
+> hay: aviso con la app cerrada, que exige push desde el servidor y sigue sin decidirse. La
+> pantalla en la app se está construyendo y no se ha publicado; en la app publicada la
+> entrada sigue marcada «Próximamente».
 
 Grupos privados (familia, pareja, amigos, trabajo, evento) donde la ubicación se
 comparte **por excepción**, no por defecto. Es probablemente el mayor diferencial
@@ -115,7 +126,7 @@ no hay histórico de ubicaciones de nadie.
 ### Transporte en tiempo real
 - **WebSocket** por círculo (`/ws/circles/{id}`), autenticado con el token de Clerk.
 - Al conectarse, el cliente **solo escucha**. Publica únicamente si tiene un evento
-  abierto. Esto implementa el «ellos reciben, no envían» del brief.
+  abierto. Así se cumple el principio de que el círculo recibe, no envía.
 - Backend: FastAPI ya soporta WebSockets nativamente; el fan-out por círculo puede
   hacerse en memoria al principio y pasar a Redis pub/sub cuando haya >1 réplica.
 - Fallback sin WebSocket: **push** (expo-notifications) con la alerta, aunque no
