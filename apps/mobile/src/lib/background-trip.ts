@@ -12,6 +12,7 @@
 //   persistente: el usuario ve que la app está midiendo su ruta, sin sorpresas.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { notifyAlert } from '@/lib/notify';
 import { secureGet, secureRemove, secureSet } from '@/lib/secure-storage';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
@@ -169,9 +170,17 @@ if (Platform.OS !== 'web') {
     const locations = (data as { locations?: Location.LocationObject[] } | undefined)?.locations;
     const loc = locations?.[locations.length - 1];
     if (!loc) return;
-    // Si ya hay un viaje en curso, el vigía sobra.
-    if (await loadActiveTrip()) { await stopAutoTripWatch(); return; }
     const now = { lon: loc.coords.longitude, lat: loc.coords.latitude, t: Date.now() };
+    // Con un viaje ya abierto, el vigía NO sobra mientras el seguimiento fino no haya
+    // podido encenderse: Android niega arrancar un servicio en primer plano desde
+    // segundo plano (ERR_FOREGROUND_SERVICE_START_NOT_ALLOWED, visto en el emulador), y
+    // apagar el vigía ahí dejaría el recorrido sin nadie siguiéndolo. Así que el vigía
+    // sostiene el rastro —más grueso, cada 30 s— y reintenta el ascenso en cada muestra.
+    const enCurso = await loadActiveTrip();
+    if (enCurso) {
+      await sostenerViajeDelVigia(enCurso, now);
+      return;
+    }
     let prev: TripPoint | null = null;
     try {
       const raw = await secureGet(KEY_WATCH);
@@ -186,6 +195,27 @@ if (Platform.OS !== 'web') {
     // Vas en camino: se abre el viaje y se sube a seguimiento fino.
     await startTripFromBackground(now);
   });
+}
+
+/**
+ * Sostiene con el vigía un recorrido que todavía no pudo ascender al seguimiento fino:
+ * guarda el punto (rastro más grueso, pero rastro), aplica los MISMOS frenos de batería
+ * que la tarea del viaje y reintenta el ascenso en cada muestra.
+ */
+async function sostenerViajeDelVigia(trip: ActiveTrip, punto: TripPoint): Promise<void> {
+  const ahora = Date.now();
+  const previo = trip.points[trip.points.length - 1];
+  const seMovio = !previo || metersBetween(previo, punto) > MOVE_M;
+  const lastMoveAt = seMovio ? ahora : (trip.lastMoveAt ?? trip.startedAt);
+  if (ahora - trip.startedAt > MAX_TRIP_MS || ahora - lastMoveAt > MAX_IDLE_MS) {
+    // Se acabó el recorrido (tope de 4 h o media hora quieto): se cierra, pero el vigía
+    // sigue en pie para detectar el siguiente.
+    await clearActiveTrip();
+    return;
+  }
+  await queuePoints([punto]);   // al abrir la app, el rastro aparece continuo
+  await saveActiveTrip({ ...trip, lastMoveAt, points: [...trip.points, punto] });
+  if (await arrancarSeguimiento(await loadNotificationCopy())) await stopAutoTripWatch();
 }
 
 /** Abre un viaje desde el vigía y asciende al seguimiento fino del recorrido. */
@@ -203,15 +233,21 @@ async function startTripFromBackground(point: TripPoint): Promise<void> {
     points: [point],
     auto: true,
   });
-  await stopAutoTripWatch();
-  await startBackgroundTrip(notif);
-  try {
-    const Notifications = await import('expo-notifications');
-    await Notifications.scheduleNotificationAsync({
-      content: { title: notif.autoTitle, body: notif.autoBody },
-      trigger: null,
-    });
-  } catch { /* sin notificaciones, el usuario lo ve al abrir la app */ }
+  // El seguimiento fino se enciende ANTES de apagar el vigía: en Android 12+ un servicio
+  // en primer plano no se puede arrancar desde segundo plano, y apagando el vigía primero
+  // la app se quedaba sin ninguno, así que el ascenso fallaba EN SILENCIO y el recorrido
+  // quedaba anunciado sin que nadie lo siguiera (verificado en el emulador).
+  // Si el ascenso se puede, el seguimiento fino sustituye al vigía. Si Android lo niega
+  // (pasa al estar en segundo plano), el vigía SE QUEDA sosteniendo el recorrido y se
+  // reintenta en cada muestra; al abrir la app, que ya está en primer plano, sube solo.
+  const fino = await arrancarSeguimiento(notif);
+  if (fino) await stopAutoTripWatch();
+  // Por `notifyAlert` y no a pelo: esta tarea corre SIN interfaz, donde el canal de
+  // Android puede no existir todavía, y una notificación sin canal el sistema la
+  // descarta en silencio — por eso este aviso nunca llegaba a verse. `notifyAlert` crea
+  // el canal, fija la presentación y vibra. Que la protección se encienda sola y el
+  // usuario no se entere es justo lo contrario de lo que promete la app.
+  await notifyAlert(notif.autoTitle, notif.autoBody, 'precaucion');
 }
 
 /**
@@ -323,6 +359,22 @@ export async function startBackgroundTrip(notification: {
   if (Platform.OS === 'web') return false;
   const granted = await requestBackgroundPermission();
   if (!granted) return false;
+  return arrancarSeguimiento(notification);
+}
+
+/**
+ * Enciende el seguimiento fino SIN volver a comprobar permisos. Existe para el ascenso
+ * desde el vigía: allí no hay interfaz, y las consultas de permiso en ese contexto no son
+ * fiables —devolvían «no concedido» aunque el propio vigía estuviera corriendo con permiso
+ * de fondo, así que el ascenso se caía antes de intentar nada (verificado en el emulador:
+ * el sistema nunca llegó a ver una petición de servicio)—. Si el vigía está vivo, el
+ * permiso está concedido por definición: se intenta y, si el sistema lo niega, se informa.
+ */
+async function arrancarSeguimiento(notification: {
+  title: string;
+  body: string;
+  color?: string;
+}): Promise<boolean> {
   try {
     if (await isBackgroundTripRunning()) return true;
     await Location.startLocationUpdatesAsync(TRIP_TASK, {

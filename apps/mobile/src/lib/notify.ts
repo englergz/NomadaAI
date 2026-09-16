@@ -75,9 +75,13 @@ export async function notifyAlert(title: string, body: string, level: AlertLevel
         vibrate: pattern,
         priority: Notifications.AndroidNotificationPriority.MAX,
         interruptionLevel: level === 'atencion' ? 'timeSensitive' : 'active',
-        ...(Platform.OS === 'android' ? { channelId: ALERT_CHANNEL } : null),
       },
-      trigger: null, // inmediata: una alerta de seguridad no se programa
+      // Inmediata (una alerta de seguridad no se programa) y, en Android, POR NUESTRO
+      // CANAL: el canal viaja en el disparador, no en el contenido. Con `trigger: null`
+      // el sistema la sacaba por un canal de reserva de importancia normal, así que las
+      // alertas perdían la prioridad MAX y el patrón de vibración que les da sentido
+      // (verificado en el emulador: salían por `expo_notifications_fallback…`).
+      trigger: Platform.OS === 'android' ? { channelId: ALERT_CHANNEL } : null,
     });
   } catch (e) {
     console.warn('[nomadaai] no se pudo enviar la alerta:', e);
