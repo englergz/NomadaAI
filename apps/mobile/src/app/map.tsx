@@ -45,6 +45,7 @@ import { useOta } from '@/hooks/use-ota';
 import { useWriteQueue } from '@/hooks/use-write-queue';
 import { useTrip } from '@/hooks/use-trip';
 import { markBootReady } from '@/lib/boot';
+import { fixEscalonado, type IntentoGps } from '@/lib/gps';
 import { reportVisibleHeight } from '@/lib/keyboard-inset';
 import { applyUpdate } from '@/lib/ota';
 import { hasUnseenAlerts } from '@/lib/alert-log';
@@ -64,6 +65,16 @@ import { distM } from '@/lib/geo';
 // igual que en el escritorio; λ del ruteo sale de lambdaForLevel(). Aquí solo
 // quedan las palabras que acompañan a los extremos y al centro.
 const PRIO_WORDS = ['map.prio.min', 'map.prio.balanced', 'map.prio.max'] as const;
+
+// Escalera del GPS: primero rápido y barato (basta para centrar el mapa), y solo si no
+// llega se insiste con más precisión. El tope total es el mismo de antes (~25 s), pero
+// en la calle se responde en segundos en vez de esperar siempre al fix más fino, y bajo
+// techo se agota el primer escalón —no los 25 s— antes de volver a intentarlo.
+const ESCALONES_GPS: IntentoGps<Location.LocationAccuracy>[] = [
+  { accuracy: Location.Accuracy.Balanced, timeoutMs: 5000 },
+  { accuracy: Location.Accuracy.High, timeoutMs: 10000 },
+  { accuracy: Location.Accuracy.BestForNavigation, timeoutMs: 9000 },
+];
 function prioWordKey(i: number, total: number) {
   if (i === 0) return PRIO_WORDS[0];
   if (i === total - 1) return PRIO_WORDS[2];
@@ -236,8 +247,9 @@ export default function MapScreen() {
         userLoc ?? (pos ? [pos.coords.longitude, pos.coords.latitude] : null);
       if (inmediata) setFocus({ center: inmediata, zoom: 16 });
       try {
-        pos = await withTimeout(
-          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }), 25000, 'gps',
+        pos = await fixEscalonado(
+          (accuracy) => Location.getCurrentPositionAsync({ accuracy }),
+          ESCALONES_GPS,
         );
       } catch {
         if (!pos) throw new Error('gps');
