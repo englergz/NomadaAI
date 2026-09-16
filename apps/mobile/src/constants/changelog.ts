@@ -11,6 +11,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-09-16',
+    items: [
+      { es: 'Nuevo: Círculos de cuidado. Crea un círculo con tu gente y pide ayuda: solo entonces verán dónde estás, y al decir «Estoy bien» ese rastro se borra.',
+        en: 'New: care Circles. Create a circle with your people and ask for help: only then will they see where you are, and when you say “I’m OK” that trail is deleted.' },
+      { es: 'La protección automática ahora te avisa cuando se enciende y sigue tu recorrido de verdad.',
+        en: 'Automatic protection now tells you when it turns on and really follows your trip.' },
+      { es: 'Las alertas de riesgo llegan con la máxima prioridad y vibración.',
+        en: 'Risk alerts now arrive with top priority and vibration.' },
+      { es: 'Política de privacidad actualizada con Círculos. Te pediremos aceptarla de nuevo.',
+        en: 'Privacy policy updated with Circles. We will ask you to accept it again.' },
+    ],
+  },
+  {
     date: '2026-09-15',
     items: [
       { es: '«Borrar mis datos» ahora borra también tus reportes en el servidor. La opinión que nos dejes se conserva sin nada que la vincule contigo.',

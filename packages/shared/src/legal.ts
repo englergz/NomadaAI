@@ -6,9 +6,9 @@
 // mismo, que es justo lo que la ley pretende evitar.
 
 /** Se incrementa SIEMPRE que cambie el contenido legal. */
-export const LEGAL_VERSION = '1.1.0';
+export const LEGAL_VERSION = '1.2.0';
 /** Fecha de vigencia que se muestra al usuario y queda registrada. */
-export const LEGAL_EFFECTIVE_DATE = '2026-09-15';
+export const LEGAL_EFFECTIVE_DATE = '2026-09-16';
 
 export interface LegalBlock {
   title: string;
@@ -80,7 +80,7 @@ export const PRIVACY: LegalDoc = {
     {
       title: 'Qué guardamos en el servidor',
       body:
-        'De cada viaje, un resumen: ciudad, hora, tipo de vehículo, cuántas alertas recibiste, qué tan acertada fue la predicción y cuánto redujo la ruta segura tu exposición, con la distancia de las dos rutas. Nunca el trazado del recorrido. De cada reporte que envíes: categoría, ubicación, hora y la descripción que escribas. De cada opinión: tus respuestas, el comentario si lo dejas, la ciudad y el sistema del teléfono.',
+        'De cada viaje, un resumen: ciudad, hora, tipo de vehículo, cuántas alertas recibiste, qué tan acertada fue la predicción y cuánto redujo la ruta segura tu exposición, con la distancia de las dos rutas. Nunca el trazado del recorrido. De cada reporte que envíes: categoría, ubicación, hora y la descripción que escribas. De cada opinión: tus respuestas, el comentario si lo dejas, la ciudad y el sistema del teléfono. Si usas Círculos, lo que se explica en su apartado.',
     },
     {
       title: 'A quién quedan asociados',
@@ -103,6 +103,11 @@ export const PRIVACY: LegalDoc = {
         'Si lo autorizas, seguimos tu recorrido con la pantalla apagada para poder avisarte a tiempo. Mientras eso ocurre verás SIEMPRE una notificación permanente: nunca te seguimos sin que lo sepas. El seguimiento se apaga solo al terminar el viaje, tras 30 minutos sin movimiento o a las 4 horas.',
     },
     {
+      title: 'Círculos de cuidado',
+      body:
+        'Si creas un círculo o te unes a uno (hace falta cuenta), guardamos el nombre del círculo, quiénes lo forman con el alias que cada persona elige —no tu nombre ni tu correo— y los disparadores que tú configures. Por defecto nadie ve tu ubicación: solo cuando pides ayuda, o se cumple uno de tus disparadores, el círculo recibe tu posición mientras dure ese aviso. Al decir «Estoy bien» esas posiciones se borran del servidor, y un aviso que quede abierto se cierra y se borra solo a las 6 horas. Los miembros te ven por tu alias; tu identificador de cuenta nunca se les muestra. Puedes salir de un círculo cuando quieras.',
+    },
+    {
       title: 'Quién más interviene',
       body:
         'Usamos servicios de terceros con servidores fuera de Colombia: Hugging Face aloja el servidor, Neon guarda la base de datos, Clerk gestiona las cuentas y Expo entrega las actualizaciones de la app. Los mapas se descargan de OpenFreeMap y de Esri, y la búsqueda de direcciones usa Nominatim, de OpenStreetMap: esos servicios ven la zona del mapa o el texto que buscas y la dirección IP de tu conexión, no quién eres en la app. Nuestro servidor, como cualquier servicio web, ve la dirección IP de cada petición: la usa solo para frenar abusos y no la guarda en la base de datos, aunque el alojamiento la anota en sus registros técnicos.',
@@ -120,7 +125,7 @@ export const PRIVACY: LegalDoc = {
     {
       title: 'Borrar tus datos',
       body:
-        'En Configuración → Más opciones → «Mis datos y opinión» puedes borrarlo todo. En el teléfono se borra todo, salvo la constancia de que aceptaste esta política. En el servidor se borran tu histórico y tus reportes, y tus opiniones se conservan sin nada que las vincule contigo. Los reportes borrados dejan de contar en el mapa. Si el servidor no confirma el borrado, la app te lo dice y conserva lo necesario para que puedas reintentar. Si iniciaste sesión, puedes marcar también «eliminar mi cuenta»: se eliminan tu nombre, tu correo y los datos de tu perfil en Clerk, siempre después de que el servidor confirme el borrado de tus datos, para que no quede nada tuyo sin poder borrarse.',
+        'En Configuración → Más opciones → «Mis datos y opinión» puedes borrarlo todo. En el teléfono se borra todo, salvo la constancia de que aceptaste esta política. En el servidor se borran tu histórico y tus reportes, sales de tus círculos con sus avisos y posiciones, y tus opiniones se conservan sin nada que las vincule contigo. Los reportes borrados dejan de contar en el mapa. Si el servidor no confirma el borrado, la app te lo dice y conserva lo necesario para que puedas reintentar. Si iniciaste sesión, puedes marcar también «eliminar mi cuenta»: se eliminan tu nombre, tu correo y los datos de tu perfil en Clerk, siempre después de que el servidor confirme el borrado de tus datos, para que no quede nada tuyo sin poder borrarse.',
     },
     {
       title: 'Tus derechos',
