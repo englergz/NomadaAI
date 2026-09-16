@@ -113,6 +113,11 @@ def main() -> None:
     comprobar("Beto pide ayuda: se abre el evento", (st, ev.get("kind"), ev.get("reused")), (200, "panico", False))
     eid = ev["id"]
 
+    st, evp = pedir(app, "POST", f"/circles/{cid}/events", ANA, {"kind": "precaucion"})
+    comprobar("un disparador de precaución abre su propio aviso, con su motivo",
+              (st, evp.get("kind")), (200, "precaucion"))
+    pedir(app, "POST", f"/circles/{cid}/events/{evp['id']}/close", ANA)
+
     st, ev2 = pedir(app, "POST", f"/circles/{cid}/events", BETO, {"kind": "panico"})
     comprobar("pedir ayuda dos veces no abre dos eventos", (st, ev2.get("id"), ev2.get("reused")), (200, eid, True))
 

@@ -15,6 +15,7 @@ import type { RouteLines } from '@/components/risk-map.types';
 import { CITIES, type CityKey } from '@/constants/map';
 import type { Banner } from '@/hooks/use-banner';
 import { logAlert } from '@/lib/alert-log';
+import { cerrarAvisosDelRecorrido, dispararCirculos } from '@/lib/circle-triggers';
 import { levelFor, ProximityTracker, zoneAt, type AlertLevel } from '@/lib/alerts';
 import { api } from '@/lib/api';
 import {
@@ -159,6 +160,8 @@ export function useTrip({
       const body = alert.level === 'atencion' ? attBody : t('alert.caution.body');
       setBanner({ text: `${title}: ${body}`, tone: alert.level === 'atencion' ? 'coral' : 'warn' });
       notifyLocal(title, body, alert.level);
+      // Tus círculos se enteran solos si tienes ese disparador encendido (lib/circle-triggers).
+      void dispararCirculos(alert.level === 'atencion' ? 'riesgo' : 'precaucion');
       logAlert({
         zone: alert.cellId,
         level: alert.level === 'atencion' ? 'atencion' : 'precaucion',
@@ -186,6 +189,7 @@ export function useTrip({
       const off = distToPath(pos, rt.safe);
       if (off > 45 && Date.now() - lastRerouteRef.current > 12000) {
         lastRerouteRef.current = Date.now();
+        void dispararCirculos('desvio');
         reroutingRef.current = true;
         goSafe(priority, pos as [number, number], true).finally(() => { reroutingRef.current = false; });
       }
@@ -214,6 +218,7 @@ export function useTrip({
         stopTrip();
       } else if (idleMin >= 15 && idlePromptsRef.current < 1) {
         idlePromptsRef.current = 1;
+        void dispararCirculos('inactividad');
         Alert.alert(t('map.idle.title'), t('map.idle.body'), [
           { text: t('map.idle.end'), style: 'destructive', onPress: stopTrip },
           { text: t('map.idle.continue'), onPress: () => { lastMoveAtRef.current = Date.now(); idlePromptsRef.current = 0; } },
@@ -367,6 +372,8 @@ export function useTrip({
     // terminar: no dejamos ubicaciones del usuario vivas en el dispositivo.
     void stopBackgroundTrip();
     void clearActiveTrip();
+    // Lo que abrió el recorrido en tus círculos se cierra con él (el pánico, no).
+    void cerrarAvisosDelRecorrido();
     tripStartedAtRef.current = 0;
     // Al terminar, si la protección automática sigue activa vuelve a quedar el
     // vigía de bajo consumo esperando el próximo arranque.

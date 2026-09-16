@@ -5,7 +5,7 @@
 // describe es el círculo, quién comparte y cuándo; nunca un historial de posiciones.
 
 /** Motivos por los que alguien empieza a compartir. Los define el diseño, no el cliente. */
-export type CircleEventKind = "riesgo" | "inactividad" | "panico" | "desvio";
+export type CircleEventKind = "riesgo" | "precaucion" | "inactividad" | "panico" | "desvio";
 
 /** Cómo comparte cada persona en cada círculo. El valor inicial nunca es «siempre». */
 export type CircleShareMode = "never" | "on_trigger" | "always";

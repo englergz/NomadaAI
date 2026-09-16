@@ -41,7 +41,7 @@ export default function CirclesSheet({
 }) {
   const t = useT();
   const c = Colors[useResolvedScheme()];
-  const sharing = useSharingState();
+  const compartiendo = useSharingState();
   const [conCuenta, setConCuenta] = useState(false);
   const [vista, setVista] = useState<Vista>('lista');
   const [cargando, setCargando] = useState(false);
@@ -143,18 +143,19 @@ export default function CirclesSheet({
     setError(null);
     try {
       const ev = await api.openCircleEvent(await auth(), actual.id, 'panico');
-      await startSharing(actual.id, ev.id);
+      await startSharing(actual.id, ev.id, 'panico');
       await cargarDetalle(actual, true);
       notify(t('circles.help.sentTitle'), t('circles.help.sentBody'));
     } catch (e) { explicar(e); }
   }
 
   async function estoyBien() {
-    if (!actual || !sharing) return;
+    const aqui = actual ? compartiendo.find((s) => s.circleId === actual.id) : undefined;
+    if (!actual || !aqui) return;
     try {
-      await api.closeCircleEvent(await auth(), sharing.circleId, sharing.eventId);
+      await api.closeCircleEvent(await auth(), aqui.circleId, aqui.eventId);
     } catch { /* aunque falle, se deja de mandar: nadie debe compartir sin querer */ }
-    await stopSharing();
+    await stopSharing(aqui.circleId);
     await cargarDetalle(actual, true);
   }
 
@@ -171,7 +172,7 @@ export default function CirclesSheet({
     if (!actual) return;
     confirmDestructive(t('circles.leave.confirm', { name: actual.name }), t('circles.leave'), t('common.cancel'), async () => {
       try {
-        if (sharing?.circleId === actual.id) await estoyBien();
+        if (compartiendo.some((s) => s.circleId === actual.id)) await estoyBien();
         await api.leaveCircle(await auth(), actual.id);
         setActual(null); setVista('lista');
         await cargarLista();
@@ -180,7 +181,7 @@ export default function CirclesSheet({
   }
 
   const aliasDe = (pseudonimo: string) => miembros.find((m) => m.pseudonym === pseudonimo)?.alias ?? t('circles.someone');
-  const compartiendoAqui = !!sharing && !!actual && sharing.circleId === actual.id;
+  const compartiendoAqui = !!actual && compartiendo.some((s) => s.circleId === actual.id);
 
   // ------------------------------------------------------------------ vistas
   const campo = (valor: string, cambiar: (v: string) => void, placeholder: string, extra?: object) => (

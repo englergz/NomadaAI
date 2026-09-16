@@ -2,7 +2,7 @@
 
 Regla rectora, y también lo que exige la Ley 1581 (minimización): por defecto NADIE comparte
 ubicación. Un círculo solo recibe posiciones mientras hay un **evento abierto** —riesgo alto,
-inactividad, pánico o desvío— y al cerrarlo esas posiciones **se borran**. No se construye
+precaución, inactividad, pánico o desvío— y al cerrarlo esas posiciones **se borran**. No se construye
 historial de por dónde anduvo nadie: `circle_positions` es un buffer vivo, no un archivo.
 
 Otras decisiones que importan:
@@ -35,7 +35,7 @@ _LARGO_CODIGO = 8
 _CODIGO_RE = re.compile(rf"^[{_ALFABETO}]{{{_LARGO_CODIGO}}}$")
 
 #: Tipos de evento que abren el paso de la ubicación. Los decide el diseño, no el cliente.
-CLASES_EVENTO = ("riesgo", "inactividad", "panico", "desvio")
+CLASES_EVENTO = ("riesgo", "precaucion", "inactividad", "panico", "desvio")
 #: Cómo comparte cada persona EN CADA círculo. El valor inicial nunca es «siempre».
 MODOS = ("never", "on_trigger", "always")
 #: Un evento no puede quedar abierto para siempre: tope duro, aunque el teléfono se apague.
