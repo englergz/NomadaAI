@@ -128,11 +128,13 @@ class RiskZonesResponse(BaseModel):
 
 # --- Reporte ciudadano de incidente (cimiento "tiempo real") ---
 class IncidentReport(BaseModel):
-    lon: float
-    lat: float
-    category: str
+    # Coordenadas dentro del globo y textos acotados: lo que no cabe en estos límites
+    # no es un reporte, es basura o un ataque, y no debe llegar a la base.
+    lon: float = Field(ge=-180.0, le=180.0)
+    lat: float = Field(ge=-90.0, le=90.0)
+    category: str = Field(min_length=1, max_length=40)
     description: Optional[str] = Field(default=None, max_length=500)
-    city: str = "tumaco"
+    city: str = Field(default="tumaco", min_length=1, max_length=40)
     hour: Optional[int] = Field(default=None, ge=0, le=23)
     # uid anónimo que mandan las versiones de la app anteriores a la llave del dispositivo. Sin
     # prueba de identidad solo sirve para atribuir el reporte (identity.write_attribution)
