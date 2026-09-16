@@ -161,6 +161,13 @@ for _m in MODULOS:
     _m._connect = lambda: _Conexion(DB)
     _m._ready = True
 
+# Círculos: aquí nadie tiene ninguno, así que su parte del borrado responde 0 sin tocar la base
+# simulada. Que «Borrar mis datos» los alcance de verdad se prueba contra Postgres real en
+# `humo_circulos.py` (salir de cada círculo, con sus eventos y rastros).
+from app.data import circles as datos_circulos  # noqa: E402
+datos_circulos._dsn = lambda: "base-simulada"
+datos_circulos.borrar_de = lambda uid: 0
+
 TOKENS = {"tok-ana": "user_ana", "tok-beto": "user_beto", "tok-admin": "user_admin"}
 
 
@@ -245,7 +252,7 @@ def t_token_invalido_no_cae_a_la_llave():
 def t_borrar_con_token_solo_lo_propio():
     st, body = pedir(APP, "DELETE", "/me/data?user_id=user_beto", ANA)
     igual((st, body.get("ok"), body.get("deleted"), body.get("unlinked")),
-          (200, True, {"history": 1, "reports": 2}, {"feedback": 1}), "respuesta")
+          (200, True, {"history": 1, "reports": 2, "circles": 0}, {"feedback": 1}), "respuesta")
     igual(filas_de("user_ana"), [0, 0, 0], "filas de Ana")
     for otro in ("user_beto", DEV_1, LEGADO):
         igual(filas_de(otro), [1, 2, 1], f"filas de {otro}")
@@ -255,7 +262,7 @@ def t_borrar_con_token_solo_lo_propio():
 
 def t_borrar_con_llave_solo_el_dispositivo():
     st, body = pedir(APP, "DELETE", "/me/data", {"X-Device-Key": LLAVE_1})
-    igual((st, body.get("deleted"), body.get("unlinked")), (200, {"history": 1, "reports": 2}, {"feedback": 1}), "respuesta")
+    igual((st, body.get("deleted"), body.get("unlinked")), (200, {"history": 1, "reports": 2, "circles": 0}, {"feedback": 1}), "respuesta")
     igual((filas_de(DEV_1), filas_de(DEV_2), filas_de("user_ana")), ([0, 0, 0], [1, 2, 1], [1, 2, 1]), "filas")
 
 
@@ -264,7 +271,7 @@ def t_reclamo_y_borrado_alcanzan_el_uid_anterior():
     igual((st, body.get("moved"), body.get("moved_reports"), body.get("moved_feedback")), (200, 1, 2, 1), "reclamo")
     igual(filas_de(LEGADO), [0, 0, 0], "filas del uid anterior tras el reclamo")
     st, body = pedir(APP, "DELETE", "/me/data", {"X-Device-Key": LLAVE_1})
-    igual((st, body.get("deleted"), body.get("unlinked")), (200, {"history": 2, "reports": 4}, {"feedback": 2}), "borrado")
+    igual((st, body.get("deleted"), body.get("unlinked")), (200, {"history": 2, "reports": 4, "circles": 0}, {"feedback": 2}), "borrado")
     igual(filas_de(DEV_1), [0, 0, 0], "filas del dispositivo")
 
 
@@ -278,7 +285,7 @@ def t_repetir_es_seguro():
     for _ in range(2):
         st, body = pedir(APP, "DELETE", "/me/data", ANA)
         igual((st, body.get("ok")), (200, True), "status y ok")
-    igual((body.get("deleted"), body.get("unlinked")), ({"history": 0, "reports": 0}, {"feedback": 0}), "segunda vez")
+    igual((body.get("deleted"), body.get("unlinked")), ({"history": 0, "reports": 0, "circles": 0}, {"feedback": 0}), "segunda vez")
 
 
 # --------------------------------------------------------------------------- sin confirmar

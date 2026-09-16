@@ -43,6 +43,14 @@ REGLAS: list[tuple[str, str, int, int]] = [
     ("POST",   "/route/safe",          600, 3600),
     ("POST",   "/predict/destination", 600, 3600),
     ("POST",   "/predict/online",      600, 3600),
+    # Círculos. La regla más específica va primero (gana la primera que casa). Entrar a un
+    # círculo es raro; en cambio, durante un evento abierto las posiciones llegan seguidas,
+    # así que ese cubo es amplio a propósito: el freno fino es que el evento sea tuyo y esté
+    # abierto, no el número de peticiones.
+    ("POST",   "/circles/join",         30, 3600),
+    ("POST",   "/circles",            1200, 3600),   # crear, abrir/cerrar evento y posiciones
+    ("PUT",    "/circles",             120, 3600),
+    ("DELETE", "/circles",              60, 3600),
 ]
 _EXENTOS = ("/health", "/admin/")
 _MAX_KEYS = 20_000

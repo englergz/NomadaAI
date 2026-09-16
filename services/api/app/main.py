@@ -21,7 +21,7 @@ from app.core.config import get_settings
 from app.data.corridors import CorridorStore
 from app.data.risk import RiskStore
 from app.ml.destination import DestinationPredictor
-from app.routers import admin, corridors, evaluation, feedback, health, history, pois, predict, privacy, risk, route, trajectories
+from app.routers import admin, circles, corridors, evaluation, feedback, health, history, pois, predict, privacy, risk, route, trajectories
 
 logger = logging.getLogger("nomadaai")
 logging.basicConfig(level=logging.INFO)
@@ -115,6 +115,7 @@ def create_app() -> FastAPI:
     app.include_router(privacy.router)
     app.include_router(pois.router)
     app.include_router(feedback.router)
+    app.include_router(circles.router)
     app.include_router(admin.router)
 
     # Frontend estático (despliegue single-Space): se monta al final para no

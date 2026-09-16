@@ -4,6 +4,8 @@ Una sola petición alcanza todo lo que el servidor guarda atribuido a quien lo p
 
 - **Histórico de viajes**: se borra.
 - **Reportes ciudadanos** (ubicación, hora, categoría y descripción): se borran.
+- **Círculos de cuidado**: se sale de todos, con sus eventos, rastros y disparadores; los
+  círculos que quedan sin nadie se borran.
 - **Opiniones**: se DESVINCULAN. Pasan a `anon` y se conservan sin nada que las ate a la persona,
   porque la app pide la opinión justo antes de borrar para aprender de quien se va; borrarla en el
   mismo acto anularía ese propósito.
@@ -28,7 +30,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Header
 
-from app.data import feedback, history, incidents
+from app.data import circles, feedback, history, incidents
 from app.routers.history import _require_identity
 
 router = APIRouter(prefix="/me", tags=["privacy"])
@@ -46,7 +48,11 @@ def delete_my_data(
     if not (history.available() and incidents.available() and feedback.available()):
         return {"ok": False, "error": "El servidor no tiene base de datos: no se puede confirmar el borrado"}
     try:
-        borrados = {"history": history.reset(uid)["deleted"], "reports": incidents.delete_for_user(uid)}
+        borrados = {
+            "history": history.reset(uid)["deleted"],
+            "reports": incidents.delete_for_user(uid),
+            "circles": circles.borrar_de(uid),
+        }
         desvinculados = {"feedback": feedback.unlink_user(uid)}
     except Exception:  # noqa: BLE001 — se informa sin confirmar; reintentar es seguro
         logger.exception("DELETE /me/data")

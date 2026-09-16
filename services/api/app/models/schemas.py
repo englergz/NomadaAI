@@ -163,3 +163,36 @@ class FeedbackResponse(BaseModel):
     accepted: bool
     id: Optional[str] = None
     note: Optional[str] = None
+
+
+# ------------------------------------------------------------------ Círculos de cuidado
+# La ubicación viaja por EXCEPCIÓN: estos modelos describen el círculo, quién comparte y
+# cuándo, nunca un rastro permanente (ver `app/data/circles.py`).
+
+
+class CircleIn(BaseModel):
+    """Crear un círculo. El alias es con el que te ven ahí dentro, no tu nombre de cuenta."""
+    name: str = Field(min_length=1, max_length=40)
+    kind: str = Field(default="familia", max_length=20)
+    alias: str = Field(min_length=1, max_length=40)
+
+
+class CircleJoinIn(BaseModel):
+    code: str = Field(min_length=6, max_length=12)
+    alias: str = Field(min_length=1, max_length=40)
+
+
+class CirclePrefsIn(BaseModel):
+    """Disparadores de CADA persona en CADA círculo. Nadie más puede cambiárselos."""
+    triggers: dict[str, bool] = Field(default_factory=dict)
+    share_mode: str = Field(default="on_trigger", max_length=12)
+
+
+class CircleEventIn(BaseModel):
+    kind: str = Field(default="panico", max_length=16)
+
+
+class CirclePositionIn(BaseModel):
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
+    acc: Optional[float] = Field(default=None, ge=0, le=10000)

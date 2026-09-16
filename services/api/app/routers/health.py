@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app import state
 from app.core.config import get_settings
+from app.data import circles
 
 router = APIRouter(tags=["meta"])
 
@@ -36,4 +37,7 @@ def health() -> dict:
         # «Borrar mis datos» completo: `DELETE /me/data` borra el histórico y los reportes de quien
         # prueba su identidad y desvincula sus opiniones. Los clientes lo comprueban antes de pedirlo.
         "data_deletion": True,
+        # Círculos de cuidado: necesitan base de datos y cuenta. Si esto es False, la app
+        # muestra la función como no disponible en vez de fallar al abrirla.
+        "circles_ready": circles.available(),
     }
