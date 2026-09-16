@@ -96,3 +96,37 @@ export class ProximityTracker {
     return true;
   }
 }
+
+// ------------------------------------------------------------------ freno de notificaciones
+// La regla «una alerta por zona» se cumple por CELDA de la malla, y un corredor de precaución
+// cruza muchas celdas seguidas. Verificado en el simulador de iPhone: a 15 m/s llegaron siete
+// notificaciones idénticas de «Precaución en este tramo» en un minuto. Eso enseña a ignorar los
+// avisos, que es lo peor que le puede pasar a una app de seguridad.
+//
+// Solución: cada zona se sigue registrando en el historial y en el aviso de pantalla, pero la
+// NOTIFICACIÓN (sonido y vibración) solo se repite si el riesgo SUBE o si pasó un rato desde la
+// última del mismo nivel o superior. Bajar de nivel nunca interrumpe.
+
+/** Silencio mínimo entre dos notificaciones del mismo nivel. */
+export const NOTIFY_QUIET_MS = 3 * 60 * 1000;
+
+const RANGO: Record<AlertLevel, number> = { despejado: 0, precaucion: 1, atencion: 2 };
+
+export class NotificationThrottle {
+  private ultimo: { level: AlertLevel; at: number } | null = null;
+
+  reset() {
+    this.ultimo = null;
+  }
+
+  /** ¿Esta alerta merece notificación (sonido y vibración) ahora? Si sí, la cuenta. */
+  shouldNotify(level: AlertLevel, now: number = Date.now()): boolean {
+    if (level === 'despejado') return false;
+    const u = this.ultimo;
+    const sube = !u || RANGO[level] > RANGO[u.level];
+    const pasoElRato = !u || now - u.at >= NOTIFY_QUIET_MS;
+    if (!sube && !pasoElRato) return false;
+    this.ultimo = { level, at: now };
+    return true;
+  }
+}

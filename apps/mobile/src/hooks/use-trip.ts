@@ -16,7 +16,7 @@ import { CITIES, type CityKey } from '@/constants/map';
 import type { Banner } from '@/hooks/use-banner';
 import { logAlert } from '@/lib/alert-log';
 import { cerrarAvisosDelRecorrido, dispararCirculos } from '@/lib/circle-triggers';
-import { levelFor, ProximityTracker, zoneAt, type AlertLevel } from '@/lib/alerts';
+import { levelFor, NotificationThrottle, ProximityTracker, zoneAt, type AlertLevel } from '@/lib/alerts';
 import { api } from '@/lib/api';
 import {
   clearActiveTrip, drainQueuedPoints, isResumable, loadActiveTrip,
@@ -71,6 +71,8 @@ export function useTrip({
   const headingSubRef = useRef<Location.LocationSubscription | null>(null);
   const [tripLevel, setTripLevel] = useState<AlertLevel>('despejado');
   const trackerRef = useRef(new ProximityTracker());
+  // Una zona se avisa siempre en pantalla; sonar y vibrar, solo si el riesgo sube o pasó un rato.
+  const notifyThrottleRef = useRef(new NotificationThrottle());
   const watchRef = useRef<Location.LocationSubscription | null>(null);
   // Inactividad: si el usuario lleva rato quieto se pregunta si sigue en viaje;
   // sin respuesta y sin moverse, se finaliza solo (no drena batería para siempre).
@@ -129,7 +131,7 @@ export function useTrip({
         const title = lvl === 'atencion' ? t('map.pre.title.attention') : t('map.pre.title.caution');
         const body = t('map.pre.body', { eta });
         setBanner({ text: `${title}: ${body}`, tone: lvl === 'atencion' ? 'coral' : 'warn' });
-        notifyLocal(t('map.pre.notifTitle', { title, eta }), body, lvl);
+        if (notifyThrottleRef.current.shouldNotify(lvl)) notifyLocal(t('map.pre.notifTitle', { title, eta }), body, lvl);
         logAlert({
           zone: String(a.cell_id),
           level: lvl === 'atencion' ? 'atencion' : 'precaucion',
@@ -159,7 +161,7 @@ export function useTrip({
       const title = alert.level === 'atencion' ? t('alert.attention.title') : t('alert.caution.title');
       const body = alert.level === 'atencion' ? attBody : t('alert.caution.body');
       setBanner({ text: `${title}: ${body}`, tone: alert.level === 'atencion' ? 'coral' : 'warn' });
-      notifyLocal(title, body, alert.level);
+      if (notifyThrottleRef.current.shouldNotify(alert.level)) notifyLocal(title, body, alert.level);
       // Tus círculos se enteran solos si tienes ese disparador encendido (lib/circle-triggers).
       void dispararCirculos(alert.level === 'atencion' ? 'riesgo' : 'precaucion');
       logAlert({
@@ -319,6 +321,7 @@ export function useTrip({
       } catch { /* opcional: sin notificaciones seguimos con banners */ }
     }
     trackerRef.current.reset();
+    notifyThrottleRef.current.reset();
     tripPtsRef.current = [];
     lastPredictRef.current = 0;
     alertsRef.current = 0;

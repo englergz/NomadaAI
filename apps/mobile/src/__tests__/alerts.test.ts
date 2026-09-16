@@ -73,3 +73,47 @@ describe('una alerta por zona y por viaje', () => {
     expect(t.seenOnce('celda-9')).toBe(false);
   });
 });
+
+// Freno de notificaciones. Bug real visto en el simulador de iPhone: siete notificaciones
+// idénticas de «Precaución» en un minuto al cruzar un corredor. Lo que se protege aquí es que
+// la persona no aprenda a ignorar los avisos, sin perder nunca uno que suba de nivel.
+import { NOTIFY_QUIET_MS, NotificationThrottle } from '@/lib/alerts';
+
+describe('freno de notificaciones', () => {
+  it('la primera alerta siempre suena', () => {
+    expect(new NotificationThrottle().shouldNotify('precaucion', 0)).toBe(true);
+  });
+
+  it('un corredor de precaución no suena en cada celda', () => {
+    const f = new NotificationThrottle();
+    const sonaron = [0, 5_000, 10_000, 20_000, 40_000, 60_000].filter((t) => f.shouldNotify('precaucion', t));
+    expect(sonaron).toEqual([0]);
+  });
+
+  it('si el riesgo SUBE, suena aunque acabe de sonar otra', () => {
+    const f = new NotificationThrottle();
+    f.shouldNotify('precaucion', 0);
+    expect(f.shouldNotify('atencion', 1_000)).toBe(true);
+  });
+
+  it('bajar de nivel no interrumpe', () => {
+    const f = new NotificationThrottle();
+    f.shouldNotify('atencion', 0);
+    expect(f.shouldNotify('precaucion', 1_000)).toBe(false);
+  });
+
+  it('pasado el rato de silencio, el mismo nivel vuelve a sonar', () => {
+    const f = new NotificationThrottle();
+    f.shouldNotify('precaucion', 0);
+    expect(f.shouldNotify('precaucion', NOTIFY_QUIET_MS - 1)).toBe(false);
+    expect(f.shouldNotify('precaucion', NOTIFY_QUIET_MS)).toBe(true);
+  });
+
+  it('«despejado» nunca suena, y un recorrido nuevo empieza de cero', () => {
+    const f = new NotificationThrottle();
+    expect(f.shouldNotify('despejado', 0)).toBe(false);
+    f.shouldNotify('atencion', 0);
+    f.reset();
+    expect(f.shouldNotify('precaucion', 1)).toBe(true);
+  });
+});
