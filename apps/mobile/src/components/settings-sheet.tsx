@@ -301,8 +301,9 @@ export default function SettingsSheet({ visible, onClose, onHelp, onLegal, onPri
 }
 
 const styles = StyleSheet.create({
-  circles: { marginHorizontal: 16, borderWidth: 1, borderRadius: Radii.card, padding: 12, gap: 6 },
-  more: { marginHorizontal: 16, marginTop: 18, borderWidth: 1, borderRadius: Radii.card, overflow: 'hidden' },
+  // Mismo ancho que el resto de tarjetas: el margen lateral extra las dejaba más estrechas.
+  circles: { borderWidth: 1, borderRadius: Radii.card, padding: 12, gap: 6 },
+  more: { marginTop: 18, borderWidth: 1, borderRadius: Radii.card, overflow: 'hidden' },
   moreHead: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14 },
   moreList: { borderTopWidth: 1, paddingVertical: 4 },
   moreRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 14 },

@@ -2,25 +2,27 @@
 // Aquí solo vive la presentación nativa; el texto no se reescribe (si se edita,
 // se edita en packages/shared/src/help.ts y cambia en las dos superficies).
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { helpFor, HELP_LEAD } from '@nomadaai/shared';
+import { helpFor, helpLead } from '@nomadaai/shared';
 
 import BaseSheet from '@/components/base-sheet';
 import { Colors, Radii } from '@/constants/theme';
-import { useT } from '@/lib/i18n';
+import { useLang, useT } from '@/lib/i18n';
 import { useResolvedScheme } from '@/lib/settings';
 
 export default function HelpSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const t = useT();
   const scheme = useResolvedScheme();
   const c = Colors[scheme];
-  const sections = helpFor('mobile');
+  const lang = useLang();
+  // En el idioma de la app: antes la ayuda salía siempre en español.
+  const sections = helpFor('mobile', lang);
 
   return (
     <BaseSheet visible={visible} onClose={onClose} sheetStyle={{ gap: 12 }}>
         <Text style={[styles.title, { color: c.text }]}>{t('help.title')}</Text>
 
         <ScrollView contentContainerStyle={{ gap: 18, paddingBottom: 12 }}>
-          <Text style={{ color: c.textSecondary, fontSize: 13.5, lineHeight: 20 }}>{HELP_LEAD}</Text>
+          <Text style={{ color: c.textSecondary, fontSize: 13.5, lineHeight: 20 }}>{helpLead(lang)}</Text>
 
           {sections.map((sec) => (
             <View key={sec.title} style={{ gap: 9 }}>
