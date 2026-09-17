@@ -3,7 +3,7 @@
 // nombre/correo, cerrar sesión y los campos PROPIOS del perfil (fecha de nacimiento
 // y nacionalidad) con consentimiento explícito (Ley 1581) → BI agregada.
 import { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { useAuth, useSSO, useUser } from '@clerk/clerk-expo';
@@ -36,6 +36,17 @@ export default function ProfileSection() {
   const { startSSOFlow } = useSSO();
   const lang = useLang();
   const [err, setErr] = useState(false);
+  // Mientras Clerk prepara el inicio de sesión (varios segundos con conexión lenta) el botón
+  // parecía muerto: se volvía a tocar, el segundo intento chocaba con el primero y salía
+  // «no se pudo». Ahora se ve que está trabajando y no admite un segundo toque.
+  const [signingIn, setSigningIn] = useState(false);
+
+  // Android: calentar el navegador antes del toque acorta el retraso al abrir Google.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    void WebBrowser.warmUpAsync();
+    return () => { void WebBrowser.coolDownAsync(); };
+  }, []);
   // Fecha de nacimiento por partes (selectores) + nacionalidad (lista de países).
   const [day, setDay] = useState<string | null>(null);
   const [month, setMonth] = useState<string | null>(null); // '1'..'12'
@@ -70,15 +81,18 @@ export default function ProfileSection() {
     : null;
 
   async function google() {
+    if (signingIn) return;
     setErr(false);
+    setSigningIn(true);
     try {
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy: 'oauth_google',
         redirectUrl: AuthSession.makeRedirectUri({ scheme: 'nomadaai', path: 'sso-callback' }),
       });
       if (createdSessionId && setActive) await setActive({ session: createdSessionId });
-      else setErr(true);
-    } catch { setErr(true); }
+      // Sin sesión y sin error: la persona cerró la ventana de Google. No es un fallo, así
+      // que no se muestra «no se pudo» (antes sí, y confundía).
+    } catch { setErr(true); } finally { setSigningIn(false); }
   }
 
   // Guardado AUTOMÁTICO al elegir (sin botón propio): «Listo» solo cierra, como
@@ -108,9 +122,11 @@ export default function ProfileSection() {
         <>
           <Pressable
             onPress={google}
-            style={({ pressed }) => [styles.btn, { borderColor: c.accent, opacity: pressed ? 0.8 : 1 }]}
+            disabled={signingIn}
+            style={({ pressed }) => [styles.btn, { borderColor: c.accent, opacity: signingIn ? 0.7 : pressed ? 0.8 : 1, flexDirection: 'row', justifyContent: 'center', gap: 8 }]}
           >
-            <Text style={{ color: c.accent, fontSize: 13, fontWeight: '700' }}>{t('auth.signin')}</Text>
+            {signingIn && <ActivityIndicator size="small" color={c.accent} />}
+            <Text style={{ color: c.accent, fontSize: 13, fontWeight: '700' }}>{t(signingIn ? 'auth.opening' : 'auth.signin')}</Text>
           </Pressable>
           {err && <Text style={{ color: c.coral, fontSize: 11.5, textAlign: 'center' }}>{t('auth.error')}</Text>}
           <Text style={{ color: c.textSecondary, fontSize: 11, lineHeight: 15 }}>{t('auth.guestNote')}</Text>

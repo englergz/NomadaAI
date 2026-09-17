@@ -47,6 +47,7 @@ import { useWriteQueue } from '@/hooks/use-write-queue';
 import { useTrip } from '@/hooks/use-trip';
 import { markBootReady } from '@/lib/boot';
 import { hasNetwork } from '@/lib/connectivity';
+import { useCircleAlerts } from '@/lib/circle-alerts';
 import { useCircleSharing } from '@/lib/circle-sharing';
 import { fixEscalonado, type IntentoGps } from '@/lib/gps';
 import { reportVisibleHeight } from '@/lib/keyboard-inset';
@@ -109,6 +110,8 @@ export default function MapScreen() {
   const [showCircles, setShowCircles] = useState(false);
   // Mientras tengas un evento abierto en un círculo, tu posición le llega cada poco.
   useCircleSharing();
+  // Alguien de tus círculos pidiendo ayuda: punto rojo en su botón del mapa.
+  const circleAlerts = useCircleAlerts();
   const [showHelp, setShowHelp] = useState(false);
   const [showLegal, setShowLegal] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -159,6 +162,8 @@ export default function MapScreen() {
   // ventana redimensionada, el evento del teclado llega con altura 0 y la capa para
   // cerrarlo tocando el mapa no llegaba a existir (verificado en emulador).
   const [searchFocused, setSearchFocused] = useState(false);
+  // Con seis botones (Círculos está en el mapa) la columna crece hacia ABAJO, donde sobra
+  // sitio: subirla dejaba el de perfil debajo de la tarjeta de actualización.
   const stackTop = Math.max(insets.top + 96, (winH - sheetH) / 2 - 135);
 
   const [query, setQuery] = useState('');
@@ -474,6 +479,16 @@ export default function MapScreen() {
           style={[styles.fab, styles.inStack, { backgroundColor: c.backgroundElement, borderColor: c.border }]}
         >
           <Ionicons name="settings-outline" size={21} color={c.text} />
+        </Pressable>
+        {/* Círculos: a un toque desde el mapa (antes vivía escondido en Configuración). El
+            punto rojo avisa de que alguien de tus círculos está pidiendo ayuda. */}
+        <Pressable
+          onPress={() => setShowCircles(true)}
+          accessibilityLabel={t('circles.title')}
+          style={[styles.fab, styles.inStack, { backgroundColor: c.backgroundElement, borderColor: circleAlerts ? c.coral : c.accent }]}
+        >
+          <Ionicons name="people-outline" size={21} color={circleAlerts ? c.coral : c.accent} />
+          {circleAlerts > 0 && <View style={[styles.unreadDot, { backgroundColor: c.coral, borderColor: c.backgroundElement }]} />}
         </Pressable>
         {/* Reportar: relleno coral con icono blanco — el FAB con más peso visual */}
         <Pressable
