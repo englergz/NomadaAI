@@ -46,6 +46,7 @@ import { useOta } from '@/hooks/use-ota';
 import { useWriteQueue } from '@/hooks/use-write-queue';
 import { useTrip } from '@/hooks/use-trip';
 import { markBootReady } from '@/lib/boot';
+import { hasNetwork } from '@/lib/connectivity';
 import { useCircleSharing } from '@/lib/circle-sharing';
 import { fixEscalonado, type IntentoGps } from '@/lib/gps';
 import { reportVisibleHeight } from '@/lib/keyboard-inset';
@@ -163,6 +164,8 @@ export default function MapScreen() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Place[]>([]);
   const [searching, setSearching] = useState(false);
+  // Sin red la búsqueda no puede encontrar nada: decirlo, no fingir que «no hay resultados».
+  const [searchOffline, setSearchOffline] = useState(false);
   const [dest, setDest] = useState<Place | null>(null);
   // Índice del nivel de protección; arranca en el CENTRO de la escala (equilibrada).
   const [priority, setPriority] = useState(Math.floor((DEFAULT_PROTECTION_LEVELS.length - 1) / 2));
@@ -210,7 +213,12 @@ export default function MapScreen() {
     setSearching(true);
     const t = setTimeout(() => {
       searchPlaces(query, city)
-        .then((r) => { if (searchSeq.current === seq) { setResults(r); setSearching(false); } })
+        .then(async (r) => {
+          // Una lista vacía sin red no significa «no existe»: la búsqueda de direcciones
+          // necesita internet, y así se dice (antes se culpaba al nombre buscado).
+          const offline = r.length === 0 && !(await hasNetwork());
+          if (searchSeq.current === seq) { setResults(r); setSearchOffline(offline); setSearching(false); }
+        })
         .catch(() => { if (searchSeq.current === seq) setSearching(false); });
     }, 350);
     return () => clearTimeout(t);
@@ -347,7 +355,12 @@ export default function MapScreen() {
         setBanner({ text: t('map.banner.routeNoAlt', { km, red: red.toFixed(1) }), tone: 'warn' });
       }
     } catch {
-      if (!silent) setBanner({ text: t('map.banner.routeError'), tone: 'warn' });
+      // Sin red no es que el destino esté fuera de la red vial: la ruta segura se calcula en el
+      // servidor. Se dice eso y qué sí se puede hacer (el recorrido libre usa el mapa guardado).
+      if (!silent) {
+        const online = await hasNetwork();
+        setBanner({ text: t(online ? 'map.banner.routeError' : 'map.banner.routeOffline'), tone: 'warn' });
+      }
     } finally {
       setRouting(false);
     }
@@ -576,7 +589,7 @@ export default function MapScreen() {
 
         {/* Estado vacío del buscador: hubo consulta y no hubo resultados */}
         {cityFull && !searching && !dest && query.trim().length >= 2 && results.length === 0 && (
-          <Text style={{ color: c.textSecondary, fontSize: 12, textAlign: 'center' }}>{t('map.noResults')}</Text>
+          <Text style={{ color: c.textSecondary, fontSize: 12, textAlign: 'center' }}>{t(searchOffline ? 'map.searchOffline' : 'map.noResults')}</Text>
         )}
 
         {/* Buscador/vehículo/protección solo donde hay pipeline completo */}

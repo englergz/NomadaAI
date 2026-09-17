@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import ProfileSection from '@/components/profile-section';
 import BaseSheet from '@/components/base-sheet';
+import { hasNetwork } from '@/lib/connectivity';
 import { Colors, Radii } from '@/constants/theme';
 import { CLERK_ENABLED } from '@/lib/auth';
 import { confirmDestructive } from '@/lib/confirm';
@@ -28,13 +29,18 @@ export default function ProtectionSheet({ visible, onClose }: { visible: boolean
   const [mine, setMine] = useState<HistorySummary | null>(null);
   const [all, setAll] = useState<HistorySummary | null>(null);
   const [loading, setLoading] = useState(false);
+  // Sin red el histórico no se puede leer: decirlo, no mostrarlo como «aún no hay viajes».
+  const [offline, setOffline] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     let alive = true;
     setLoading(true);
     fetchSummaries()
-      .then((r) => { if (alive) { setMine(r.mine); setAll(r.all); } })
+      .then(async (r) => {
+        const sinRed = !r.mine && !r.all && !(await hasNetwork());
+        if (alive) { setMine(r.mine); setAll(r.all); setOffline(sinRed); }
+      })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [visible]);
@@ -83,7 +89,7 @@ export default function ProtectionSheet({ visible, onClose }: { visible: boolean
           </>
         ) : (
           <Text style={{ color: c.textSecondary, fontSize: 13, marginVertical: 16, lineHeight: 19 }}>
-            {t('prot.empty')}
+            {t(offline ? 'prot.offline' : 'prot.empty')}
           </Text>
         )}
 

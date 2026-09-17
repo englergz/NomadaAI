@@ -43,6 +43,9 @@ export async function loadPois(): Promise<Place[]> {
 const norm = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
+/** Cómo se identifica la app ante Nominatim. Sin esto responde 403 (ver searchPlaces). */
+export const NOMINATIM_USER_AGENT = 'NomadaAI/1.0 (+https://github.com/englergz/NomadaAI)';
+
 export async function searchPlaces(query: string, city: CityKey): Promise<Place[]> {
   const q = norm(query.trim());
   if (q.length < 2) return [];
@@ -64,7 +67,12 @@ export async function searchPlaces(query: string, city: CityKey): Promise<Place[
     const url =
       `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=co` +
       `&viewbox=${w},${n},${e},${s}&q=${encodeURIComponent(q2)}`;
-    const res = await fetch(url, { headers: { 'accept-language': 'es' } });
+    // Nominatim exige que cada aplicación se identifique (política de uso de OpenStreetMap):
+    // a la identidad por defecto de Android (`okhttp`) y a las peticiones sin identificar les
+    // responde 403. Así la búsqueda de direcciones estuvo rota en la app y todo salía como
+    // «sin resultados». La identificación es la del proyecto, sin datos de nadie. En web el
+    // navegador pone la suya y no deja cambiarla, y Nominatim la acepta.
+    const res = await fetch(url, { headers: { 'accept-language': 'es', 'User-Agent': NOMINATIM_USER_AGENT } });
     if (res.ok) {
       const rows = (await res.json()) as { display_name: string; lon: string; lat: string; type?: string }[];
       osm = rows
